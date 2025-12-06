@@ -7,26 +7,24 @@ import {
   onAuthStateChanged,
   User 
 } from 'firebase/auth';
+import { getAnalytics } from "firebase/analytics";
 import { UserProfile } from '../types';
 
-// TODO: Replace with your actual Firebase project configuration from the Firebase Console
-// Create a .env file in your root and add these variables starting with VITE_
-
-// Use type assertion to avoid TypeScript error: Property 'env' does not exist on type 'ImportMeta'
-const env = (import.meta as any).env;
-
+// Firebase configuration provided
 const firebaseConfig = {
-  apiKey: env?.VITE_FIREBASE_API_KEY || "AIzaSyD-MmPmEXAMPLEKEY",
-  authDomain: env?.VITE_FIREBASE_AUTH_DOMAIN || "your-app.firebaseapp.com",
-  projectId: env?.VITE_FIREBASE_PROJECT_ID || "your-app",
-  storageBucket: env?.VITE_FIREBASE_STORAGE_BUCKET || "your-app.appspot.com",
-  messagingSenderId: env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: env?.VITE_FIREBASE_APP_ID || "1:123456789:web:abc123456"
+  apiKey: "AIzaSyCWVGtXD-z6Opm6FVL2TJInsA5H4m0NYOY",
+  authDomain: "thecampushelper-adcdc.firebaseapp.com",
+  projectId: "thecampushelper-adcdc",
+  storageBucket: "thecampushelper-adcdc.firebasestorage.app",
+  messagingSenderId: "379448284100",
+  appId: "1:379448284100:web:d950e994d1abc2c2fc0a91",
+  measurementId: "G-K94JQ2GV7G"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Admin Email List (Add your email here to get admin access)
@@ -50,9 +48,32 @@ class AuthService {
   async signInWithGoogle(): Promise<UserProfile> {
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      
+      // LOGGING FOR DEV: See the data Firebase returns in your browser console
+      console.log("✅ Firebase Auth Success!");
+      console.log("User Data:", result.user);
+      console.log("Access Token:", await result.user.getIdToken());
+
       return mapUser(result.user);
-    } catch (error) {
-      console.error("Error signing in with Google", error);
+    } catch (error: any) {
+      console.error("❌ Error signing in with Google", error);
+
+      // Specific handling for Unauthorized Domain error to help the user
+      if (error.code === 'auth/unauthorized-domain') {
+        const currentDomain = window.location.hostname;
+        const message = `⚠️ FIREBASE CONFIGURATION ERROR\n\n` +
+          `The domain "${currentDomain}" is not authorized.\n\n` +
+          `ACTION REQUIRED:\n` +
+          `1. Go to Firebase Console > Authentication > Settings > Authorized Domains\n` +
+          `2. Add "${currentDomain}" to the list.`;
+        
+        alert(message);
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        console.warn("User closed the login popup.");
+      } else {
+        alert("Login Failed: " + error.message);
+      }
+      
       throw error;
     }
   }
@@ -68,6 +89,7 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       await signOut(auth);
+      console.log("👋 User signed out");
     } catch (error) {
       console.error("Error signing out", error);
       throw error;
@@ -77,6 +99,7 @@ class AuthService {
   onAuthStateChanged(callback: (user: UserProfile | null) => void): () => void {
     return onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        console.log("Auth State Restored:", firebaseUser.email);
         callback(mapUser(firebaseUser));
       } else {
         callback(null);
@@ -86,4 +109,4 @@ class AuthService {
 }
 
 export const authService = new AuthService();
-export { auth }; // Exporting raw auth instance if needed elsewhere
+export { auth, analytics };

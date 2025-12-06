@@ -13,15 +13,16 @@ import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence } from 'framer-motion';
 
-// Google Analytics Setup (Placeholder)
-const GA_MEASUREMENT_ID = ''; 
+// Google Analytics Measurement ID from Firebase config
+const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
+
 const Analytics = () => {
   const location = useLocation();
 
   useEffect(() => {
     if (GA_MEASUREMENT_ID) {
-      console.log(`GA Pageview: ${location.pathname}`);
-      // window.gtag('config', GA_MEASUREMENT_ID, { page_path: location.pathname });
+      // Basic logging for now, can be replaced with actual gtag calls if script is loaded
+      console.log(`Analytics: Page View ${location.pathname}`);
     }
     // Scroll to top on route change
     window.scrollTo(0, 0);
