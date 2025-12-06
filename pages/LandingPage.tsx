@@ -94,20 +94,22 @@ const LandingPage: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Feature 2 */}
-            <motion.div 
-              whileHover={{ y: -5 }}
-              className="relative p-8 bg-card border border-white/5 rounded-2xl hover:border-secondary/50 transition-colors group"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
-              <div className="relative">
-                <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-secondary/20 text-secondary mb-6">
-                  <Calculator className="w-6 h-6" />
+            {/* Feature 2: CGPA Calculator (Updated) */}
+            <Link to="/calculator">
+              <motion.div 
+                whileHover={{ y: -5 }}
+                className="relative p-8 bg-card border border-white/5 rounded-2xl hover:border-secondary/50 transition-colors group cursor-pointer h-full"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"></div>
+                <div className="relative">
+                  <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-secondary/20 text-secondary mb-6 group-hover:scale-110 transition-transform">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">CGPA Calculator</h3>
+                  <p className="text-gray-400">Calculate your SGPA & CGPA easily with automatic JNTUH grade mapping and credit weightage.</p>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Subject Wise Sorting</h3>
-                <p className="text-gray-400">Easily navigate through Physics and Chemistry cycles tailored to your branch groups.</p>
-              </div>
-            </motion.div>
+              </motion.div>
+            </Link>
 
             {/* Feature 3 */}
             <motion.div 

@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
+import CalculatorPage from './pages/CalculatorPage';
 import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence } from 'framer-motion';
 
@@ -38,6 +39,7 @@ const App: React.FC = () => {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/resources" element={<ResourcesPage />} />
+              <Route path="/calculator" element={<CalculatorPage />} />
             </Routes>
           </AnimatePresence>
         </div>
