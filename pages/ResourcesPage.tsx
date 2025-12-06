@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { resources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
+import { useAuth } from '../context/AuthContext';
 import { 
   Folder, 
   FileText, 
@@ -15,22 +16,30 @@ import {
   FolderOpen,
   Sparkles,
   ExternalLink,
-  Eye
+  Eye,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdUnit from '../components/AdUnit';
+import AccessGate from '../components/AccessGate';
 
 // Defined specific folder types for the UI state
 type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
 
 const ResourcesPage: React.FC = () => {
+  const { user } = useAuth();
+  
   // Navigation State
   const [branch, setBranch] = useState<'CS_IT_DS' | 'AIML_ECE_CYS'>('CS_IT_DS');
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null); // 'Unit 1'...'Unit 5', 'PYQ', 'MidPaper'
   const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null); // 'Note', 'ImpQ', 'PPT'
+  
+  // File Action States
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [showAccessGate, setShowAccessGate] = useState(false);
+  const [pendingResource, setPendingResource] = useState<Resource | null>(null);
 
   // Lock body scroll when preview is open
   useEffect(() => {
@@ -41,6 +50,32 @@ const ResourcesPage: React.FC = () => {
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [selectedResource]);
+
+  // Handle User Click on File
+  const handleResourceClick = (res: Resource) => {
+    if (!user) {
+      setPendingResource(res);
+      setShowAccessGate(true);
+    } else {
+      openResource(res);
+    }
+  };
+
+  const openResource = (res: Resource) => {
+    if (res.driveFileId) {
+      setSelectedResource(res);
+    } else {
+      window.open(res.downloadUrl, '_blank');
+    }
+  };
+
+  // Effect to open pending resource after login
+  useEffect(() => {
+    if (user && pendingResource) {
+      openResource(pendingResource);
+      setPendingResource(null);
+    }
+  }, [user, pendingResource]);
 
   // Constants
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -394,13 +429,7 @@ const ResourcesPage: React.FC = () => {
                   {getFilteredResources().map((res) => (
                     <div
                       key={res.id}
-                      onClick={() => {
-                        if (res.driveFileId) {
-                          setSelectedResource(res);
-                        } else {
-                          window.open(res.downloadUrl, '_blank');
-                        }
-                      }}
+                      onClick={() => handleResourceClick(res)}
                       className="flex items-center justify-between p-3 sm:p-4 bg-card border border-white/10 rounded-xl hover:border-primary/50 transition-colors group cursor-pointer"
                     >
                       <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
@@ -420,17 +449,13 @@ const ResourcesPage: React.FC = () => {
                       {/* If it has a drive ID, show preview icon, otherwise download */}
                       <button 
                         className="p-2 sm:p-3 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors flex-shrink-0 ml-2"
-                        title={res.driveFileId ? "Preview" : "Download"}
+                        title={user ? (res.driveFileId ? "Preview" : "Download") : "Login to Access"}
                         onClick={(e) => {
                            e.stopPropagation();
-                           if (res.driveFileId) {
-                             setSelectedResource(res);
-                           } else {
-                             window.open(res.downloadUrl, '_blank');
-                           }
+                           handleResourceClick(res);
                         }}
                       >
-                         {res.driveFileId ? <Eye className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+                         {!user ? <Lock className="w-4 h-4" /> : (res.driveFileId ? <Eye className="w-5 h-5" /> : <Download className="w-5 h-5" />)}
                       </button>
                     </div>
                   ))}
@@ -451,6 +476,13 @@ const ResourcesPage: React.FC = () => {
 
         </AnimatePresence>
       </div>
+
+      {/* ACCESS GATE MODAL */}
+      <AccessGate 
+        isOpen={showAccessGate} 
+        onClose={() => setShowAccessGate(false)} 
+        resourceTitle={pendingResource?.title}
+      />
 
       {/* FULL SCREEN OVERLAY PREVIEW */}
       <AnimatePresence>
