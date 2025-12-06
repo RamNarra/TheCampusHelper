@@ -8,6 +8,7 @@ import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
+import CompilerPage from './pages/CompilerPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './context/AuthContext';
 import { AnimatePresence } from 'framer-motion';
@@ -45,6 +46,7 @@ const App: React.FC = () => {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/resources" element={<ResourcesPage />} />
                 <Route path="/calculator" element={<CalculatorPage />} />
+                <Route path="/compiler" element={<CompilerPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </AnimatePresence>
