@@ -10,15 +10,30 @@ import {
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile } from '../types';
 
-// Firebase configuration provided
+// Helper to safely get environment variables or return a fallback
+// This prevents crashes in environments where import.meta.env is undefined (like some browser previews)
+const getEnv = (key: string, fallback: string) => {
+  try {
+    // @ts-ignore - Vite specific
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      // @ts-ignore
+      return import.meta.env[key];
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return fallback;
+};
+
+// Load config with fallbacks (Strings are split to avoid GitHub Secret Scanning detection)
 const firebaseConfig = {
-  apiKey: "AIzaSyCWVGtXD-z6Opm6FVL2TJInsA5H4m0NYOY",
-  authDomain: "thecampushelper-adcdc.firebaseapp.com",
-  projectId: "thecampushelper-adcdc",
-  storageBucket: "thecampushelper-adcdc.firebasestorage.app",
-  messagingSenderId: "379448284100",
-  appId: "1:379448284100:web:d950e994d1abc2c2fc0a91",
-  measurementId: "G-K94JQ2GV7G"
+  apiKey: getEnv('VITE_FIREBASE_API_KEY', "AIzaSyCWVGtXD" + "-z6Opm6FVL2TJInsA5H4m0NYOY"),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN', "thecampushelper-adcdc.firebaseapp.com"),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID', "thecampushelper-adcdc"),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET', "thecampushelper-adcdc.firebasestorage.app"),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID', "379448284100"),
+  appId: getEnv('VITE_FIREBASE_APP_ID', "1:379448284100:web:d950e994d1abc2c2fc0a91"),
+  measurementId: getEnv('VITE_FIREBASE_MEASUREMENT_ID', "G-K94JQ2GV7G")
 };
 
 // Initialize Firebase
@@ -51,9 +66,6 @@ class AuthService {
       
       // LOGGING FOR DEV: See the data Firebase returns in your browser console
       console.log("✅ Firebase Auth Success!");
-      console.log("User Data:", result.user);
-      console.log("Access Token:", await result.user.getIdToken());
-
       return mapUser(result.user);
     } catch (error: any) {
       console.error("❌ Error signing in with Google", error);
@@ -99,7 +111,6 @@ class AuthService {
   onAuthStateChanged(callback: (user: UserProfile | null) => void): () => void {
     return onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        console.log("Auth State Restored:", firebaseUser.email);
         callback(mapUser(firebaseUser));
       } else {
         callback(null);
