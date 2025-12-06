@@ -94,7 +94,7 @@ const LandingPage: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Feature 2: CGPA Calculator (Updated) */}
+            {/* Feature 2: CGPA Calculator */}
             <Link to="/calculator">
               <motion.div 
                 whileHover={{ y: -5 }}
