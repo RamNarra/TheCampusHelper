@@ -17,6 +17,7 @@ export interface Resource {
   unit?: string; // '1', '2', '3', '4', '5' (Optional, for unit-specific files)
   type: ResourceType;
   downloadUrl: string;
+  driveFileId?: string; // New field for the Google Drive ID
   status?: 'approved' | 'pending';
 }
 

@@ -146,50 +146,52 @@ export const getSubjects = (branch: string, semester: string): string[] => {
 };
 
 export const resources: Resource[] = [
-  // Example Resource for Data Structures (List B)
-  // Visible in Sem 2 for CS_IT_DS, and Sem 1 for AIML_ECE_CYS
+  // --- USER REQUESTED RESOURCE ---
+  // Path: CS/IT/DS > Sem 1 > Engineering Physics > Unit 2 > Teacher PPTs
   {
-    id: 'res-ds-u1-note',
-    title: 'Unit 1: Introduction to Data Structures',
-    subject: 'Data Structures',
+    id: 'res-ep-u2-ppt',
+    title: 'Unit 2: Fiber Optics',
+    subject: 'Engineering Physics',
     branch: 'CS_IT_DS', 
-    semester: '2',
-    unit: '1',
-    type: 'Note',
-    downloadUrl: '#',
-    status: 'approved'
-  },
-  {
-    id: 'res-ds-u1-note-b',
-    title: 'Unit 1: Introduction to Data Structures',
-    subject: 'Data Structures',
-    branch: 'AIML_ECE_CYS', 
     semester: '1',
-    unit: '1',
-    type: 'Note',
-    downloadUrl: '#',
-    status: 'approved'
+    unit: '2',
+    type: 'PPT',
+    downloadUrl: 'https://docs.google.com/presentation/d/1--fcBt0glKsOPnxbhWMZ9BoXZ_4EAKKZ/edit?usp=sharing',
+    status: 'approved',
+    driveFileId: '1--fcBt0glKsOPnxbhWMZ9BoXZ_4EAKKZ' 
   },
   
-  // Example Resource for Matrices (List A)
-  // Visible in Sem 1 for CS_IT_DS, and Sem 2 for AIML_ECE_CYS
+  // Previous Examples
   {
-    id: 'res-ma-u1',
-    title: 'Rank of Matrix Notes',
+    id: 'res-ma-u1-impq',
+    title: 'Unit 1 Important Questions',
     subject: 'Matrices and Calculus',
     branch: 'CS_IT_DS', 
     semester: '1',
     unit: '1',
-    type: 'Note',
+    type: 'ImpQ',
     downloadUrl: '#',
-    status: 'approved'
+    status: 'approved',
+    driveFileId: '19sC8_bC_kXp5r4v5X3j_h5y0sF_x1r1' 
   },
   {
-    id: 'res-ma-u1-b',
+    id: 'res-ds-u1-note',
+    title: 'Introduction to Data Structures',
+    subject: 'Data Structures',
+    branch: 'CS_IT_DS', 
+    semester: '2',
+    unit: '1',
+    type: 'Note',
+    downloadUrl: '#',
+    status: 'approved',
+    driveFileId: '1BDq7G_y9XvXyk5zXXzXzXzXzXzXzXzX' 
+  },
+  {
+    id: 'res-ma-u1-note',
     title: 'Rank of Matrix Notes',
     subject: 'Matrices and Calculus',
-    branch: 'AIML_ECE_CYS', 
-    semester: '2',
+    branch: 'CS_IT_DS', 
+    semester: '1',
     unit: '1',
     type: 'Note',
     downloadUrl: '#',

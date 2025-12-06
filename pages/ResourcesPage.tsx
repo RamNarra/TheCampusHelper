@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { resources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
 import { 
@@ -12,9 +12,11 @@ import {
   FileQuestion,
   Home,
   ArrowLeft,
-  Search,
   FolderOpen,
-  Sparkles
+  Sparkles,
+  ExternalLink,
+  Eye,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,6 +30,17 @@ const ResourcesPage: React.FC = () => {
   const [subject, setSubject] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null); // 'Unit 1'...'Unit 5', 'PYQ', 'MidPaper'
   const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null); // 'Note', 'ImpQ', 'PPT'
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+
+  // Lock body scroll when preview is open
+  useEffect(() => {
+    if (selectedResource) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [selectedResource]);
 
   // Constants
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -86,11 +99,29 @@ const ResourcesPage: React.FC = () => {
     });
   };
 
+  // Generate the correct embed URL for Google Drive files
+  const getEmbedUrl = (res: Resource) => {
+    if (!res.driveFileId) return '';
+    
+    // Check if it's explicitly a Presentation (Google Slides)
+    // We check the type OR if the downloadUrl is a google presentation link
+    const isPresentation = res.type === 'PPT' || res.downloadUrl.includes('docs.google.com/presentation');
+    
+    if (isPresentation) {
+      // Use the embed endpoint for slides which is more reliable than preview
+      return `https://docs.google.com/presentation/d/${res.driveFileId}/embed?start=false&loop=false&delayms=3000`;
+    }
+    
+    // Default to file preview for PDFs and other docs
+    return `https://drive.google.com/file/d/${res.driveFileId}/preview`;
+  };
+
   // Reset helpers
-  const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
-  const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
-  const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); };
-  const resetToFolder = () => { setSelectedCategory(null); };
+  const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
+  const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
+  const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
+  const resetToFolder = () => { setSelectedCategory(null); setSelectedResource(null); };
+  const resetToFiles = () => { setSelectedResource(null); };
 
   // Animation Variants
   const containerVariants = {
@@ -115,10 +146,10 @@ const ResourcesPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen pt-24 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 pb-20">
-      
-      {/* Header */}
-      <div className="mb-6">
+    <>
+      <div className="min-h-screen pt-24 pb-20 w-full px-4 sm:px-6 lg:px-8">
+        
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Academic Resources</h1>
@@ -143,10 +174,10 @@ const ResourcesPage: React.FC = () => {
         </div>
 
         {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 text-sm text-gray-400 mb-8 overflow-x-auto whitespace-nowrap pb-2 scrollbar-thin">
+        <nav className="flex items-center gap-2 text-sm text-gray-400 overflow-x-auto whitespace-nowrap scrollbar-thin mb-8 pb-2">
           <button onClick={resetToHome} className="flex items-center gap-1 hover:text-white transition-colors">
             <Home className="w-4 h-4" />
-            {branches.find(b => b.id === branch)?.label}
+            <span className="hidden sm:inline">{branches.find(b => b.id === branch)?.label}</span>
           </button>
           
           {semester && (
@@ -162,7 +193,7 @@ const ResourcesPage: React.FC = () => {
             <>
               <ChevronRight className="w-4 h-4 text-gray-600" />
               <button onClick={resetToSubject} className={`hover:text-white transition-colors ${currentView === 'SUBJECT_ROOT' ? 'text-primary font-semibold' : ''}`}>
-                {subject.length > 20 ? subject.substring(0, 20) + '...' : subject}
+                {subject.length > 15 ? subject.substring(0, 15) + '...' : subject}
               </button>
             </>
           )}
@@ -179,220 +210,304 @@ const ResourcesPage: React.FC = () => {
           {selectedCategory && (
             <>
               <ChevronRight className="w-4 h-4 text-gray-600" />
-              <span className="text-primary font-semibold">
+              <button onClick={resetToFiles} className={`hover:text-white transition-colors ${currentView === 'FILES' ? 'text-primary font-semibold' : ''}`}>
                 {getCategoryLabel(selectedCategory)}
-              </span>
+              </button>
             </>
           )}
         </nav>
-      </div>
 
-      <AnimatePresence mode="wait">
-        
-        {/* VIEW 1: SEMESTERS */}
-        {currentView === 'SEMESTERS' && (
-          <motion.div
-            key="semesters"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="grid grid-cols-2 md:grid-cols-4 gap-6"
-          >
-            {semesters.map((sem) => (
-              <button
-                key={sem}
-                onClick={() => setSemester(sem)}
-                className="group relative p-6 bg-card border border-white/10 rounded-2xl hover:border-primary/50 transition-all text-left"
-              >
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <span className="text-6xl font-bold text-white">{sem}</span>
-                </div>
-                <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                    <Folder className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Semester {sem}</h3>
-                  <p className="text-sm text-gray-400 mt-1">View Subjects</p>
-                </div>
-              </button>
-            ))}
-          </motion.div>
-        )}
-
-        {/* VIEW 2: SUBJECTS LIST */}
-        {currentView === 'SUBJECTS' && (
-          <motion.div
-            key="subjects"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
-            <div className="flex items-center gap-4 mb-6">
-              <button onClick={resetToHome} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-              </button>
-              <h2 className="text-xl font-bold text-white">Select Subject</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {getSubjects(branch, semester!).map((sub) => (
+        <AnimatePresence mode="wait">
+          
+          {/* VIEW 1: SEMESTERS */}
+          {currentView === 'SEMESTERS' && (
+            <motion.div
+              key="semesters"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="grid grid-cols-2 md:grid-cols-4 gap-6"
+            >
+              {semesters.map((sem) => (
                 <button
-                  key={sub}
-                  onClick={() => setSubject(sub)}
-                  className="flex items-center p-4 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                  key={sem}
+                  onClick={() => setSemester(sem)}
+                  className="group relative p-6 bg-card border border-white/10 rounded-2xl hover:border-primary/50 transition-all text-left"
                 >
-                  <div className="p-3 bg-secondary/10 rounded-lg text-secondary mr-4 group-hover:scale-110 transition-transform">
-                    <Book className="w-5 h-5" />
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span className="text-6xl font-bold text-white">{sem}</span>
                   </div>
-                  <span className="font-medium text-gray-200 group-hover:text-white">{sub}</span>
-                  <ChevronRight className="w-5 h-5 ml-auto text-gray-600 group-hover:translate-x-1 transition-transform" />
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* VIEW 3: SUBJECT ROOT (UNITS + PYQ + MID) */}
-        {currentView === 'SUBJECT_ROOT' && (
-          <motion.div
-            key="subject_root"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
-            <div className="flex items-center gap-4 mb-6">
-              <button onClick={resetToSemester} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-              </button>
-              <h2 className="text-xl font-bold text-white">{subject}</h2>
-            </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {subjectFolders.map((folder) => (
-                <button
-                  key={folder.id}
-                  onClick={() => setSelectedFolder(folder.id)}
-                  className="flex flex-col items-center justify-center p-6 bg-card border border-white/10 rounded-2xl hover:bg-white/5 hover:border-primary/30 transition-all group text-center relative overflow-hidden"
-                >
-                   <div className={`absolute top-0 left-0 w-full h-1 ${folder.type === 'unit' ? 'bg-primary/50' : 'bg-secondary/50'}`}></div>
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-                    <FolderOpen className="w-7 h-7" />
-                  </div>
-                  <h3 className="font-bold text-white mb-1">{folder.label}</h3>
-                  <p className="text-xs text-gray-500">{folder.type === 'unit' ? 'Notes, PPTs, Imp Qs' : 'Exam Papers'}</p>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* VIEW 4: UNIT CONTENTS (NOTES/PPT/IMPQ) */}
-        {currentView === 'UNIT_CONTENTS' && (
-          <motion.div
-            key="unit_contents"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
-             <div className="flex items-center gap-4 mb-6">
-              <button onClick={resetToSubject} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-              </button>
-              <h2 className="text-xl font-bold text-white">Unit {selectedFolder} Materials</h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {unitFolders.map((cat) => (
-                <button
-                  key={cat.type}
-                  onClick={() => setSelectedCategory(cat.type as any)}
-                  className="flex items-center p-6 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
-                >
-                  <div className={`p-4 rounded-full mr-4 ${cat.color} bg-white/5 group-hover:scale-110 transition-transform`}>
-                    <cat.icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{cat.label}</h3>
-                    <p className="text-sm text-gray-500">View files</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* VIEW 5: FILES LIST */}
-        {currentView === 'FILES' && (
-          <motion.div
-            key="files"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
-            <div className="flex items-center gap-4 mb-6">
-              <button onClick={() => {
-                if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) resetToSubject();
-                else resetToFolder();
-              }} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-              </button>
-              <h2 className="text-xl font-bold text-white">
-                {['PYQ', 'MidPaper'].includes(selectedFolder || '') 
-                  ? getFolderLabel(selectedFolder!) 
-                  : getCategoryLabel(selectedCategory!)}
-              </h2>
-            </div>
-
-            {getFilteredResources().length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {getFilteredResources().map((res) => (
-                  <div
-                    key={res.id}
-                    className="flex items-center justify-between p-4 bg-card border border-white/10 rounded-xl hover:border-primary/50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-white/5 rounded-lg text-gray-300">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-white group-hover:text-primary transition-colors">
-                          {res.title}
-                        </h4>
-                        <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                          {res.unit && <span className="bg-white/5 px-1.5 py-0.5 rounded">Unit {res.unit}</span>}
-                          <span>{res.subject}</span>
-                        </div>
-                      </div>
+                  <div className="relative z-10">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
+                      <Folder className="w-6 h-6" />
                     </div>
-                    <a 
-                      href={res.downloadUrl}
-                      className="p-3 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
-                      title="Download"
-                    >
-                      <Download className="w-5 h-5" />
-                    </a>
+                    <h3 className="text-xl font-bold text-white">Semester {sem}</h3>
+                    <p className="text-sm text-gray-400 mt-1">View Subjects</p>
                   </div>
+                </button>
+              ))}
+            </motion.div>
+          )}
+
+          {/* VIEW 2: SUBJECTS LIST */}
+          {currentView === 'SUBJECTS' && (
+            <motion.div
+              key="subjects"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <button onClick={resetToHome} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                </button>
+                <h2 className="text-xl font-bold text-white">Select Subject</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {getSubjects(branch, semester!).map((sub) => (
+                  <button
+                    key={sub}
+                    onClick={() => setSubject(sub)}
+                    className="flex items-center p-4 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                  >
+                    <div className="p-3 bg-secondary/10 rounded-lg text-secondary mr-4 group-hover:scale-110 transition-transform">
+                      <Book className="w-5 h-5" />
+                    </div>
+                    <span className="font-medium text-gray-200 group-hover:text-white">{sub}</span>
+                    <ChevronRight className="w-5 h-5 ml-auto text-gray-600 group-hover:translate-x-1 transition-transform" />
+                  </button>
                 ))}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 bg-card/50 border border-white/5 dashed border-2 rounded-2xl">
-                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-gray-600" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-1">Coming Soon</h3>
-                <p className="text-gray-500">We are currently working on this section.</p>
+            </motion.div>
+          )}
+
+          {/* VIEW 3: SUBJECT ROOT (UNITS + PYQ + MID) */}
+          {currentView === 'SUBJECT_ROOT' && (
+            <motion.div
+              key="subject_root"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <button onClick={resetToSemester} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                </button>
+                <h2 className="text-xl font-bold text-white">{subject}</h2>
               </div>
-            )}
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                {subjectFolders.map((folder) => (
+                  <button
+                    key={folder.id}
+                    onClick={() => setSelectedFolder(folder.id)}
+                    className="flex flex-col items-center justify-center p-6 bg-card border border-white/10 rounded-2xl hover:bg-white/5 hover:border-primary/30 transition-all group text-center relative overflow-hidden"
+                  >
+                     <div className={`absolute top-0 left-0 w-full h-1 ${folder.type === 'unit' ? 'bg-primary/50' : 'bg-secondary/50'}`}></div>
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
+                      <FolderOpen className="w-7 h-7" />
+                    </div>
+                    <h3 className="font-bold text-white mb-1">{folder.label}</h3>
+                    <p className="text-xs text-gray-500">{folder.type === 'unit' ? 'Notes, PPTs, Imp Qs' : 'Exam Papers'}</p>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* VIEW 4: UNIT CONTENTS (NOTES/PPT/IMPQ) */}
+          {currentView === 'UNIT_CONTENTS' && (
+            <motion.div
+              key="unit_contents"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+               <div className="flex items-center gap-4 mb-6">
+                <button onClick={resetToSubject} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                </button>
+                <h2 className="text-xl font-bold text-white">Unit {selectedFolder} Materials</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {unitFolders.map((cat) => (
+                  <button
+                    key={cat.type}
+                    onClick={() => setSelectedCategory(cat.type as any)}
+                    className="flex items-center p-6 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                  >
+                    <div className={`p-4 rounded-full mr-4 ${cat.color} bg-white/5 group-hover:scale-110 transition-transform`}>
+                      <cat.icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{cat.label}</h3>
+                      <p className="text-sm text-gray-500">View files</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* VIEW 5: FILES LIST */}
+          {currentView === 'FILES' && (
+            <motion.div
+              key="files"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <button onClick={() => {
+                  if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) resetToSubject();
+                  else resetToFolder();
+                }} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                </button>
+                <h2 className="text-xl font-bold text-white">
+                  {['PYQ', 'MidPaper'].includes(selectedFolder || '') 
+                    ? getFolderLabel(selectedFolder!) 
+                    : getCategoryLabel(selectedCategory!)}
+                </h2>
+              </div>
+
+              {getFilteredResources().length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {getFilteredResources().map((res) => (
+                    <div
+                      key={res.id}
+                      onClick={() => {
+                        if (res.driveFileId) {
+                          setSelectedResource(res);
+                        } else {
+                          window.open(res.downloadUrl, '_blank');
+                        }
+                      }}
+                      className="flex items-center justify-between p-4 bg-card border border-white/10 rounded-xl hover:border-primary/50 transition-colors group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white/5 rounded-lg text-gray-300">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-white group-hover:text-primary transition-colors">
+                            {res.title}
+                          </h4>
+                          <div className="flex gap-2 text-xs text-gray-500 mt-1">
+                            {res.unit && <span className="bg-white/5 px-1.5 py-0.5 rounded">Unit {res.unit}</span>}
+                            <span>{res.subject}</span>
+                            {res.driveFileId && (
+                              <span className="flex items-center gap-1 text-secondary">
+                                <Eye className="w-3 h-3" /> Preview
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {/* If it has a drive ID, show preview icon, otherwise download */}
+                      <button 
+                        className="p-3 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+                        title={res.driveFileId ? "Preview" : "Download"}
+                        onClick={(e) => {
+                           // Prevent parent click if we just want to download, or keep consistent logic
+                           e.stopPropagation();
+                           if (res.driveFileId) {
+                             setSelectedResource(res);
+                           } else {
+                             window.open(res.downloadUrl, '_blank');
+                           }
+                        }}
+                      >
+                         {res.driveFileId ? <Eye className="w-5 h-5" /> : <Download className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 bg-card/50 border border-white/5 dashed border-2 rounded-2xl">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                    <Sparkles className="w-8 h-8 text-gray-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1">Coming Soon</h3>
+                  <p className="text-gray-500">We are currently working on this section.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+
+      {/* FULL SCREEN OVERLAY PREVIEW */}
+      <AnimatePresence>
+        {selectedResource && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
+          >
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#09090b] border-b border-white/10 h-16">
+              <button 
+                onClick={resetToFiles} 
+                className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="text-sm font-medium hidden sm:inline">Back</span>
+              </button>
+              
+              <div className="flex-1 text-center px-4">
+                 <span className="text-sm font-medium text-white truncate block max-w-md mx-auto">{selectedResource.title}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <a 
+                  href={selectedResource.downloadUrl !== '#' ? selectedResource.downloadUrl : `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`}
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="p-2 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors"
+                  title="Open in Drive"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+                <button
+                  onClick={resetToFiles}
+                  className="p-2 hover:bg-red-500/20 rounded-full text-gray-300 hover:text-red-500 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Iframe Container */}
+            <div className="flex-1 w-full h-full bg-[#18181b] relative">
+               {selectedResource.driveFileId ? (
+                <iframe
+                  src={getEmbedUrl(selectedResource)}
+                  className="absolute inset-0 w-full h-full border-0"
+                  allow="autoplay; fullscreen"
+                  title="File Preview"
+                  sandbox="allow-forms allow-scripts allow-popups allow-same-origin allow-presentation"
+                ></iframe>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                  <FileQuestion className="w-16 h-16 mb-4 opacity-50" />
+                  <p>Preview not available for this file.</p>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
-
       </AnimatePresence>
-    </div>
+    </>
   );
 };
 
