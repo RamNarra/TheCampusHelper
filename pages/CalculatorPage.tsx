@@ -9,6 +9,7 @@ import {
   SemesterRow, 
   isValidMarks 
 } from '../lib/calculatorUtils';
+import AdUnit from '../components/AdUnit';
 
 const CalculatorPage: React.FC = () => {
   // --- State ---
@@ -131,6 +132,8 @@ const CalculatorPage: React.FC = () => {
         </h1>
         <p className="text-gray-400">Calculate your SGPA and CGPA with JNTUH grading standards</p>
       </div>
+      
+      <AdUnit className="mb-8" />
 
       {/* Info Card */}
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-8 flex items-start gap-3">
@@ -174,8 +177,8 @@ const CalculatorPage: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
           >
             <div className="bg-card border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-              <div className="p-6 border-b border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
+              <div className="p-4 sm:p-6 border-b border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="text-center md:text-left">
                   <h2 className="text-xl font-bold text-white">Subject Wise Entry</h2>
                   <p className="text-xs text-gray-500 mt-1">Enter marks to calculate semester Grade Points</p>
                 </div>
@@ -194,6 +197,7 @@ const CalculatorPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Scrollable table container for mobile */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
@@ -211,7 +215,6 @@ const CalculatorPage: React.FC = () => {
                     {subjects.map((sub) => {
                       const total = (Number(sub.internal) || 0) + (Number(sub.external) || 0);
                       const gradeInfo = getGradeInfo(total);
-                      const hasError = !isValidMarks(sub.internal, sub.external);
 
                       return (
                         <tr key={sub.id} className="hover:bg-white/5 transition-colors">
@@ -292,7 +295,7 @@ const CalculatorPage: React.FC = () => {
             <div className="mt-6 flex justify-end">
                <button
                   onClick={importCurrentSgpa}
-                  className="flex items-center gap-2 px-6 py-3 bg-card border border-primary/30 hover:bg-primary/10 text-primary rounded-xl transition-all shadow-lg"
+                  className="flex items-center gap-2 px-6 py-3 bg-card border border-primary/30 hover:bg-primary/10 text-primary rounded-xl transition-all shadow-lg w-full sm:w-auto justify-center"
                >
                  <Save className="w-4 h-4" />
                  Save SGPA to CGPA List
@@ -322,7 +325,7 @@ const CalculatorPage: React.FC = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
                     <tr className="bg-white/5 text-gray-400 text-xs uppercase tracking-wider">
                       <th className="p-4">Semester</th>
@@ -401,6 +404,8 @@ const CalculatorPage: React.FC = () => {
                  )}
               </div>
             </div>
+            
+            <AdUnit className="mt-8" />
           </motion.div>
         )}
       </AnimatePresence>

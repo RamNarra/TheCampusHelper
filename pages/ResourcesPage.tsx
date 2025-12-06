@@ -15,10 +15,10 @@ import {
   FolderOpen,
   Sparkles,
   ExternalLink,
-  Eye,
-  X
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdUnit from '../components/AdUnit';
 
 // Defined specific folder types for the UI state
 type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
@@ -116,6 +116,11 @@ const ResourcesPage: React.FC = () => {
     return `https://drive.google.com/file/d/${res.driveFileId}/preview`;
   };
 
+  const getDownloadUrl = (res: Resource) => {
+    if (res.downloadUrl && res.downloadUrl !== '#') return res.downloadUrl;
+    return `https://drive.google.com/u/0/uc?id=${res.driveFileId}&export=download`;
+  };
+
   // Reset helpers
   const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
   const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
@@ -149,19 +154,22 @@ const ResourcesPage: React.FC = () => {
     <>
       <div className="min-h-screen pt-24 pb-20 w-full px-4 sm:px-6 lg:px-8">
         
+        {/* Ad Unit Top */}
+        <AdUnit className="mb-6" />
+
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Academic Resources</h1>
             <p className="text-gray-400">Select your branch group to explore subjects</p>
           </div>
           
-          <div className="flex items-center gap-3 bg-card border border-white/10 rounded-lg p-1.5 overflow-x-auto">
+          <div className="flex items-center gap-2 sm:gap-3 bg-card border border-white/10 rounded-lg p-1.5 overflow-x-auto w-full lg:w-auto">
             {branches.map((b) => (
               <button
                 key={b.id}
                 onClick={() => { setBranch(b.id as any); resetToHome(); }}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                className={`flex-1 lg:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   branch === b.id 
                     ? 'bg-primary text-white shadow-lg' 
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -182,7 +190,7 @@ const ResourcesPage: React.FC = () => {
           
           {semester && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600" />
+              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
               <button onClick={resetToSemester} className={`hover:text-white transition-colors ${currentView === 'SUBJECTS' ? 'text-primary font-semibold' : ''}`}>
                 Sem {semester}
               </button>
@@ -191,7 +199,7 @@ const ResourcesPage: React.FC = () => {
 
           {subject && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600" />
+              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
               <button onClick={resetToSubject} className={`hover:text-white transition-colors ${currentView === 'SUBJECT_ROOT' ? 'text-primary font-semibold' : ''}`}>
                 {subject.length > 15 ? subject.substring(0, 15) + '...' : subject}
               </button>
@@ -200,7 +208,7 @@ const ResourcesPage: React.FC = () => {
 
           {selectedFolder && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600" />
+              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
               <button onClick={resetToFolder} className={`hover:text-white transition-colors ${currentView === 'UNIT_CONTENTS' ? 'text-primary font-semibold' : ''}`}>
                 {getFolderLabel(selectedFolder)}
               </button>
@@ -209,7 +217,7 @@ const ResourcesPage: React.FC = () => {
 
           {selectedCategory && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600" />
+              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
               <button onClick={resetToFiles} className={`hover:text-white transition-colors ${currentView === 'FILES' ? 'text-primary font-semibold' : ''}`}>
                 {getCategoryLabel(selectedCategory)}
               </button>
@@ -227,23 +235,23 @@ const ResourcesPage: React.FC = () => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="grid grid-cols-2 md:grid-cols-4 gap-6"
+              className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6"
             >
               {semesters.map((sem) => (
                 <button
                   key={sem}
                   onClick={() => setSemester(sem)}
-                  className="group relative p-6 bg-card border border-white/10 rounded-2xl hover:border-primary/50 transition-all text-left"
+                  className="group relative p-4 sm:p-6 bg-card border border-white/10 rounded-2xl hover:border-primary/50 transition-all text-left"
                 >
                   <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <span className="text-6xl font-bold text-white">{sem}</span>
+                    <span className="text-5xl sm:text-6xl font-bold text-white">{sem}</span>
                   </div>
                   <div className="relative z-10">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Folder className="w-6 h-6" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-3 sm:mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
+                      <Folder className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <h3 className="text-xl font-bold text-white">Semester {sem}</h3>
-                    <p className="text-sm text-gray-400 mt-1">View Subjects</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-white">Semester {sem}</h3>
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1">View Subjects</p>
                   </div>
                 </button>
               ))}
@@ -266,21 +274,23 @@ const ResourcesPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-white">Select Subject</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {getSubjects(branch, semester!).map((sub) => (
                   <button
                     key={sub}
                     onClick={() => setSubject(sub)}
-                    className="flex items-center p-4 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                    className="flex items-center p-3 sm:p-4 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
                   >
-                    <div className="p-3 bg-secondary/10 rounded-lg text-secondary mr-4 group-hover:scale-110 transition-transform">
+                    <div className="p-2 sm:p-3 bg-secondary/10 rounded-lg text-secondary mr-3 sm:mr-4 group-hover:scale-110 transition-transform flex-shrink-0">
                       <Book className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-gray-200 group-hover:text-white">{sub}</span>
-                    <ChevronRight className="w-5 h-5 ml-auto text-gray-600 group-hover:translate-x-1 transition-transform" />
+                    <span className="font-medium text-gray-200 text-sm sm:text-base group-hover:text-white line-clamp-2">{sub}</span>
+                    <ChevronRight className="w-5 h-5 ml-auto text-gray-600 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                   </button>
                 ))}
               </div>
+              
+              <AdUnit className="mt-8" />
             </motion.div>
           )}
 
@@ -297,22 +307,23 @@ const ResourcesPage: React.FC = () => {
                 <button onClick={resetToSemester} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                   <ArrowLeft className="w-5 h-5 text-gray-400" />
                 </button>
-                <h2 className="text-xl font-bold text-white">{subject}</h2>
+                <h2 className="text-xl font-bold text-white line-clamp-1">{subject}</h2>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Responsive Grid: 2 cols on mobile, 3 on tablet, 4 on desktop */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                 {subjectFolders.map((folder) => (
                   <button
                     key={folder.id}
                     onClick={() => setSelectedFolder(folder.id)}
-                    className="flex flex-col items-center justify-center p-6 bg-card border border-white/10 rounded-2xl hover:bg-white/5 hover:border-primary/30 transition-all group text-center relative overflow-hidden"
+                    className="flex flex-col items-center justify-center p-4 sm:p-6 bg-card border border-white/10 rounded-2xl hover:bg-white/5 hover:border-primary/30 transition-all group text-center relative overflow-hidden"
                   >
                      <div className={`absolute top-0 left-0 w-full h-1 ${folder.type === 'unit' ? 'bg-primary/50' : 'bg-secondary/50'}`}></div>
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-                      <FolderOpen className="w-7 h-7" />
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
+                      <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7" />
                     </div>
-                    <h3 className="font-bold text-white mb-1">{folder.label}</h3>
-                    <p className="text-xs text-gray-500">{folder.type === 'unit' ? 'Notes, PPTs, Imp Qs' : 'Exam Papers'}</p>
+                    <h3 className="font-bold text-white mb-1 text-sm sm:text-base">{folder.label}</h3>
+                    <p className="text-[10px] sm:text-xs text-gray-500">{folder.type === 'unit' ? 'Notes, PPTs, Imp Qs' : 'Exam Papers'}</p>
                   </button>
                 ))}
               </div>
@@ -335,19 +346,19 @@ const ResourcesPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-white">Unit {selectedFolder} Materials</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 {unitFolders.map((cat) => (
                   <button
                     key={cat.type}
                     onClick={() => setSelectedCategory(cat.type as any)}
-                    className="flex items-center p-6 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                    className="flex items-center p-4 sm:p-6 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
                   >
-                    <div className={`p-4 rounded-full mr-4 ${cat.color} bg-white/5 group-hover:scale-110 transition-transform`}>
-                      <cat.icon className="w-6 h-6" />
+                    <div className={`p-3 sm:p-4 rounded-full mr-3 sm:mr-4 ${cat.color} bg-white/5 group-hover:scale-110 transition-transform`}>
+                      <cat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-white">{cat.label}</h3>
-                      <p className="text-sm text-gray-500">View files</p>
+                      <h3 className="text-base sm:text-lg font-bold text-white">{cat.label}</h3>
+                      <p className="text-xs sm:text-sm text-gray-500">View files</p>
                     </div>
                   </button>
                 ))}
@@ -379,7 +390,7 @@ const ResourcesPage: React.FC = () => {
               </div>
 
               {getFilteredResources().length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:gap-4">
                   {getFilteredResources().map((res) => (
                     <div
                       key={res.id}
@@ -390,33 +401,27 @@ const ResourcesPage: React.FC = () => {
                           window.open(res.downloadUrl, '_blank');
                         }
                       }}
-                      className="flex items-center justify-between p-4 bg-card border border-white/10 rounded-xl hover:border-primary/50 transition-colors group cursor-pointer"
+                      className="flex items-center justify-between p-3 sm:p-4 bg-card border border-white/10 rounded-xl hover:border-primary/50 transition-colors group cursor-pointer"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white/5 rounded-lg text-gray-300">
-                          <FileText className="w-6 h-6" />
+                      <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                        <div className="p-2 sm:p-3 bg-white/5 rounded-lg text-gray-300 flex-shrink-0">
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-white group-hover:text-primary transition-colors">
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-white group-hover:text-primary transition-colors truncate text-sm sm:text-base">
                             {res.title}
                           </h4>
                           <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                            {res.unit && <span className="bg-white/5 px-1.5 py-0.5 rounded">Unit {res.unit}</span>}
-                            <span>{res.subject}</span>
-                            {res.driveFileId && (
-                              <span className="flex items-center gap-1 text-secondary">
-                                <Eye className="w-3 h-3" /> Preview
-                              </span>
-                            )}
+                            {res.unit && <span className="bg-white/5 px-1.5 py-0.5 rounded hidden sm:inline">Unit {res.unit}</span>}
+                            <span className="truncate">{res.subject}</span>
                           </div>
                         </div>
                       </div>
                       {/* If it has a drive ID, show preview icon, otherwise download */}
                       <button 
-                        className="p-3 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+                        className="p-2 sm:p-3 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors flex-shrink-0 ml-2"
                         title={res.driveFileId ? "Preview" : "Download"}
                         onClick={(e) => {
-                           // Prevent parent click if we just want to download, or keep consistent logic
                            e.stopPropagation();
                            if (res.driveFileId) {
                              setSelectedResource(res);
@@ -439,6 +444,8 @@ const ResourcesPage: React.FC = () => {
                   <p className="text-gray-500">We are currently working on this section.</p>
                 </div>
               )}
+              
+              <AdUnit className="mt-8" />
             </motion.div>
           )}
 
@@ -455,35 +462,29 @@ const ResourcesPage: React.FC = () => {
             className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
           >
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#09090b] border-b border-white/10 h-16">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-[#09090b] border-b border-white/10 h-16">
               <button 
                 onClick={resetToFiles} 
-                className="flex items-center gap-2 px-3 py-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+                className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-white"
               >
                 <ArrowLeft className="w-5 h-5" />
-                <span className="text-sm font-medium hidden sm:inline">Back</span>
+                <span className="text-sm font-medium">Back</span>
               </button>
               
-              <div className="flex-1 text-center px-4">
+              <div className="flex-1 text-center px-4 hidden sm:block">
                  <span className="text-sm font-medium text-white truncate block max-w-md mx-auto">{selectedResource.title}</span>
               </div>
               
               <div className="flex items-center gap-2">
-                <a 
-                  href={selectedResource.downloadUrl !== '#' ? selectedResource.downloadUrl : `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`}
+                 <a 
+                  href={getDownloadUrl(selectedResource)}
                   target="_blank" 
                   rel="noreferrer"
-                  className="p-2 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors"
-                  title="Open in Drive"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                 >
-                  <ExternalLink className="w-5 h-5" />
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Download</span>
                 </a>
-                <button
-                  onClick={resetToFiles}
-                  className="p-2 hover:bg-red-500/20 rounded-full text-gray-300 hover:text-red-500 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
               </div>
             </div>
 

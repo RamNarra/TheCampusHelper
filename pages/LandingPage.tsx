@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { ArrowRight, Calculator, Camera, Library, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AdUnit from '../components/AdUnit';
 
 const LandingPage: React.FC = () => {
   const containerVariants: Variants = {
@@ -69,6 +70,11 @@ const LandingPage: React.FC = () => {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Ad Unit */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AdUnit />
+      </div>
 
       {/* Features Grid */}
       <section className="py-24 relative overflow-hidden">
