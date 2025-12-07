@@ -57,12 +57,12 @@
 
     <style>
       :root {
-        /* Light Mode */
-        --background: #f8fafc; /* Slate-50 */
-        --foreground: #020617; /* Slate-950 */
+        /* Light Mode - High Contrast Polish */
+        --background: #ffffff;
+        --foreground: #0f172a; /* Slate-900 */
         
         --card: #ffffff;
-        --card-foreground: #020617;
+        --card-foreground: #0f172a;
         
         --primary: #7c3aed; /* Violet-600 */
         --primary-foreground: #ffffff;
@@ -71,12 +71,12 @@
         --secondary-foreground: #ffffff;
         
         --muted: #f1f5f9; /* Slate-100 */
-        --muted-foreground: #64748b; /* Slate-500 */
+        --muted-foreground: #475569; /* Slate-600 (Darker for readability) */
         
-        --border: #e2e8f0; /* Slate-200 */
-        --input: #e2e8f0;
+        --border: #cbd5e1; /* Slate-300 (Visible borders reduce need for gaps) */
+        --input: #cbd5e1;
         
-        --radius: 0.75rem;
+        --radius: 0.5rem; /* Tighter border radius */
       }
 
       .dark {
@@ -117,10 +117,10 @@
       ::-webkit-scrollbar-thumb {
         background: var(--muted-foreground);
         border-radius: 4px;
-        opacity: 0.5;
+        opacity: 0.3;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary);
+        opacity: 0.8;
       }
     </style>
   <script type="importmap">
