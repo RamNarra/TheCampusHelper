@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { resources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
@@ -33,15 +34,20 @@ const ResourcesPage: React.FC = () => {
   const [branch, setBranch] = useState<'CS_IT_DS' | 'AIML_ECE_CYS'>('CS_IT_DS');
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null); // 'Unit 1'...'Unit 5', 'PYQ', 'MidPaper'
-  const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null); // 'Note', 'ImpQ', 'PPT'
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null);
   
   // File Action States
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
 
-  // Lock body scroll when preview is open
+  useEffect(() => {
+    if (user && user.branch) {
+      setBranch(user.branch);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (selectedResource) {
       document.body.style.overflow = 'hidden';
@@ -51,7 +57,6 @@ const ResourcesPage: React.FC = () => {
     return () => { document.body.style.overflow = 'unset'; };
   }, [selectedResource]);
 
-  // Handle User Click on File
   const handleResourceClick = (res: Resource) => {
     if (!user) {
       setPendingResource(res);
@@ -69,7 +74,6 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
-  // Effect to open pending resource after login
   useEffect(() => {
     if (user && pendingResource) {
       openResource(pendingResource);
@@ -77,10 +81,8 @@ const ResourcesPage: React.FC = () => {
     }
   }, [user, pendingResource]);
 
-  // Constants
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
   
-  // Folders displayed inside a Subject
   const subjectFolders = [
     { id: '1', label: 'Unit 1', type: 'unit' },
     { id: '2', label: 'Unit 2', type: 'unit' },
@@ -91,30 +93,25 @@ const ResourcesPage: React.FC = () => {
     { id: 'MidPaper', label: 'Mid Exam Papers', type: 'exam' },
   ];
 
-  // Folders displayed inside a Unit
   const unitFolders = [
-    { type: 'ImpQ', label: 'Important Questions', icon: HelpCircle, color: 'text-orange-400' },
-    { type: 'Note', label: 'Class Notes', icon: Book, color: 'text-emerald-400' },
-    { type: 'PPT', label: 'Teacher PPTs', icon: Presentation, color: 'text-blue-400' },
+    { type: 'ImpQ', label: 'Important Questions', icon: HelpCircle, color: 'text-orange-500 bg-orange-500/10' },
+    { type: 'Note', label: 'Class Notes', icon: Book, color: 'text-emerald-500 bg-emerald-500/10' },
+    { type: 'PPT', label: 'Teacher PPTs', icon: Presentation, color: 'text-blue-500 bg-blue-500/10' },
   ];
 
-  // Logic to determine current view
   const getCurrentView = (): ViewState => {
     if (!semester) return 'SEMESTERS';
     if (!subject) return 'SUBJECTS';
     if (!selectedFolder) return 'SUBJECT_ROOT';
     
-    // If folder is Unit 1-5, we show content categories (Notes, ImpQ, etc)
     const isUnit = ['1', '2', '3', '4', '5'].includes(selectedFolder);
     if (isUnit && !selectedCategory) return 'UNIT_CONTENTS';
     
-    // If folder is PYQ/Mid OR we have selected a category inside a unit, show files
     return 'FILES';
   };
 
   const currentView = getCurrentView();
 
-  // Helper to filter resources based on current depth
   const getFilteredResources = () => {
     return resources.filter(r => {
       const matchBasic = r.branch === branch && 
@@ -124,30 +121,20 @@ const ResourcesPage: React.FC = () => {
       
       if (!matchBasic) return false;
 
-      // Filter logic based on what "Folder" is open
       if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
-        return r.type === selectedFolder; // Match PYQ or MidPaper types directly
+        return r.type === selectedFolder;
       } else {
-        // We are in a Unit folder
         return r.unit === selectedFolder && r.type === selectedCategory;
       }
     });
   };
 
-  // Generate the correct embed URL for Google Drive files
   const getEmbedUrl = (res: Resource) => {
     if (!res.driveFileId) return '';
-    
-    // Check if it's explicitly a Presentation (Google Slides)
-    // We check the type OR if the downloadUrl is a google presentation link
     const isPresentation = res.type === 'PPT' || res.downloadUrl.includes('docs.google.com/presentation');
-    
     if (isPresentation) {
-      // Use the embed endpoint for slides which is more reliable than preview
       return `https://docs.google.com/presentation/d/${res.driveFileId}/embed?start=false&loop=false&delayms=3000`;
     }
-    
-    // Default to file preview for PDFs and other docs
     return `https://drive.google.com/file/d/${res.driveFileId}/preview`;
   };
 
@@ -156,14 +143,12 @@ const ResourcesPage: React.FC = () => {
     return `https://drive.google.com/u/0/uc?id=${res.driveFileId}&export=download`;
   };
 
-  // Reset helpers
   const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
   const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
   const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
   const resetToFolder = () => { setSelectedCategory(null); setSelectedResource(null); };
   const resetToFiles = () => { setSelectedResource(null); };
 
-  // Animation Variants
   const containerVariants = {
     hidden: { opacity: 0, x: 20 },
     visible: { opacity: 1, x: 0 },
@@ -187,27 +172,26 @@ const ResourcesPage: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen pt-24 pb-20 w-full px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen pt-24 pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         
-        {/* Ad Unit Top */}
         <AdUnit className="mb-6" />
 
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Academic Resources</h1>
-            <p className="text-gray-400">Select your branch group to explore subjects</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Academic Resources</h1>
+            <p className="text-muted-foreground">Select your branch group to explore subjects</p>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-3 bg-card border border-white/10 rounded-lg p-1.5 overflow-x-auto w-full lg:w-auto">
+          <div className="flex items-center gap-2 p-1 bg-muted rounded-xl w-full md:w-auto">
             {branches.map((b) => (
               <button
                 key={b.id}
                 onClick={() => { setBranch(b.id as any); resetToHome(); }}
-                className={`flex-1 lg:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   branch === b.id 
-                    ? 'bg-primary text-white shadow-lg' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-card text-foreground shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {b.label}
@@ -217,16 +201,16 @@ const ResourcesPage: React.FC = () => {
         </div>
 
         {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 text-sm text-gray-400 overflow-x-auto whitespace-nowrap scrollbar-thin mb-8 pb-2">
-          <button onClick={resetToHome} className="flex items-center gap-1 hover:text-white transition-colors">
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-hide mb-6 pb-2">
+          <button onClick={resetToHome} className="flex items-center gap-1 hover:text-foreground transition-colors">
             <Home className="w-4 h-4" />
             <span className="hidden sm:inline">{branches.find(b => b.id === branch)?.label}</span>
           </button>
           
           {semester && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-              <button onClick={resetToSemester} className={`hover:text-white transition-colors ${currentView === 'SUBJECTS' ? 'text-primary font-semibold' : ''}`}>
+              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
+              <button onClick={resetToSemester} className={`hover:text-foreground transition-colors ${currentView === 'SUBJECTS' ? 'text-primary font-semibold' : ''}`}>
                 Sem {semester}
               </button>
             </>
@@ -234,8 +218,8 @@ const ResourcesPage: React.FC = () => {
 
           {subject && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-              <button onClick={resetToSubject} className={`hover:text-white transition-colors ${currentView === 'SUBJECT_ROOT' ? 'text-primary font-semibold' : ''}`}>
+              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
+              <button onClick={resetToSubject} className={`hover:text-foreground transition-colors ${currentView === 'SUBJECT_ROOT' ? 'text-primary font-semibold' : ''}`}>
                 {subject.length > 15 ? subject.substring(0, 15) + '...' : subject}
               </button>
             </>
@@ -243,8 +227,8 @@ const ResourcesPage: React.FC = () => {
 
           {selectedFolder && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-              <button onClick={resetToFolder} className={`hover:text-white transition-colors ${currentView === 'UNIT_CONTENTS' ? 'text-primary font-semibold' : ''}`}>
+              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
+              <button onClick={resetToFolder} className={`hover:text-foreground transition-colors ${currentView === 'UNIT_CONTENTS' ? 'text-primary font-semibold' : ''}`}>
                 {getFolderLabel(selectedFolder)}
               </button>
             </>
@@ -252,8 +236,8 @@ const ResourcesPage: React.FC = () => {
 
           {selectedCategory && (
             <>
-              <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-              <button onClick={resetToFiles} className={`hover:text-white transition-colors ${currentView === 'FILES' ? 'text-primary font-semibold' : ''}`}>
+              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
+              <button onClick={resetToFiles} className={`hover:text-foreground transition-colors ${currentView === 'FILES' ? 'text-primary font-semibold' : ''}`}>
                 {getCategoryLabel(selectedCategory)}
               </button>
             </>
@@ -270,23 +254,23 @@ const ResourcesPage: React.FC = () => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6"
+              className="grid grid-cols-2 md:grid-cols-4 gap-4"
             >
               {semesters.map((sem) => (
                 <button
                   key={sem}
                   onClick={() => setSemester(sem)}
-                  className="group relative p-4 sm:p-6 bg-card border border-white/10 rounded-2xl hover:border-primary/50 transition-all text-left"
+                  className="group relative p-6 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-md transition-all text-left overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <span className="text-5xl sm:text-6xl font-bold text-white">{sem}</span>
+                    <span className="text-6xl font-bold text-foreground">{sem}</span>
                   </div>
                   <div className="relative z-10">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-3 sm:mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Folder className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
+                      <Folder className="w-6 h-6" />
                     </div>
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Semester {sem}</h3>
-                    <p className="text-xs sm:text-sm text-gray-400 mt-1">View Subjects</p>
+                    <h3 className="text-xl font-bold text-foreground">Semester {sem}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">View Subjects</p>
                   </div>
                 </button>
               ))}
@@ -303,24 +287,24 @@ const ResourcesPage: React.FC = () => {
               exit="exit"
             >
               <div className="flex items-center gap-4 mb-6">
-                <button onClick={resetToHome} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                <button onClick={resetToHome} className="p-2 hover:bg-muted rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                 </button>
-                <h2 className="text-xl font-bold text-white">Select Subject</h2>
+                <h2 className="text-xl font-bold text-foreground">Select Subject</h2>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {getSubjects(branch, semester!).map((sub) => (
                   <button
                     key={sub}
                     onClick={() => setSubject(sub)}
-                    className="flex items-center p-3 sm:p-4 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                    className="flex items-center p-4 bg-card border border-border rounded-xl hover:bg-muted/50 hover:border-primary/30 transition-all text-left group"
                   >
-                    <div className="p-2 sm:p-3 bg-secondary/10 rounded-lg text-secondary mr-3 sm:mr-4 group-hover:scale-110 transition-transform flex-shrink-0">
+                    <div className="p-3 bg-secondary/10 rounded-lg text-secondary mr-4 group-hover:scale-105 transition-transform flex-shrink-0">
                       <Book className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-gray-200 text-sm sm:text-base group-hover:text-white line-clamp-2">{sub}</span>
-                    <ChevronRight className="w-5 h-5 ml-auto text-gray-600 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                    <span className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">{sub}</span>
+                    <ChevronRight className="w-5 h-5 ml-auto text-muted-foreground group-hover:translate-x-1 transition-transform flex-shrink-0" />
                   </button>
                 ))}
               </div>
@@ -329,7 +313,7 @@ const ResourcesPage: React.FC = () => {
             </motion.div>
           )}
 
-          {/* VIEW 3: SUBJECT ROOT (UNITS + PYQ + MID) */}
+          {/* VIEW 3: SUBJECT ROOT */}
           {currentView === 'SUBJECT_ROOT' && (
             <motion.div
               key="subject_root"
@@ -339,33 +323,32 @@ const ResourcesPage: React.FC = () => {
               exit="exit"
             >
               <div className="flex items-center gap-4 mb-6">
-                <button onClick={resetToSemester} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                <button onClick={resetToSemester} className="p-2 hover:bg-muted rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                 </button>
-                <h2 className="text-xl font-bold text-white line-clamp-1">{subject}</h2>
+                <h2 className="text-xl font-bold text-foreground line-clamp-1">{subject}</h2>
               </div>
 
-              {/* Responsive Grid: 2 cols on mobile, 3 on tablet, 4 on desktop */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {subjectFolders.map((folder) => (
                   <button
                     key={folder.id}
                     onClick={() => setSelectedFolder(folder.id)}
-                    className="flex flex-col items-center justify-center p-4 sm:p-6 bg-card border border-white/10 rounded-2xl hover:bg-white/5 hover:border-primary/30 transition-all group text-center relative overflow-hidden"
+                    className="flex flex-col items-center justify-center p-6 bg-card border border-border rounded-xl hover:bg-muted/30 hover:border-primary/30 hover:shadow-sm transition-all group text-center relative overflow-hidden"
                   >
                      <div className={`absolute top-0 left-0 w-full h-1 ${folder.type === 'unit' ? 'bg-primary/50' : 'bg-secondary/50'}`}></div>
-                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-                      <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7" />
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
+                      <FolderOpen className="w-7 h-7" />
                     </div>
-                    <h3 className="font-bold text-white mb-1 text-sm sm:text-base">{folder.label}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-500">{folder.type === 'unit' ? 'Notes, PPTs, Imp Qs' : 'Exam Papers'}</p>
+                    <h3 className="font-bold text-foreground mb-1">{folder.label}</h3>
+                    <p className="text-xs text-muted-foreground">{folder.type === 'unit' ? 'Notes, PPTs, Imp Qs' : 'Exam Papers'}</p>
                   </button>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {/* VIEW 4: UNIT CONTENTS (NOTES/PPT/IMPQ) */}
+          {/* VIEW 4: UNIT CONTENTS */}
           {currentView === 'UNIT_CONTENTS' && (
             <motion.div
               key="unit_contents"
@@ -375,25 +358,25 @@ const ResourcesPage: React.FC = () => {
               exit="exit"
             >
                <div className="flex items-center gap-4 mb-6">
-                <button onClick={resetToSubject} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                <button onClick={resetToSubject} className="p-2 hover:bg-muted rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                 </button>
-                <h2 className="text-xl font-bold text-white">Unit {selectedFolder} Materials</h2>
+                <h2 className="text-xl font-bold text-foreground">Unit {selectedFolder} Materials</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {unitFolders.map((cat) => (
                   <button
                     key={cat.type}
                     onClick={() => setSelectedCategory(cat.type as any)}
-                    className="flex items-center p-4 sm:p-6 bg-card border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all text-left group"
+                    className="flex items-center p-5 bg-card border border-border rounded-xl hover:bg-muted/30 hover:border-border transition-all text-left group"
                   >
-                    <div className={`p-3 sm:p-4 rounded-full mr-3 sm:mr-4 ${cat.color} bg-white/5 group-hover:scale-110 transition-transform`}>
-                      <cat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <div className={`p-4 rounded-full mr-4 ${cat.color} group-hover:scale-110 transition-transform`}>
+                      <cat.icon className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-base sm:text-lg font-bold text-white">{cat.label}</h3>
-                      <p className="text-xs sm:text-sm text-gray-500">View files</p>
+                      <h3 className="text-lg font-bold text-foreground">{cat.label}</h3>
+                      <p className="text-sm text-muted-foreground">View files</p>
                     </div>
                   </button>
                 ))}
@@ -414,10 +397,10 @@ const ResourcesPage: React.FC = () => {
                 <button onClick={() => {
                   if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) resetToSubject();
                   else resetToFolder();
-                }} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-gray-400" />
+                }} className="p-2 hover:bg-muted rounded-full transition-colors">
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                 </button>
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-foreground">
                   {['PYQ', 'MidPaper'].includes(selectedFolder || '') 
                     ? getFolderLabel(selectedFolder!) 
                     : getCategoryLabel(selectedCategory!)}
@@ -425,48 +408,47 @@ const ResourcesPage: React.FC = () => {
               </div>
 
               {getFilteredResources().length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   {getFilteredResources().map((res) => (
                     <div
                       key={res.id}
                       onClick={() => handleResourceClick(res)}
-                      className="flex items-center justify-between p-3 sm:p-4 bg-card border border-white/10 rounded-xl hover:border-primary/50 transition-colors group cursor-pointer"
+                      className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-sm transition-all group cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                        <div className="p-2 sm:p-3 bg-white/5 rounded-lg text-gray-300 flex-shrink-0">
-                          <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+                      <div className="flex items-center gap-4 overflow-hidden">
+                        <div className="p-3 bg-muted rounded-lg text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors">
+                          <FileText className="w-6 h-6" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-semibold text-white group-hover:text-primary transition-colors truncate text-sm sm:text-base">
+                          <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-base">
                             {res.title}
                           </h4>
-                          <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                            {res.unit && <span className="bg-white/5 px-1.5 py-0.5 rounded hidden sm:inline">Unit {res.unit}</span>}
+                          <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+                            {res.unit && <span className="bg-muted px-2 py-0.5 rounded">Unit {res.unit}</span>}
                             <span className="truncate">{res.subject}</span>
                           </div>
                         </div>
                       </div>
-                      {/* If it has a drive ID, show preview icon, otherwise download */}
                       <button 
-                        className="p-2 sm:p-3 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors flex-shrink-0 ml-2"
+                        className="p-3 bg-muted rounded-lg text-muted-foreground hover:bg-primary hover:text-white transition-colors flex-shrink-0 ml-2"
                         title={user ? (res.driveFileId ? "Preview" : "Download") : "Login to Access"}
                         onClick={(e) => {
                            e.stopPropagation();
                            handleResourceClick(res);
                         }}
                       >
-                         {!user ? <Lock className="w-4 h-4" /> : (res.driveFileId ? <Eye className="w-5 h-5" /> : <Download className="w-5 h-5" />)}
+                         {!user ? <Lock className="w-5 h-5" /> : (res.driveFileId ? <Eye className="w-5 h-5" /> : <Download className="w-5 h-5" />)}
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-20 bg-card/50 border border-white/5 dashed border-2 rounded-2xl">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                    <Sparkles className="w-8 h-8 text-gray-600" />
+                <div className="flex flex-col items-center justify-center py-20 bg-card border border-dashed border-border rounded-2xl">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <Sparkles className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-1">Coming Soon</h3>
-                  <p className="text-gray-500">We are currently working on this section.</p>
+                  <h3 className="text-lg font-bold text-foreground mb-1">Coming Soon</h3>
+                  <p className="text-muted-foreground">We are currently working on this section.</p>
                 </div>
               )}
               
@@ -494,7 +476,7 @@ const ResourcesPage: React.FC = () => {
             className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
           >
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-[#09090b] border-b border-white/10 h-16">
+            <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800 h-16">
               <button 
                 onClick={resetToFiles} 
                 className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-white"
@@ -521,7 +503,7 @@ const ResourcesPage: React.FC = () => {
             </div>
 
             {/* Iframe Container */}
-            <div className="flex-1 w-full h-full bg-[#18181b] relative">
+            <div className="flex-1 w-full h-full bg-zinc-900 relative">
                {selectedResource.driveFileId ? (
                 <iframe
                   src={getEmbedUrl(selectedResource)}
@@ -531,7 +513,7 @@ const ResourcesPage: React.FC = () => {
                   sandbox="allow-forms allow-scripts allow-popups allow-same-origin allow-presentation"
                 ></iframe>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <div className="flex flex-col items-center justify-center h-full text-zinc-500">
                   <FileQuestion className="w-16 h-16 mb-4 opacity-50" />
                   <p>Preview not available for this file.</p>
                 </div>

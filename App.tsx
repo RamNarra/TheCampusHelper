@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -11,6 +12,7 @@ import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence } from 'framer-motion';
 
 // Google Analytics Measurement ID from Firebase config
@@ -34,30 +36,29 @@ const Analytics = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30">
-          <Analytics />
-          <Navbar />
-          <main className="flex-grow">
-            <AnimatePresence mode="wait">
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/resources" element={<ResourcesPage />} />
-                <Route path="/calculator" element={<CalculatorPage />} />
-                <Route path="/compiler" element={<CompilerPage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </AnimatePresence>
-          </main>
-          {/* Footer is rendered outside Routes so it appears on all pages, 
-              but we might want to hide it on specific layout-heavy pages if needed. 
-              For now, showing everywhere. */}
-          <Footer />
-        </div>
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 transition-colors duration-300">
+            <Analytics />
+            <Navbar />
+            <main className="flex-grow">
+              <AnimatePresence mode="wait">
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/resources" element={<ResourcesPage />} />
+                  <Route path="/calculator" element={<CalculatorPage />} />
+                  <Route path="/compiler" element={<CompilerPage />} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </AnimatePresence>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </ThemeProvider>
     </AuthProvider>
   );
 };

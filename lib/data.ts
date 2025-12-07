@@ -1,4 +1,19 @@
+
 import { Resource } from '../types';
+
+// --- Types ---
+export interface EventItem {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  category: 'Hackathon' | 'Workshop' | 'Cultural' | 'Seminar';
+  description: string;
+  imageUrl: string;
+  registrationLink: string;
+  status: 'upcoming' | 'ongoing' | 'completed';
+}
 
 // Subject Lists defined by specific Cycle Logic
 
@@ -210,5 +225,57 @@ export const pendingUploads: Resource[] = [
     type: 'Note',
     downloadUrl: '#',
     status: 'pending'
+  }
+];
+
+// --- Events Data ---
+export const upcomingEvents: EventItem[] = [
+  {
+    id: 'ev-1',
+    title: 'Smart India Hackathon 2024 (Internal)',
+    date: 'Oct 15, 2024',
+    time: '9:00 AM - 6:00 PM',
+    location: 'Main Auditorium, Block A',
+    category: 'Hackathon',
+    description: 'The internal selection round for SIH 2024. Teams must solve problem statements provided by ministries and industries.',
+    imageUrl: 'https://images.unsplash.com/photo-1504384308090-c54be3855833?auto=format&fit=crop&q=80&w=600',
+    registrationLink: '#',
+    status: 'upcoming'
+  },
+  {
+    id: 'ev-2',
+    title: 'Google Cloud Study Jam',
+    date: 'Oct 20, 2024',
+    time: '2:00 PM - 4:00 PM',
+    location: 'Computer Lab 3, Block D',
+    category: 'Workshop',
+    description: 'Hands-on session on Generative AI on Google Cloud. Earn badges and goodies upon completion.',
+    imageUrl: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&q=80&w=600',
+    registrationLink: '#',
+    status: 'upcoming'
+  },
+  {
+    id: 'ev-3',
+    title: 'Freshers Day: "Novato Fiesta"',
+    date: 'Nov 05, 2024',
+    time: '5:00 PM onwards',
+    location: 'College Ground',
+    category: 'Cultural',
+    description: 'A grand welcome to the batch of 2024. DJ Night, Dance Performances, and Dinner included.',
+    imageUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=600',
+    registrationLink: '#',
+    status: 'upcoming'
+  },
+  {
+    id: 'ev-4',
+    title: 'Seminar on Career in Cyber Security',
+    date: 'Sep 28, 2024',
+    time: '11:00 AM',
+    location: 'Seminar Hall 1',
+    category: 'Seminar',
+    description: 'Expert talk by Mr. Rajesh Kumar from Palo Alto Networks about the future of CyberSec jobs.',
+    imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=600',
+    registrationLink: '#',
+    status: 'completed'
   }
 ];

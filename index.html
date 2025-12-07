@@ -1,5 +1,6 @@
+
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +8,7 @@
     <meta name="theme-color" content="#09090b" />
     <title>TheCampusHelper | Student Resource Platform</title>
     
-    <!-- Using Tailwind CDN for simplicity in this setup, ideally move to PostCSS in future v2 -->
+    <!-- Using Tailwind CDN with CSS Variables configuration -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -15,28 +16,34 @@
         theme: {
           extend: {
             colors: {
-              background: '#09090b', // zinc-950
-              foreground: '#fafafa', // zinc-50
+              background: 'var(--background)',
+              foreground: 'var(--foreground)',
               primary: {
-                DEFAULT: '#8b5cf6', // violet-500
-                foreground: '#ffffff',
+                DEFAULT: 'var(--primary)',
+                foreground: 'var(--primary-foreground)',
               },
               secondary: {
-                DEFAULT: '#34d399', // emerald-400
-                foreground: '#022c22',
+                DEFAULT: 'var(--secondary)',
+                foreground: 'var(--secondary-foreground)',
               },
               muted: {
-                DEFAULT: '#27272a', // zinc-800
-                foreground: '#a1a1aa', // zinc-400
+                DEFAULT: 'var(--muted)',
+                foreground: 'var(--muted-foreground)',
               },
               card: {
-                DEFAULT: '#18181b', // zinc-900
-                foreground: '#fafafa',
+                DEFAULT: 'var(--card)',
+                foreground: 'var(--card-foreground)',
               },
-              border: '#27272a', // zinc-800
+              border: 'var(--border)',
+              input: 'var(--input)',
             },
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
+            },
+            borderRadius: {
+              lg: 'var(--radius)',
+              md: 'calc(var(--radius) - 2px)',
+              sm: 'calc(var(--radius) - 4px)',
             },
           },
         },
@@ -45,28 +52,75 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Google AdSense Script -->
-    <!-- TODO: Replace client=ca-pub-XXXXXXXXXXXXXXXX with your actual AdSense Publisher ID -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
      crossorigin="anonymous"></script>
 
     <style>
-      body {
-        background-color: #09090b;
-        color: #fafafa;
-        font-family: 'Inter', sans-serif;
+      :root {
+        /* Light Mode */
+        --background: #f8fafc; /* Slate-50 */
+        --foreground: #020617; /* Slate-950 */
+        
+        --card: #ffffff;
+        --card-foreground: #020617;
+        
+        --primary: #7c3aed; /* Violet-600 */
+        --primary-foreground: #ffffff;
+        
+        --secondary: #10b981; /* Emerald-500 */
+        --secondary-foreground: #ffffff;
+        
+        --muted: #f1f5f9; /* Slate-100 */
+        --muted-foreground: #64748b; /* Slate-500 */
+        
+        --border: #e2e8f0; /* Slate-200 */
+        --input: #e2e8f0;
+        
+        --radius: 0.75rem;
       }
+
+      .dark {
+        /* Dark Mode */
+        --background: #09090b; /* Zinc-950 */
+        --foreground: #fafafa; /* Zinc-50 */
+        
+        --card: #18181b; /* Zinc-900 */
+        --card-foreground: #fafafa;
+        
+        --primary: #8b5cf6; /* Violet-500 */
+        --primary-foreground: #ffffff;
+        
+        --secondary: #34d399; /* Emerald-400 */
+        --secondary-foreground: #022c22;
+        
+        --muted: #27272a; /* Zinc-800 */
+        --muted-foreground: #a1a1aa; /* Zinc-400 */
+        
+        --border: #27272a; /* Zinc-800 */
+        --input: #27272a;
+      }
+
+      body {
+        background-color: var(--background);
+        color: var(--foreground);
+        font-family: 'Inter', sans-serif;
+        transition: background-color 0.3s ease, color 0.3s ease;
+        -webkit-font-smoothing: antialiased;
+      }
+      
       ::-webkit-scrollbar {
         width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #09090b;
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #27272a;
+        background: var(--muted-foreground);
         border-radius: 4px;
+        opacity: 0.5;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #8b5cf6;
+        background: var(--primary);
       }
     </style>
   <script type="importmap">

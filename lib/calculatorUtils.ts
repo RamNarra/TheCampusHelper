@@ -1,3 +1,4 @@
+
 // Grade Mapping Logic based on JNTUH R22/R18 approx standards or the user provided table
 // 90–100 → O (10), 80–89 → A+ (9), 70–79 → A (8), 60–69 → B+ (7), 50–59 → B (6), 45–49 → C (5), <45 → F (0)
 
@@ -8,8 +9,6 @@ export interface GradeInfo {
 }
 
 export const getGradeInfo = (totalMarks: number): GradeInfo => {
-  // Round marks to nearest integer as per standard practice usually, 
-  // but strict comparison is safer.
   const marks = Math.round(totalMarks);
 
   if (marks >= 90) return { label: 'O', gp: 10, color: 'text-green-400' };
@@ -68,6 +67,25 @@ export const calculateCGPA = (semesters: SemesterRow[]) => {
 
   if (totalCredits === 0) return 0;
   return parseFloat((weightedSum / totalCredits).toFixed(2));
+};
+
+// Returns -1 if impossible (e.g., > 10 SGPA required)
+export const calculateRequiredSGPA = (
+  currentCGPA: number, 
+  completedCredits: number, 
+  targetCGPA: number, 
+  nextSemCredits: number
+) => {
+  // Logic:
+  // (CurrentCGPA * CompletedCredits) + (RequiredSGPA * NextSemCredits) = TargetCGPA * (CompletedCredits + NextSemCredits)
+  
+  const totalTargetPoints = targetCGPA * (completedCredits + nextSemCredits);
+  const currentPoints = currentCGPA * completedCredits;
+  
+  const requiredPoints = totalTargetPoints - currentPoints;
+  const requiredSGPA = requiredPoints / nextSemCredits;
+
+  return parseFloat(requiredSGPA.toFixed(2));
 };
 
 export const isValidMarks = (internal: number, external: number) => {

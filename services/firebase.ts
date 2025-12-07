@@ -1,3 +1,4 @@
+
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -10,8 +11,7 @@ import {
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile } from '../types';
 
-// Helper to safely get environment variables or return a fallback
-// This prevents crashes in environments where import.meta.env is undefined (like some browser previews)
+// Helper to safely get environment variables
 const getEnv = (key: string, fallback: string) => {
   try {
     // @ts-ignore - Vite specific
@@ -25,7 +25,6 @@ const getEnv = (key: string, fallback: string) => {
   return fallback;
 };
 
-// Load config with fallbacks (Strings are split to avoid GitHub Secret Scanning detection)
 const firebaseConfig = {
   apiKey: getEnv('VITE_FIREBASE_API_KEY', "AIzaSyCWVGtXD" + "-z6Opm6FVL2TJInsA5H4m0NYOY"),
   authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN', "thecampushelper-adcdc.firebaseapp.com"),
@@ -42,47 +41,94 @@ const auth = getAuth(app);
 const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Admin Email List (Add your email here to get admin access)
+// Admin Email List
 const ADMIN_EMAILS = ['your.email@gmail.com', 'admin@thecampushelper.com'];
 
-// Helper to map Firebase User to our App's UserProfile
+// --- BRANCH DETECTION LOGIC ---
+const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS' | 'AIML_ECE_CYS', year?: string } => {
+  if (!email) return {};
+
+  const parts = email.split('@');
+  if (parts.length < 2) return {};
+
+  const domainPart = parts[1]; // e.g., "cse.sreenidhi.edu.in"
+  const subdomain = domainPart.split('.')[0].toLowerCase(); // "cse"
+
+  let branch: 'CS_IT_DS' | 'AIML_ECE_CYS' | undefined;
+
+  // Map subdomains to our app's branch groups
+  // Group A: CS, IT, DS
+  if (['cse', 'it', 'ds', 'cs', 'ds'].includes(subdomain)) {
+    branch = 'CS_IT_DS';
+  } 
+  // Group B: ECE, AIML, CYS (ECM often grouped here or separately, assuming here for now)
+  else if (['ece', 'aiml', 'cys', 'ecm'].includes(subdomain)) {
+    branch = 'AIML_ECE_CYS';
+  }
+
+  // Detect Year from Roll Number (first part of email usually)
+  // Example: 21311A05K2 -> Starts with 21 -> Batch 2021
+  let year: string | undefined;
+  const rollNo = parts[0].toUpperCase();
+  // Simple check if it starts with a year number (e.g., 21, 22, 23, 24)
+  if (/^\d{2}/.test(rollNo)) {
+    const batchYear = parseInt(rollNo.substring(0, 2));
+    const currentYearShort = new Date().getFullYear() % 100; // e.g., 24
+    // Approx year calculation (Aug start)
+    const calculatedYear = (currentYearShort - batchYear) + 1;
+    if (calculatedYear >= 1 && calculatedYear <= 4) {
+      year = calculatedYear.toString();
+    }
+  }
+
+  return { branch, year };
+};
+
 const mapUser = (firebaseUser: User): UserProfile => {
+  const { branch, year } = detectBranchAndYear(firebaseUser.email);
+  
   return {
     uid: firebaseUser.uid,
     displayName: firebaseUser.displayName,
     email: firebaseUser.email,
     photoURL: firebaseUser.photoURL,
-    // Simple role logic: If email is in the list, they are admin. Otherwise, user.
-    role: (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email)) ? 'admin' : 'user'
+    role: (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email)) ? 'admin' : 'user',
+    branch,
+    year
   };
 };
 
-// Auth Service Wrapper to match existing application structure
 class AuthService {
   
   async signInWithGoogle(): Promise<UserProfile> {
     try {
+      // 1. Trigger Google Popup
       const result = await signInWithPopup(auth, googleProvider);
-      
-      // LOGGING FOR DEV: See the data Firebase returns in your browser console
-      console.log("✅ Firebase Auth Success!");
+      const email = result.user.email || '';
+
+      // 2. DOMAIN LOCK CHECK
+      // Check if email ends with sreenidhi.edu.in
+      if (!email.endsWith('sreenidhi.edu.in') && !ADMIN_EMAILS.includes(email)) {
+         // Fail safe: If it's an admin email, allow it even if not sreenidhi (for dev)
+         // Otherwise, Logout immediately
+         await signOut(auth);
+         throw new Error('DOMAIN_RESTRICTED');
+      }
+
+      console.log("✅ SNIST Auth Success!");
       return mapUser(result.user);
     } catch (error: any) {
-      console.error("❌ Error signing in with Google", error);
+      if (error.message === 'DOMAIN_RESTRICTED') {
+         alert("🚫 Access Denied\n\nPlease use your official college email ID (@sreenidhi.edu.in) to access student resources.");
+         throw error;
+      }
 
-      // Specific handling for Unauthorized Domain error to help the user
+      console.error("❌ Error signing in", error);
+
       if (error.code === 'auth/unauthorized-domain') {
         const currentDomain = window.location.hostname;
-        const message = `⚠️ FIREBASE CONFIGURATION ERROR\n\n` +
-          `The domain "${currentDomain}" is not authorized.\n\n` +
-          `ACTION REQUIRED:\n` +
-          `1. Go to Firebase Console > Authentication > Settings > Authorized Domains\n` +
-          `2. Add "${currentDomain}" to the list.`;
-        
-        alert(message);
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        console.warn("User closed the login popup.");
-      } else {
+        alert(`⚠️ Unauthorized Domain: ${currentDomain}\nPlease add this domain in Firebase Console.`);
+      } else if (error.code !== 'auth/popup-closed-by-user') {
         alert("Login Failed: " + error.message);
       }
       
@@ -90,18 +136,14 @@ class AuthService {
     }
   }
 
-  // For testing purposes, we keep this, but in real Firebase, you can't just "login as admin"
-  // without a valid Google account that has admin privileges defined in our logic above.
   async signInAsAdmin(): Promise<UserProfile> {
-    console.warn("Manual Admin Sign-In is disabled in production. Please sign in with a Google account listed in ADMIN_EMAILS.");
-    // Triggering the normal Google Sign In flow instead
+    console.warn("Dev Mode: Triggering Google Sign In");
     return this.signInWithGoogle();
   }
 
   async logout(): Promise<void> {
     try {
       await signOut(auth);
-      console.log("👋 User signed out");
     } catch (error) {
       console.error("Error signing out", error);
       throw error;

@@ -1,3 +1,4 @@
+
 export type ResourceType = 'Note' | 'PYQ' | 'Lab Record' | 'PPT' | 'MidPaper' | 'ImpQ';
 
 export interface UserProfile {
@@ -6,6 +7,8 @@ export interface UserProfile {
   email: string | null;
   photoURL: string | null;
   role: 'user' | 'admin';
+  branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
+  year?: string;
 }
 
 export interface Resource {

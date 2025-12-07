@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ArrowRight } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Info } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const { signInWithGoogle, signInAsAdmin, user } = useAuth();
@@ -15,7 +16,7 @@ const LoginPage: React.FC = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden transition-colors duration-300">
       {/* Ambient background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px]"></div>
@@ -26,20 +27,28 @@ const LoginPage: React.FC = () => {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", duration: 0.5 }}
-        className="w-full max-w-md p-8 rounded-2xl bg-card/50 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 mx-4"
+        className="w-full max-w-md p-8 rounded-2xl bg-card/80 backdrop-blur-xl border border-border shadow-2xl relative z-10 mx-4"
       >
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 text-primary mb-6">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
-          <p className="text-gray-400">Access your personalized academic dashboard</p>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Welcome Back</h2>
+          <p className="text-muted-foreground mb-6">Access your personalized academic dashboard</p>
+          
+          {/* Sreenidhi Email Notice */}
+          <div className="flex items-start gap-3 text-left p-4 bg-primary/10 border border-primary/20 rounded-lg">
+             <Info className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
+             <p className="text-sm text-foreground">
+               Please use your <span className="font-bold text-primary">@sreenidhi.edu.in</span> student email ID to login.
+             </p>
+          </div>
         </div>
 
         <div className="space-y-4">
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-colors group"
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-foreground text-background font-semibold rounded-lg hover:opacity-90 transition-all group"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -65,22 +74,22 @@ const LoginPage: React.FC = () => {
           
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-transparent text-gray-500 backdrop-blur-xl">Or continue as</span>
+              <span className="px-2 bg-card text-muted-foreground">Or continue as</span>
             </div>
           </div>
 
           <button
             onClick={signInAsAdmin}
-             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-white/10 text-white font-semibold rounded-lg hover:bg-white/5 transition-colors"
+             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-transparent border border-border text-foreground font-semibold rounded-lg hover:bg-foreground/5 transition-colors"
           >
             Admin Demo (Test Mode)
           </button>
         </div>
         
-        <p className="mt-8 text-center text-xs text-gray-500">
+        <p className="mt-8 text-center text-xs text-muted-foreground">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </motion.div>
