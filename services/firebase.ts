@@ -43,11 +43,11 @@ const db = getFirestore(app);
 const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Admin Email List - ADD YOUR EMAIL HERE to see the admin dashboard
+// Admin Email List - Controlled visibility
 const ADMIN_EMAILS = [
-  'your.email@gmail.com', 
   'admin@thecampushelper.com',
-  // Add your email here, e.g., 'johndoe@gmail.com'
+  // TODO: Add your personal email below to access the Admin Dashboard
+  'your.actual.email@gmail.com' 
 ];
 
 // --- BRANCH DETECTION LOGIC (Helper for College Emails) ---
@@ -146,10 +146,11 @@ class AuthService {
   async saveUserData(uid: string, data: Partial<UserProfile>): Promise<void> {
     try {
       const docRef = doc(db, "users", uid);
+      // Ensure we don't accidentally wipe data with setDoc if we only meant to update
       await setDoc(docRef, data, { merge: true });
     } catch (e) {
       console.error("Error saving user data", e);
-      throw e;
+      // We don't throw here to prevent login blocking, just log it
     }
   }
 
