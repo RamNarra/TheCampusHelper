@@ -1,38 +1,44 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Force Vercel to use Node.js Serverless Runtime
 export const config = {
-  runtime: 'edge',
+  runtime: "nodejs18.x"
 };
 
-export default async function handler(req: Request) {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt } = req.body || {};
 
-    if (!process.env.API_KEY) {
-      return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 });
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required" });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("❌ Missing GEMINI_API_KEY");
+      return res.status(500).json({ error: "Server misconfiguration" });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash"
     });
 
-    const text = response.text;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-    return new Response(JSON.stringify({ text }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    return res.status(200).json({ text });
+
+  } catch (error) {
+    console.error("❌ Gemini Error:", error);
+    return res.status(500).json({
+      error: "Gemini generation failed",
+      details: error?.message || error
     });
-  } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to generate content' }), { status: 500 });
   }
 }
