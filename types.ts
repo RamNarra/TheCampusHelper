@@ -9,6 +9,7 @@ export interface UserProfile {
   role: 'user' | 'admin';
   branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
   year?: string;
+  dateOfBirth?: string; // Format: YYYY-MM-DD
 }
 
 export interface Resource {

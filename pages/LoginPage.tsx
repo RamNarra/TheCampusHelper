@@ -34,13 +34,7 @@ const LoginPage: React.FC = () => {
             <ShieldCheck className="w-7 h-7" />
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Student Portal</h2>
-          
-          <div className="flex items-start gap-2 text-left p-3 bg-primary/5 border border-primary/10 rounded-lg mt-4">
-             <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-             <p className="text-xs text-foreground leading-relaxed">
-               Please sign in using your <span className="font-bold text-primary">@sreenidhi.edu.in</span> official email ID.
-             </p>
-          </div>
+          <p className="text-sm text-muted-foreground">Sign in to access your dashboard</p>
         </div>
 
         <div className="space-y-3">

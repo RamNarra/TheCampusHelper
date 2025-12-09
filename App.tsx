@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -11,7 +11,8 @@ import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
 import NotFoundPage from './pages/NotFoundPage';
-import { AuthProvider } from './context/AuthContext';
+import CompleteProfileModal from './components/CompleteProfileModal';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence } from 'framer-motion';
 
@@ -33,30 +34,51 @@ const Analytics = () => {
   return null;
 };
 
+// Component to handle profile completion logic
+const AppContent: React.FC = () => {
+  const { user, loading } = useAuth();
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  useEffect(() => {
+    // Show modal if user is logged in but missing required fields
+    if (!loading && user) {
+      const isProfileIncomplete = !user.branch || !user.year || !user.dateOfBirth;
+      setShowProfileModal(isProfileIncomplete);
+    } else {
+      setShowProfileModal(false);
+    }
+  }, [user, loading]);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 transition-colors duration-300">
+      <Analytics />
+      <Navbar />
+      <CompleteProfileModal isOpen={showProfileModal} />
+      <main className="flex-grow">
+        <AnimatePresence mode="wait">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/calculator" element={<CalculatorPage />} />
+            <Route path="/compiler" element={<CompilerPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AnimatePresence>
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <ThemeProvider>
         <Router>
-          <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 transition-colors duration-300">
-            <Analytics />
-            <Navbar />
-            <main className="flex-grow">
-              <AnimatePresence mode="wait">
-                <Routes>
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/resources" element={<ResourcesPage />} />
-                  <Route path="/calculator" element={<CalculatorPage />} />
-                  <Route path="/compiler" element={<CompilerPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </AnimatePresence>
-            </main>
-            <Footer />
-          </div>
+          <AppContent />
         </Router>
       </ThemeProvider>
     </AuthProvider>

@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   User 
 } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile } from '../types';
 
@@ -38,25 +39,32 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Admin Email List
-const ADMIN_EMAILS = ['your.email@gmail.com', 'admin@thecampushelper.com'];
+// Admin Email List - ADD YOUR EMAIL HERE to see the admin dashboard
+const ADMIN_EMAILS = [
+  'your.email@gmail.com', 
+  'admin@thecampushelper.com',
+  // Add your email here, e.g., 'johndoe@gmail.com'
+];
 
-// --- BRANCH DETECTION LOGIC ---
-const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS' | 'AIML_ECE_CYS', year?: string } => {
+// --- BRANCH DETECTION LOGIC (Helper for College Emails) ---
+export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS' | 'AIML_ECE_CYS', year?: string } => {
   if (!email) return {};
 
   const parts = email.split('@');
   if (parts.length < 2) return {};
 
-  const domainPart = parts[1]; // e.g., "cse.sreenidhi.edu.in"
-  const subdomain = domainPart.split('.')[0].toLowerCase(); // "cse"
+  const domainPart = parts[1]; 
+  // If not sreenidhi.edu.in, we can't detect
+  if (!domainPart.includes('sreenidhi.edu.in')) return {};
+
+  const subdomain = domainPart.split('.')[0].toLowerCase(); 
 
   let branch: 'CS_IT_DS' | 'AIML_ECE_CYS' | undefined;
 
-  // Map subdomains to our app's branch groups
   // Group A: CS, IT, DS
   if (['cse', 'it', 'ds', 'cs', 'ds'].includes(subdomain)) {
     branch = 'CS_IT_DS';
@@ -66,11 +74,9 @@ const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS' | 'AIM
     branch = 'AIML_ECE_CYS';
   }
 
-  // Detect Year from Roll Number (first part of email usually)
-  // Example: 21311A05K2 -> Starts with 21 -> Batch 2021
+  // Detect Year from Roll Number
   let year: string | undefined;
   const rollNo = parts[0].toUpperCase();
-  // Simple check if it starts with a year number (e.g., 21, 22, 23, 24)
   if (/^\d{2}/.test(rollNo)) {
     const batchYear = parseInt(rollNo.substring(0, 2));
     const currentYearShort = new Date().getFullYear() % 100; // e.g., 24
@@ -84,59 +90,32 @@ const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS' | 'AIM
   return { branch, year };
 };
 
-const mapUser = (firebaseUser: User): UserProfile => {
-  const { branch, year } = detectBranchAndYear(firebaseUser.email);
-  
+const mapBasicUser = (firebaseUser: User): UserProfile => {
   return {
     uid: firebaseUser.uid,
     displayName: firebaseUser.displayName,
     email: firebaseUser.email,
     photoURL: firebaseUser.photoURL,
     role: (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email)) ? 'admin' : 'user',
-    branch,
-    year
   };
 };
 
 class AuthService {
   
-  async signInWithGoogle(): Promise<UserProfile> {
+  async signInWithGoogle(): Promise<void> {
     try {
-      // 1. Trigger Google Popup
-      const result = await signInWithPopup(auth, googleProvider);
-      const email = result.user.email || '';
-
-      // 2. DOMAIN LOCK CHECK
-      // Check if email ends with sreenidhi.edu.in
-      if (!email.endsWith('sreenidhi.edu.in') && !ADMIN_EMAILS.includes(email)) {
-         // Fail safe: If it's an admin email, allow it even if not sreenidhi (for dev)
-         // Otherwise, Logout immediately
-         await signOut(auth);
-         throw new Error('DOMAIN_RESTRICTED');
-      }
-
-      console.log("✅ SNIST Auth Success!");
-      return mapUser(result.user);
+      await signInWithPopup(auth, googleProvider);
+      console.log("✅ Google Auth Success!");
     } catch (error: any) {
-      if (error.message === 'DOMAIN_RESTRICTED') {
-         alert("🚫 Access Denied\n\nPlease use your official college email ID (@sreenidhi.edu.in) to access student resources.");
-         throw error;
-      }
-
       console.error("❌ Error signing in", error);
-
-      if (error.code === 'auth/unauthorized-domain') {
-        const currentDomain = window.location.hostname;
-        alert(`⚠️ Unauthorized Domain: ${currentDomain}\nPlease add this domain in Firebase Console.`);
-      } else if (error.code !== 'auth/popup-closed-by-user') {
+      if (error.code !== 'auth/popup-closed-by-user') {
         alert("Login Failed: " + error.message);
       }
-      
       throw error;
     }
   }
 
-  async signInAsAdmin(): Promise<UserProfile> {
+  async signInAsAdmin(): Promise<void> {
     console.warn("Dev Mode: Triggering Google Sign In");
     return this.signInWithGoogle();
   }
@@ -150,16 +129,46 @@ class AuthService {
     }
   }
 
-  onAuthStateChanged(callback: (user: UserProfile | null) => void): () => void {
-    return onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        callback(mapUser(firebaseUser));
-      } else {
-        callback(null);
+  async getUserData(uid: string): Promise<Partial<UserProfile> | null> {
+    try {
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return docSnap.data() as Partial<UserProfile>;
       }
-    });
+      return null;
+    } catch (e) {
+      console.error("Error fetching user data", e);
+      return null;
+    }
+  }
+
+  async saveUserData(uid: string, data: Partial<UserProfile>): Promise<void> {
+    try {
+      const docRef = doc(db, "users", uid);
+      await setDoc(docRef, data, { merge: true });
+    } catch (e) {
+      console.error("Error saving user data", e);
+      throw e;
+    }
+  }
+
+  async getAllUsers(): Promise<UserProfile[]> {
+    try {
+      const usersRef = collection(db, "users");
+      const snapshot = await getDocs(usersRef);
+      const users: UserProfile[] = [];
+      snapshot.forEach((doc) => {
+        // Merge the ID with the data just in case, though uid is usually in data
+        users.push({ uid: doc.id, ...doc.data() } as UserProfile);
+      });
+      return users;
+    } catch (e) {
+      console.error("Error fetching all users:", e);
+      return [];
+    }
   }
 }
 
 export const authService = new AuthService();
-export { auth, analytics };
+export { auth, analytics, db, mapBasicUser };
