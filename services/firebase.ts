@@ -9,7 +9,7 @@ import {
   User,
   UserCredential
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, Timestamp, query } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, Timestamp, query, onSnapshot, Unsubscribe, orderBy } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile, Resource } from '../types';
 
@@ -214,16 +214,14 @@ export const resourceService = {
     }
   },
 
+  // OLD: One-time fetch
   async getAllResources(): Promise<Resource[]> {
     try {
-      // In a real app with many items, you would use where() clauses
-      // For now, fetching all is fine for the scale
       const q = query(collection(db, 'resources'));
       const querySnapshot = await getDocs(q);
       const resources: Resource[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Convert Firestore timestamp to string or ignore if strictly following type
         // @ts-ignore
         resources.push({ id: doc.id, ...data } as Resource);
       });
@@ -232,6 +230,24 @@ export const resourceService = {
       console.error("Error getting resources: ", e);
       return [];
     }
+  },
+
+  // NEW: Real-time Listener
+  subscribeToResources(callback: (resources: Resource[]) => void): Unsubscribe {
+    const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
+    
+    // onSnapshot returns an unsubscribe function
+    return onSnapshot(q, (querySnapshot) => {
+      const resources: Resource[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // @ts-ignore
+        resources.push({ id: doc.id, ...data } as Resource);
+      });
+      callback(resources);
+    }, (error) => {
+      console.error("Error listening to resources:", error);
+    });
   }
 };
 

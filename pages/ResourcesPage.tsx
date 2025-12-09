@@ -61,20 +61,18 @@ const ResourcesPage: React.FC = () => {
     }
   }, [user]);
 
-  // Fetch Resources from Firestore
+  // Fetch Resources from Firestore (REAL-TIME LISTENER)
   useEffect(() => {
-    const fetchResources = async () => {
-      setIsResourcesLoading(true);
-      try {
-        const fetched = await resourceService.getAllResources();
-        setDynamicResources(fetched);
-      } catch (err) {
-        console.error("Failed to load resources", err);
-      } finally {
-        setIsResourcesLoading(false);
-      }
-    };
-    fetchResources();
+    setIsResourcesLoading(true);
+    
+    // Subscribe to updates
+    const unsubscribe = resourceService.subscribeToResources((fetchedResources) => {
+      setDynamicResources(fetchedResources);
+      setIsResourcesLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -137,11 +135,8 @@ const ResourcesPage: React.FC = () => {
             status: 'approved'
         };
 
-        const added = await resourceService.addResource(newResource);
-        
-        // Optimistic UI Update
-        // @ts-ignore
-        setDynamicResources(prev => [...prev, added]);
+        // We just add to DB. The subscribeToResources listener in useEffect will update the UI automatically.
+        await resourceService.addResource(newResource);
         
         // Reset and close
         setUploadName('');
@@ -149,7 +144,7 @@ const ResourcesPage: React.FC = () => {
         setShowUploadModal(false);
     } catch (err) {
         console.error(err);
-        setUploadError("Failed to save resource. Try again.");
+        setUploadError("Failed to save resource. Check console for details.");
     } finally {
         setIsUploading(false);
     }
@@ -194,7 +189,10 @@ const ResourcesPage: React.FC = () => {
   const currentView = getCurrentView();
 
   const getFilteredResources = () => {
+    // Merge static and dynamic resources
+    // In a production app, you might want to fully move to dynamic resources eventually
     const allResources = [...staticResources, ...dynamicResources];
+    
     return allResources.filter(r => {
       const matchBasic = r.branch === branch && 
                          r.semester === semester && 
