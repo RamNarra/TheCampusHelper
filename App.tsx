@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useEffect, useState, ErrorInfo, ReactNode } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -30,7 +29,7 @@ interface ErrorBoundaryState {
 }
 
 // --- Error Boundary Component ---
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   // Define state as a class property to satisfy TypeScript strict property initialization
   public state: ErrorBoundaryState = {
     hasError: false,

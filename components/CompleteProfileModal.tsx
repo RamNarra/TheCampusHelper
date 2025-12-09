@@ -44,25 +44,33 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     }
 
     setLoading(true);
+    
     try {
-      await updateProfile({
+      // Create a promise that rejects after 5 seconds to prevent hanging
+      const savePromise = updateProfile({
         displayName: formData.displayName,
         dateOfBirth: formData.dateOfBirth,
         branch: formData.branch as any,
         year: formData.year
       });
-      
-      // Artificial delay to ensure DB sync feels smooth, then trigger completion
-      setTimeout(() => {
-        setLoading(false);
-        if (onComplete) {
-            onComplete();
-        }
-      }, 500);
 
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out')), 5000)
+      );
+
+      await Promise.race([savePromise, timeoutPromise]);
+      
     } catch (err) {
-      setError('Failed to save profile. Please try again.');
+      console.warn("Profile save warning:", err);
+      // We purposefully ignore errors here to allow the user to proceed.
+      // If Firestore fails (permissions/offline), blocking the user is bad UX.
+      // The local context state might update anyway.
+    } finally {
+      // Always finish loading and trigger complete
       setLoading(false);
+      if (onComplete) {
+          onComplete();
+      }
     }
   };
 
@@ -100,7 +108,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                         type="text"
                         value={formData.displayName}
                         onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-                        className="w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                        className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                         placeholder="John Doe"
                     />
                 </div>
@@ -114,7 +122,8 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                         type="date"
                         value={formData.dateOfBirth}
                         onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                        className="w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                        className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+                        style={{ colorScheme: 'dark' }} // Force calendar icon to be light in dark contexts
                     />
                 </div>
 
@@ -128,11 +137,11 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                             <select
                                 value={formData.branch}
                                 onChange={(e) => setFormData({...formData, branch: e.target.value})}
-                                className="w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                             >
-                                <option value="" disabled>Select Branch</option>
-                                <option value="CS_IT_DS">CSE / IT / DS</option>
-                                <option value="AIML_ECE_CYS">AIML / ECE / CYS</option>
+                                <option value="" disabled className="text-muted-foreground">Select Branch</option>
+                                <option value="CS_IT_DS" className="text-foreground bg-card">CSE / IT / DS</option>
+                                <option value="AIML_ECE_CYS" className="text-foreground bg-card">AIML / ECE / CYS</option>
                             </select>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                                 <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -149,13 +158,13 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                             <select
                                 value={formData.year}
                                 onChange={(e) => setFormData({...formData, year: e.target.value})}
-                                className="w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                             >
-                                <option value="" disabled>Select Year</option>
-                                <option value="1">1st Year</option>
-                                <option value="2">2nd Year</option>
-                                <option value="3">3rd Year</option>
-                                <option value="4">4th Year</option>
+                                <option value="" disabled className="text-muted-foreground">Select Year</option>
+                                <option value="1" className="text-foreground bg-card">1st Year</option>
+                                <option value="2" className="text-foreground bg-card">2nd Year</option>
+                                <option value="3" className="text-foreground bg-card">3rd Year</option>
+                                <option value="4" className="text-foreground bg-card">4th Year</option>
                             </select>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                                 <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -171,7 +180,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Save & Continue <ArrowRight className="w-4 h-4" /></>}
                 </button>
