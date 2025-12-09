@@ -44,10 +44,10 @@ const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Admin Email List - Controlled visibility
+// Emails are normalized to lowercase for comparison
 const ADMIN_EMAILS = [
   'admin@thecampushelper.com',
-  // TODO: Add your personal email below to access the Admin Dashboard
-  'your.actual.email@gmail.com' 
+  'ramcharannarra8@gmail.com' 
 ];
 
 // --- BRANCH DETECTION LOGIC (Helper for College Emails) ---
@@ -91,12 +91,16 @@ export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS'
 };
 
 const mapBasicUser = (firebaseUser: User): UserProfile => {
+  // Safe comparison by lowercasing
+  const emailLower = firebaseUser.email?.toLowerCase();
+  const isAdmin = emailLower && ADMIN_EMAILS.includes(emailLower);
+
   return {
     uid: firebaseUser.uid,
     displayName: firebaseUser.displayName,
     email: firebaseUser.email,
     photoURL: firebaseUser.photoURL,
-    role: (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email)) ? 'admin' : 'user',
+    role: isAdmin ? 'admin' : 'user',
   };
 };
 
