@@ -1,11 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Force Vercel to run this as a Node.js Serverless Function
+// Vercel Node.js Serverless Function
 export const config = {
   runtime: "nodejs",
 };
 
-export default async function handler(req, res) {
+export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -30,12 +30,11 @@ export default async function handler(req, res) {
     const text = result.response.text();
 
     return res.status(200).json({ text });
-
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
     return res.status(500).json({
       error: "Gemini request failed",
-      details: error.message || error
+      details: error?.message || "Unknown error",
     });
   }
 }
