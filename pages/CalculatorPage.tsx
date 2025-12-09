@@ -195,8 +195,8 @@ const CalculatorPage: React.FC = () => {
                     <div className="flex flex-col md:flex-row gap-10 items-start">
                         <div className="flex-1 w-full space-y-6">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-purple-500/10 rounded-lg">
-                                   <Target className="w-6 h-6 text-purple-500" />
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                   <Target className="w-6 h-6 text-primary" />
                                 </div>
                                 <h2 className="text-xl font-bold text-foreground">Goal Setter</h2>
                             </div>
@@ -207,7 +207,7 @@ const CalculatorPage: React.FC = () => {
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 7.5" 
-                                        className="w-full bg-muted border border-transparent focus:border-purple-500 rounded-lg px-4 py-3 text-foreground outline-none transition-colors"
+                                        className="w-full bg-muted border border-transparent focus:border-primary rounded-lg px-4 py-3 text-foreground outline-none transition-colors"
                                         value={currentCGPA}
                                         onChange={e => setCurrentCGPA(e.target.value)}
                                     />
@@ -217,7 +217,7 @@ const CalculatorPage: React.FC = () => {
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 60" 
-                                        className="w-full bg-muted border border-transparent focus:border-purple-500 rounded-lg px-4 py-3 text-foreground outline-none transition-colors"
+                                        className="w-full bg-muted border border-transparent focus:border-primary rounded-lg px-4 py-3 text-foreground outline-none transition-colors"
                                         value={completedCredits}
                                         onChange={e => setCompletedCredits(e.target.value)}
                                     />
@@ -227,17 +227,17 @@ const CalculatorPage: React.FC = () => {
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 21" 
-                                        className="w-full bg-muted border border-transparent focus:border-purple-500 rounded-lg px-4 py-3 text-foreground outline-none transition-colors"
+                                        className="w-full bg-muted border border-transparent focus:border-primary rounded-lg px-4 py-3 text-foreground outline-none transition-colors"
                                         value={nextSemCredits}
                                         onChange={e => setNextSemCredits(e.target.value)}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-purple-500 mb-1.5 uppercase font-bold tracking-wider">Goal CGPA</label>
+                                    <label className="block text-xs text-primary mb-1.5 uppercase font-bold tracking-wider">Goal CGPA</label>
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 8.0" 
-                                        className="w-full bg-purple-500/10 border border-purple-500/50 rounded-lg px-4 py-3 text-foreground focus:border-purple-500 outline-none transition-colors"
+                                        className="w-full bg-primary/10 border border-primary/30 rounded-lg px-4 py-3 text-foreground focus:border-primary outline-none transition-colors"
                                         value={targetCGPA}
                                         onChange={e => setTargetCGPA(e.target.value)}
                                     />
@@ -251,7 +251,7 @@ const CalculatorPage: React.FC = () => {
                             
                             {requiredSGPA !== null ? (
                                 <>
-                                    <div className={`text-6xl font-bold mb-2 ${requiredSGPA > 10 ? 'text-red-500' : requiredSGPA <= 0 ? 'text-green-500' : 'text-purple-500'}`}>
+                                    <div className={`text-6xl font-bold mb-2 ${requiredSGPA > 10 ? 'text-red-500' : requiredSGPA <= 0 ? 'text-green-500' : 'text-primary'}`}>
                                         {requiredSGPA > 10 ? ">10" : requiredSGPA <= 0 ? "0" : requiredSGPA}
                                     </div>
                                     

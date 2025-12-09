@@ -14,7 +14,7 @@ const steps = [
     title: "You're All Set!",
     description: "Welcome to TheCampusHelper. Your profile is ready. Let's take a quick 30-second tour of what you can do here.",
     icon: Sparkles,
-    color: "text-yellow-400 bg-yellow-400/10"
+    color: "text-secondary bg-secondary/10"
   },
   {
     id: 'resources',
@@ -35,14 +35,14 @@ const steps = [
     title: "Online Compiler",
     description: "Need to test a code snippet quickly? Use our integrated C/C++ compiler without installing any software.",
     icon: Terminal,
-    color: "text-blue-400 bg-blue-400/10"
+    color: "text-primary bg-primary/10"
   },
   {
     id: 'profile',
     title: "Your Dashboard",
     description: "Manage your account, track your contributions, and view your saved resources from your Profile page.",
     icon: User,
-    color: "text-pink-400 bg-pink-400/10"
+    color: "text-muted-foreground bg-muted"
   }
 ];
 

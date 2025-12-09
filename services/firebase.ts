@@ -211,9 +211,8 @@ export const extractDriveId = (url: string): string | null => {
   const queryMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (queryMatch && queryMatch[1]) return queryMatch[1];
 
-  // 3. Handle 'folders/' pattern
-  const folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-  if (folderMatch && folderMatch[1]) return folderMatch[1];
+  // 3. Removed Folder pattern handling to force external link behavior for folders
+  // This prevents iframe errors when users try to "preview" a folder.
 
   // If no patterns match, return null gracefully (implies External Link)
   return null;
