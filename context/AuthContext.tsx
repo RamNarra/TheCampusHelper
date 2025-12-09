@@ -20,53 +20,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    // Listen for auth state changes from Firebase
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // 1. Basic Auth Info derived from Google Account
-        let profile = mapBasicUser(firebaseUser);
+        // 1. IMMEDIATE UPDATE: Log user in instantly with Google info
+        // This ensures the UI updates (redirects to /profile) without waiting for DB
+        const basicProfile = mapBasicUser(firebaseUser);
+        setUser(basicProfile);
+        setLoading(false);
 
-        try {
-           // 2. Fetch existing data from Firestore
-           const firestoreData = await authService.getUserData(firebaseUser.uid);
-           
-           if (firestoreData) {
-             // Merge Firestore data (Branch, Year, etc.) with Google data
-             profile = { ...profile, ...firestoreData };
-             
-             // Update the 'lastLogin' or refresh basic info in DB to keep it current
-             // This ensures we have a record of them
-             await authService.saveUserData(firebaseUser.uid, {
-               email: profile.email,
-               displayName: profile.displayName,
-               photoURL: profile.photoURL,
-               role: profile.role, // Ensure role is synced if admin status changes
-               lastLogin: new Date().toISOString() // Optional: track login time
-             } as any);
+        // 2. BACKGROUND SYNC: Fetch/Update extra details from Firestore
+        // We do this async so it doesn't block the login experience
+        (async () => {
+          try {
+            const firestoreData = await authService.getUserData(firebaseUser.uid);
+            
+            let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
+            
+            // If user is new (no Firestore data) or needs branch update
+            if (!firestoreData) {
+               const detected = detectBranchAndYear(firebaseUser.email);
+               fullProfile = { ...fullProfile, ...detected };
+               
+               // Create initial record
+               await authService.saveUserData(firebaseUser.uid, {
+                 ...fullProfile,
+                 createdAt: new Date().toISOString(),
+                 lastLogin: new Date().toISOString()
+               } as any);
+            } else {
+               // Just update last login time for existing users
+               await authService.saveUserData(firebaseUser.uid, {
+                 lastLogin: new Date().toISOString()
+               } as any);
+            }
 
-           } else {
-             // 3. New User: Create initial record
-             const detected = detectBranchAndYear(firebaseUser.email);
-             if (detected.branch || detected.year) {
-                profile = { ...profile, ...detected };
-             }
-             
-             // Create the user document in Firestore immediately
-             await authService.saveUserData(firebaseUser.uid, {
-               ...profile,
-               createdAt: new Date().toISOString()
-             } as any);
-           }
-        } catch (error) {
-           console.error("Error syncing with user database:", error);
-           // If database fails, we still log the user in with basic Google info
-           // This prevents the "nothing happens" bug if Firestore permissions/network fail
-        }
-        
-        setUser(profile);
+            // Update state again with the full profile (including branch/year from DB)
+            // This might cause a minor re-render but ensures data consistency
+            setUser(fullProfile);
+          } catch (error) {
+            console.error("Background DB Sync Warning:", error);
+            // We don't log them out here; they are still authenticated via Google
+          }
+        })();
+
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -74,12 +75,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      setLoading(true); // Show loading state during popup interaction
+      setLoading(true);
       await authService.signInWithGoogle();
-      // State updates via onAuthStateChanged
+      // We do NOT set loading(false) here because onAuthStateChanged will handle it
     } catch (error) {
       console.error("Login failed", error);
-      setLoading(false); // Reset loading on error
+      setLoading(false);
+      alert("Google Sign-In failed. Please check your internet connection.");
     }
   };
 

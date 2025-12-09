@@ -104,19 +104,18 @@ class AuthService {
   
   async signInWithGoogle(): Promise<void> {
     try {
+      console.log("Starting Google Sign In...");
       await signInWithPopup(auth, googleProvider);
-      console.log("✅ Google Auth Success!");
+      console.log("✅ Google Auth Popup Finished");
     } catch (error: any) {
-      console.error("❌ Error signing in", error);
+      console.error("❌ Error in signInWithGoogle:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
-        alert("Login Failed: " + error.message);
+        throw error;
       }
-      throw error;
     }
   }
 
   async signInAsAdmin(): Promise<void> {
-    console.warn("Dev Mode: Triggering Google Sign In");
     return this.signInWithGoogle();
   }
 
@@ -138,7 +137,7 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      console.error("Error fetching user data", e);
+      console.warn("Could not fetch user data (Firestore might be locked/unavailable):", e);
       return null;
     }
   }
@@ -146,11 +145,10 @@ class AuthService {
   async saveUserData(uid: string, data: Partial<UserProfile>): Promise<void> {
     try {
       const docRef = doc(db, "users", uid);
-      // Ensure we don't accidentally wipe data with setDoc if we only meant to update
       await setDoc(docRef, data, { merge: true });
     } catch (e) {
-      console.error("Error saving user data", e);
-      // We don't throw here to prevent login blocking, just log it
+      console.warn("Could not save user data (Firestore permissions/network):", e);
+      // We don't throw here to prevent login blocking
     }
   }
 
@@ -160,7 +158,6 @@ class AuthService {
       const snapshot = await getDocs(usersRef);
       const users: UserProfile[] = [];
       snapshot.forEach((doc) => {
-        // Merge the ID with the data just in case, though uid is usually in data
         users.push({ uid: doc.id, ...doc.data() } as UserProfile);
       });
       return users;
