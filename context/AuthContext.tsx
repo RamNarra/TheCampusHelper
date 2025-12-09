@@ -1,8 +1,9 @@
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '../types';
 import { authService, auth, mapBasicUser, detectBranchAndYear } from '../services/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import { Unsubscribe } from 'firebase/firestore';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -19,108 +20,92 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Reusable function to fetch and set user data
-  const initUser = useCallback(async (firebaseUser: User) => {
-    console.log("🔄 initUser: Starting initialization for", firebaseUser.email);
-    try {
-      // 1. Map Basic Info from Google
-      const basicProfile = mapBasicUser(firebaseUser);
-      console.log("👤 initUser: Basic profile mapped");
-      
-      // 2. Fetch extra details from Firestore (WITH TIMEOUT)
-      // If Firestore is blocked or slow, we don't want to hang the entire app
-      console.log("🔥 initUser: Fetching Firestore data...");
-      const firestorePromise = authService.getUserData(firebaseUser.uid);
-      const timeoutPromise = new Promise<null>((resolve) => 
-        setTimeout(() => {
-          console.warn("⚠️ initUser: Firestore fetch timed out, proceeding with basic profile");
-          resolve(null);
-        }, 5000) // 5 second timeout for DB
-      );
-      
-      const firestoreData = await Promise.race([firestorePromise, timeoutPromise]);
-      console.log("📦 initUser: Firestore data received:", firestoreData ? "Yes" : "No");
-      
-      let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
-      
-      // 3. New User Handling / Auto-Detection
-      if (!firestoreData) {
-          console.log("✨ initUser: New user detected or no DB data. Attempting auto-detection...");
-          const detected = detectBranchAndYear(firebaseUser.email);
-          fullProfile = { ...fullProfile, ...detected };
-          
-          // Create initial record in background
-          authService.saveUserData(firebaseUser.uid, {
-            ...fullProfile,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
-          } as any).catch(e => console.warn("Background save failed:", e));
-      } else {
-          // Update last login time
-          authService.saveUserData(firebaseUser.uid, {
-            lastLogin: new Date().toISOString()
-          } as any).catch(e => console.warn("Failed to update last login:", e));
-      }
-
-      // 4. Set final user state
-      console.log("✅ initUser: Setting user state");
-      setUser(fullProfile);
-    } catch (error) {
-      console.error("❌ Error initializing user data:", error);
-      // Fallback
-      setUser(mapBasicUser(firebaseUser));
-    }
-  }, []);
-
+  // Use a live listener for the user profile.
+  // This ensures that if the user completes their profile in the modal, 
+  // the app state updates immediately without a reload.
   useEffect(() => {
-    console.log("🎧 AuthContext: Setting up onAuthStateChanged listener");
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("📣 onAuthStateChanged triggered. User:", firebaseUser?.email || "null");
-      
-      if (firebaseUser) {
-        await initUser(firebaseUser);
-      } else {
-        setUser(null);
+    console.log("🎧 AuthContext: Initializing Auth Listener");
+    
+    let profileUnsubscribe: Unsubscribe | undefined;
+
+    const authUnsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      // 1. Clean up previous profile listener if it exists (e.g. user switching)
+      if (profileUnsubscribe) {
+          profileUnsubscribe();
+          profileUnsubscribe = undefined;
       }
-      
-      console.log("🛑 AuthContext: Setting loading to false (listener)");
-      setLoading(false);
+
+      if (firebaseUser) {
+        console.log("👤 User detected:", firebaseUser.email);
+        
+        // 2. Setup new live listener for this user
+        profileUnsubscribe = authService.subscribeToUserProfile(firebaseUser.uid, (firestoreData) => {
+             const basicProfile = mapBasicUser(firebaseUser);
+             
+             if (firestoreData) {
+                 // Database has data, merge it
+                 setUser({ ...basicProfile, ...firestoreData });
+             } else {
+                 // No data in DB yet (First time user)
+                 // Auto-detect branch/year from email
+                 console.log("✨ Creating new user profile...");
+                 const detected = detectBranchAndYear(firebaseUser.email);
+                 const newProfile = { 
+                     ...basicProfile, 
+                     ...detected,
+                     createdAt: new Date().toISOString(), 
+                     lastLogin: new Date().toISOString()
+                 };
+                 
+                 // Update local state immediately so UI renders
+                 setUser(newProfile as UserProfile);
+
+                 // Async save to DB (will trigger this listener again when done, which is fine)
+                 authService.saveUserData(firebaseUser.uid, newProfile).catch(e => 
+                    console.error("Failed to create initial profile", e)
+                 );
+             }
+             
+             // Data loaded (or default created), stop loading spinner
+             setLoading(false);
+        });
+
+      } else {
+        // User logged out
+        console.log("👋 User logged out");
+        setUser(null);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
-  }, [initUser]);
+    return () => {
+      authUnsubscribe();
+      if (profileUnsubscribe) profileUnsubscribe();
+    };
+  }, []);
 
   const signInWithGoogle = async () => {
-    // Safety timeout to kill loader if everything hangs (e.g. unknown promise lock)
+    // Safety timeout in case popup hangs
     const safetyTimer = setTimeout(() => {
-        setLoading((currentLoading) => {
-            if (currentLoading) {
-                console.error("⏰ Login operation timed out globally (15s). Force resetting loader.");
-                return false;
+        setLoading((current) => {
+            if (current) {
+                console.warn("⏰ Login timed out");
+                return false; 
             }
-            return currentLoading;
+            return current;
         });
     }, 15000);
 
     try {
-      console.log("🚀 AuthContext: signInWithGoogle called");
       setLoading(true);
-      const result = await authService.signInWithGoogle();
-      
-      if (result) {
-        console.log("✅ AuthContext: Google Sign In success, user:", result.user.email);
-        // Explicitly initialize user to ensure state is updated before stopping loading
-        await initUser(result.user);
-      } else {
-         console.log("⚠️ AuthContext: Google Sign In returned null (cancelled?)");
-      }
+      await authService.signInWithGoogle();
+      // onAuthStateChanged will handle the rest
     } catch (error) {
-      console.error("❌ AuthContext: Login failed", error);
-      alert("Google Sign-In failed. Please check your internet connection.");
-    } finally {
-      console.log("🏁 AuthContext: signInWithGoogle finally block - stopping loader");
-      clearTimeout(safetyTimer);
+      console.error("Login failed", error);
+      alert("Login failed. Please try again.");
       setLoading(false);
+    } finally {
+      clearTimeout(safetyTimer);
     }
   };
 
@@ -136,10 +121,9 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
     try {
       setLoading(true);
       await authService.logout();
-      setUser(null);
+      // onAuthStateChanged will set user to null
     } catch (error) {
       console.error("Logout failed", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -147,8 +131,8 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
     try {
+      // Just save to DB. The live listener will automatically update the `user` state.
       await authService.saveUserData(user.uid, data);
-      setUser((prev) => prev ? { ...prev, ...data } : null);
     } catch (error) {
       console.error("Update profile failed", error);
       throw error;

@@ -165,6 +165,27 @@ class AuthService {
     }
   }
 
+  // --- NEW: Live Profile Listener ---
+  // This listens for any changes in the user's document in real-time
+  subscribeToUserProfile(uid: string, onUpdate: (data: Partial<UserProfile> | null) => void): Unsubscribe {
+    const docRef = doc(db, "users", uid);
+    
+    // onSnapshot fires immediately with current data, and then on any future change
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        console.log("📦 Live Profile Update for:", uid);
+        onUpdate(docSnap.data() as Partial<UserProfile>);
+      } else {
+        console.log("✨ No profile doc found (Live listener)");
+        onUpdate(null);
+      }
+    }, (error) => {
+      console.error("❌ Live Profile Subscription Error:", error);
+      // Don't crash, just return null so app can proceed with basic auth
+      onUpdate(null);
+    });
+  }
+
   async getAllUsers(): Promise<UserProfile[]> {
     try {
       const usersRef = collection(db, "users");
