@@ -51,7 +51,8 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         displayName: formData.displayName,
         dateOfBirth: formData.dateOfBirth,
         branch: formData.branch as any,
-        year: formData.year
+        year: formData.year,
+        profileCompleted: true // CRITICAL: Mark profile as done in DB
       });
 
       const timeoutPromise = new Promise((_, reject) => 
@@ -64,9 +65,8 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
       console.warn("Profile save warning:", err);
       // We purposefully ignore errors here to allow the user to proceed.
       // If Firestore fails (permissions/offline), blocking the user is bad UX.
-      // The local context state might update anyway.
+      // The local context/localStorage state in App.tsx will handle the UI.
     } finally {
-      // Always finish loading and trigger complete
       setLoading(false);
       if (onComplete) {
           onComplete();

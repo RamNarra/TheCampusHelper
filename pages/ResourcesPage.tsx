@@ -212,16 +212,9 @@ const ResourcesPage: React.FC = () => {
   const getEmbedUrl = (res: Resource) => {
     if (!res.driveFileId) return '';
     
-    // --- SMART EMBED LOGIC ---
-    // Only force 'docs.google.com/presentation' embed if the source URL explicitly says so.
-    // Otherwise, use the universal '/preview' which handles PDFs, PPTXs (as slides), Images, Videos, etc.
-    const isNativeSlide = res.downloadUrl && res.downloadUrl.includes('docs.google.com/presentation');
-    
-    if (isNativeSlide) {
-      return `https://docs.google.com/presentation/d/${res.driveFileId}/embed?start=false&loop=false&delayms=3000`;
-    }
-    
-    // Universal Preview for Drive Files (Handles PDF, PPTX, DOCX, IMG, MP4)
+    // --- UNIVERSAL DRIVE PREVIEW URL ---
+    // This is the most robust way to embed Drive files (PDF, Slides, Docs, Images).
+    // It avoids "Unable to open" errors for Slides often caused by specific '/embed' endpoints.
     return `https://drive.google.com/file/d/${res.driveFileId}/preview`;
   };
 

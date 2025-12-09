@@ -30,7 +30,7 @@ interface ErrorBoundaryState {
 }
 
 // --- Error Boundary Component ---
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
@@ -91,21 +91,35 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      const isProfileIncomplete = !user.branch || !user.year || !user.dateOfBirth;
-      setShowProfileModal(isProfileIncomplete);
+      // 1. Check LocalStorage (Fastest, browser-specific)
+      const localCompleted = localStorage.getItem('thc_profile_completed') === '1';
+      
+      // 2. Check Database Flag (Persistent, cross-device)
+      const dbCompleted = user.profileCompleted === true;
+
+      // 3. Fallback: Check if fields exist (Legacy support)
+      const hasFields = Boolean(user.branch && user.year && user.dateOfBirth);
+
+      // If ANY of these are true, the profile is considered complete
+      const isComplete = localCompleted || dbCompleted || hasFields;
+
+      setShowProfileModal(!isComplete);
     } else {
       setShowProfileModal(false);
     }
   }, [user, loading]);
 
   const handleProfileComplete = () => {
-    // 1. Close Modal
+    // 1. Set LocalStorage flag immediately to prevent loop on reload
+    localStorage.setItem('thc_profile_completed', '1');
+
+    // 2. Close Modal
     setShowProfileModal(false);
     
-    // 2. Redirect to Home
+    // 3. Redirect to Home
     navigate('/');
     
-    // 3. Start Tour
+    // 4. Start Tour
     setShowTour(true);
   };
 
