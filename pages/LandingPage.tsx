@@ -11,9 +11,14 @@ const LandingPage: React.FC = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2
+        staggerChildren: 0.1,
+        delayChildren: 0.1,
+        duration: 0.5
       }
+    },
+    exit: { 
+      opacity: 0,
+      transition: { duration: 0.2 }
     }
   };
 
@@ -31,20 +36,21 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-24 transition-colors duration-300">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      variants={containerVariants}
+      className="min-h-screen bg-background pt-24 transition-colors duration-300"
+    >
       {/* Ambient BG */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>
       </div>
 
       {/* Hero Section */}
-      <section className="relative px-4 pt-12 pb-16 mx-auto max-w-7xl sm:px-6 lg:px-8 lg:pt-24 text-center">
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-4xl mx-auto"
-        >
+      <section className="relative z-10 px-4 pt-12 pb-16 mx-auto max-w-7xl sm:px-6 lg:px-8 lg:pt-24 text-center">
+        <div className="max-w-4xl mx-auto">
           <motion.div variants={itemVariants} className="inline-flex items-center px-4 py-1.5 mb-8 rounded-full bg-muted border border-border shadow-sm">
             <span className="flex h-2.5 w-2.5 rounded-full bg-secondary mr-2 animate-pulse"></span>
             <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Updated for R25 Regulations</span>
@@ -74,21 +80,22 @@ const LandingPage: React.FC = () => {
               Student Login
             </Link>
           </motion.div>
-        </motion.div>
+        </div>
       </section>
 
       {/* Ad Unit */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 relative z-10">
         <AdUnit className="my-0" />
       </div>
 
       {/* Features Grid */}
-      <section className="pb-24">
+      <section className="pb-24 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             
             {/* Feature 1 */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -8 }}
               className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
             >
@@ -102,6 +109,7 @@ const LandingPage: React.FC = () => {
             {/* Feature 2: CGPA Calculator */}
             <Link to="/calculator" className="block h-full">
               <motion.div 
+                variants={itemVariants}
                 whileHover={{ y: -8 }}
                 className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
               >
@@ -115,6 +123,7 @@ const LandingPage: React.FC = () => {
 
             {/* Feature 3 */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -8 }}
               className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
             >
@@ -131,7 +140,7 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
-    </div>
+    </motion.div>
   );
 };
 
