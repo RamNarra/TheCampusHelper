@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '../types';
 import { authService, auth, mapBasicUser, detectBranchAndYear } from '../services/firebase';
@@ -20,48 +21,46 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
   useEffect(() => {
     // Listen for auth state changes from Firebase
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // 1. IMMEDIATE UPDATE: Log user in instantly with Google info
-        // This ensures the UI updates (redirects to /profile) without waiting for DB
-        const basicProfile = mapBasicUser(firebaseUser);
-        setUser(basicProfile);
-        setLoading(false);
-
-        // 2. BACKGROUND SYNC: Fetch/Update extra details from Firestore
-        // We do this async so it doesn't block the login experience
-        (async () => {
-          try {
-            const firestoreData = await authService.getUserData(firebaseUser.uid);
-            
-            let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
-            
-            // If user is new (no Firestore data) or needs branch update
-            if (!firestoreData) {
-               const detected = detectBranchAndYear(firebaseUser.email);
-               fullProfile = { ...fullProfile, ...detected };
-               
-               // Create initial record
-               await authService.saveUserData(firebaseUser.uid, {
-                 ...fullProfile,
-                 createdAt: new Date().toISOString(),
-                 lastLogin: new Date().toISOString()
-               } as any);
-            } else {
-               // Just update last login time for existing users
-               await authService.saveUserData(firebaseUser.uid, {
-                 lastLogin: new Date().toISOString()
-               } as any);
-            }
-
-            // Update state again with the full profile (including branch/year from DB)
-            // This might cause a minor re-render but ensures data consistency
-            setUser(fullProfile);
-          } catch (error) {
-            console.error("Background DB Sync Warning:", error);
-            // We don't log them out here; they are still authenticated via Google
+        try {
+          // 1. Map Basic Info from Google
+          const basicProfile = mapBasicUser(firebaseUser);
+          
+          // 2. Fetch extra details from Firestore (Wait for this to ensure correct state)
+          const firestoreData = await authService.getUserData(firebaseUser.uid);
+          
+          let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
+          
+          // 3. New User Handling / Auto-Detection
+          if (!firestoreData) {
+             const detected = detectBranchAndYear(firebaseUser.email);
+             fullProfile = { ...fullProfile, ...detected };
+             
+             // Create initial record in background
+             await authService.saveUserData(firebaseUser.uid, {
+               ...fullProfile,
+               createdAt: new Date().toISOString(),
+               lastLogin: new Date().toISOString()
+             } as any);
+          } else {
+             // Update last login time for existing users in background
+             authService.saveUserData(firebaseUser.uid, {
+               lastLogin: new Date().toISOString()
+             } as any).catch(e => console.warn("Failed to update last login:", e));
           }
-        })();
+
+          // 4. Set final user state
+          setUser(fullProfile);
+          
+        } catch (error) {
+          console.error("Auth initialization error:", error);
+          // Fallback to basic user if DB fails
+          setUser(mapBasicUser(firebaseUser));
+        } finally {
+          // 5. Finally stop loading - allows App to render content or modal based on correct data
+          setLoading(false);
+        }
 
       } else {
         setUser(null);
