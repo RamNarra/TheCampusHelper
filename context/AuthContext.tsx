@@ -1,8 +1,8 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { authService, auth, mapBasicUser, detectBranchAndYear } from '../services/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -19,76 +19,73 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Reusable function to fetch and set user data
+  const initUser = useCallback(async (firebaseUser: User) => {
+    try {
+      // 1. Map Basic Info from Google
+      const basicProfile = mapBasicUser(firebaseUser);
+      
+      // 2. Fetch extra details from Firestore
+      const firestoreData = await authService.getUserData(firebaseUser.uid);
+      
+      let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
+      
+      // 3. New User Handling / Auto-Detection
+      if (!firestoreData) {
+          const detected = detectBranchAndYear(firebaseUser.email);
+          fullProfile = { ...fullProfile, ...detected };
+          
+          // Create initial record in background
+          await authService.saveUserData(firebaseUser.uid, {
+            ...fullProfile,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+          } as any);
+      } else {
+          // Update last login time
+          authService.saveUserData(firebaseUser.uid, {
+            lastLogin: new Date().toISOString()
+          } as any).catch(e => console.warn("Failed to update last login:", e));
+      }
+
+      // 4. Set final user state
+      setUser(fullProfile);
+    } catch (error) {
+      console.error("Error initializing user data:", error);
+      // Fallback
+      setUser(mapBasicUser(firebaseUser));
+    }
+  }, []);
+
   useEffect(() => {
-    // Listen for auth state changes from Firebase
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          // 1. Map Basic Info from Google
-          const basicProfile = mapBasicUser(firebaseUser);
-          
-          // 2. Fetch extra details from Firestore (Wait for this to ensure correct state)
-          const firestoreData = await authService.getUserData(firebaseUser.uid);
-          
-          let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
-          
-          // 3. New User Handling / Auto-Detection
-          if (!firestoreData) {
-             const detected = detectBranchAndYear(firebaseUser.email);
-             fullProfile = { ...fullProfile, ...detected };
-             
-             // Create initial record in background
-             await authService.saveUserData(firebaseUser.uid, {
-               ...fullProfile,
-               createdAt: new Date().toISOString(),
-               lastLogin: new Date().toISOString()
-             } as any);
-          } else {
-             // Update last login time for existing users in background
-             authService.saveUserData(firebaseUser.uid, {
-               lastLogin: new Date().toISOString()
-             } as any).catch(e => console.warn("Failed to update last login:", e));
-          }
-
-          // 4. Set final user state
-          setUser(fullProfile);
-          
-        } catch (error) {
-          console.error("Auth initialization error:", error);
-          // Fallback to basic user if DB fails
-          setUser(mapBasicUser(firebaseUser));
-        } finally {
-          // 5. Finally stop loading - allows App to render content or modal based on correct data
-          setLoading(false);
-        }
-
+        await initUser(firebaseUser);
       } else {
         setUser(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [initUser]);
 
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
       const result = await authService.signInWithGoogle();
       
-      // If result is null, it means the user closed the popup/cancelled.
-      // In this case, onAuthStateChanged WON'T fire (or state won't change), 
-      // so we must manually turn off loading.
-      if (!result) {
-        setLoading(false);
+      if (result) {
+        // Explicitly initialize user to ensure state is updated before stopping loading
+        // This acts as a safeguard in case onAuthStateChanged is delayed or doesn't trigger for re-auth
+        await initUser(result.user);
       }
-      
-      // If result exists, onAuthStateChanged has been triggered by Firebase
-      // and it will handle fetching data and eventually setting loading(false).
     } catch (error) {
       console.error("Login failed", error);
-      setLoading(false);
       alert("Google Sign-In failed. Please check your internet connection.");
+    } finally {
+      // Always stop loading after the explicit attempt
+      setLoading(false);
     }
   };
 
