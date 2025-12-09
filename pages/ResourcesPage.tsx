@@ -114,7 +114,9 @@ const ResourcesPage: React.FC = () => {
         const driveId = extractDriveId(uploadLink);
         
         // 4. Construct Payload
-        const finalType = selectedCategory || (selectedFolder as ResourceType);
+        // If it's an exam folder, the type matches the folder name (PYQ/MidPaper)
+        // If it's a unit folder, type is the selected category (Note/PPT/ImpQ)
+        const finalType = isExamFolder ? (selectedFolder as ResourceType) : selectedCategory!;
         
         const newResource: Omit<Resource, 'id'> = {
             title: uploadName,
@@ -135,7 +137,6 @@ const ResourcesPage: React.FC = () => {
         setUploadName('');
         setUploadLink('');
         setShowUploadModal(false);
-        // Note: No toast library included in prompt, using alert for now or just silent success (list updates automatically)
 
     } catch (err: any) {
         console.error("Upload failed:", err);
@@ -200,6 +201,7 @@ const ResourcesPage: React.FC = () => {
 
       // Special handling for Exam folders vs Unit folders
       if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
+        // For exams, we accept resources where Type matches Folder OR Unit matches Folder
         return r.type === selectedFolder || r.unit === selectedFolder;
       } else {
         return r.unit === selectedFolder && r.type === selectedCategory;
@@ -209,10 +211,17 @@ const ResourcesPage: React.FC = () => {
 
   const getEmbedUrl = (res: Resource) => {
     if (!res.driveFileId) return '';
-    const isPresentation = res.type === 'PPT' || (res.downloadUrl && res.downloadUrl.includes('docs.google.com/presentation'));
-    if (isPresentation) {
+    
+    // --- SMART EMBED LOGIC ---
+    // Only force 'docs.google.com/presentation' embed if the source URL explicitly says so.
+    // Otherwise, use the universal '/preview' which handles PDFs, PPTXs (as slides), Images, Videos, etc.
+    const isNativeSlide = res.downloadUrl && res.downloadUrl.includes('docs.google.com/presentation');
+    
+    if (isNativeSlide) {
       return `https://docs.google.com/presentation/d/${res.driveFileId}/embed?start=false&loop=false&delayms=3000`;
     }
+    
+    // Universal Preview for Drive Files (Handles PDF, PPTX, DOCX, IMG, MP4)
     return `https://drive.google.com/file/d/${res.driveFileId}/preview`;
   };
 

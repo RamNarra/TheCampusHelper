@@ -22,8 +22,7 @@ import {
   onSnapshot, 
   Unsubscribe, 
   orderBy,
-  DocumentReference,
-  DocumentData
+  DocumentReference
 } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile, Resource } from '../types';
@@ -221,7 +220,7 @@ export const extractDriveId = (url: string): string | null => {
 };
 
 // Timeout Helper to prevent infinite spinners
-export const withTimeout = <T>(promise: Promise<T>, ms: number = 8000): Promise<T> => {
+export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
     return Promise.race([
         promise,
         new Promise<T>((_, reject) => 
@@ -255,6 +254,7 @@ export const resourceService = {
       const resources: Resource[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        // @ts-ignore
         resources.push({ id: doc.id, ...data } as Resource);
       });
       return resources;
@@ -271,6 +271,7 @@ export const resourceService = {
       const resources: Resource[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        // @ts-ignore
         resources.push({ id: doc.id, ...data } as Resource);
       });
       callback(resources);
