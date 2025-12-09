@@ -1,11 +1,9 @@
-
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
   signOut, 
-  onAuthStateChanged,
   User,
   UserCredential
 } from 'firebase/auth';
@@ -27,33 +25,26 @@ import {
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile, Resource } from '../types';
 
-// Helper to safely get environment variables
-const getEnv = (key: string, fallback: string) => {
-  try {
-    // @ts-ignore - Vite specific
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-      // @ts-ignore
-      return import.meta.env[key];
-    }
-  } catch (e) {
-    // Ignore errors
-  }
-  return fallback;
-};
+// Access env safely to avoid TS errors or runtime crashes
+const env = (import.meta as any).env || {};
 
+// We use the environment variables if they exist.
+// If they are missing (causing the crash), we fall back to the explicit production config.
+// This prevents the app from breaking while ensuring we connect to the correct project.
 const firebaseConfig = {
-  apiKey: getEnv('VITE_FIREBASE_API_KEY', "AIzaSyCWVGtXD" + "-z6Opm6FVL2TJInsA5H4m0NYOY"),
-  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN', "thecampushelper-adcdc.firebaseapp.com"),
-  projectId: getEnv('VITE_FIREBASE_PROJECT_ID', "thecampushelper-adcdc"),
-  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET', "thecampushelper-adcdc.firebasestorage.app"),
-  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID', "379448284100"),
-  appId: getEnv('VITE_FIREBASE_APP_ID', "1:379448284100:web:d950e994d1abc2c2fc0a91"),
-  measurementId: getEnv('VITE_FIREBASE_MEASUREMENT_ID', "G-K94JQ2GV7G")
+  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyCWVGtXD-z6Opm6FVL2TJInsA5H4m0NYOY",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "thecampushelper-adcdc.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "thecampushelper-adcdc",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "thecampushelper-adcdc.firebasestorage.app",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "379448284100",
+  appId: env.VITE_FIREBASE_APP_ID || "1:379448284100:web:d950e994d1abc2c2fc0a91",
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-K94JQ2GV7G"
 };
 
 // Initialize Firebase
 console.log("🔥 Initializing Firebase...");
 console.log("🔥 Firebase project:", firebaseConfig.projectId);
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -66,8 +57,10 @@ const ADMIN_EMAILS = [
   'ramcharannarra8@gmail.com' 
 ];
 
-// --- BRANCH DETECTION LOGIC (Helper for College Emails) ---
-export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS' | 'AIML_ECE_CYS', year?: string } => {
+// --- BRANCH DETECTION LOGIC ---
+export const detectBranchAndYear = (
+  email: string | null
+): { branch?: 'CS_IT_DS' | 'AIML_ECE_CYS', year?: string } => {
   if (!email) return {};
 
   const parts = email.split('@');
@@ -80,16 +73,12 @@ export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS'
 
   let branch: 'CS_IT_DS' | 'AIML_ECE_CYS' | undefined;
 
-  // Group A: CS, IT, DS
-  if (['cse', 'it', 'ds', 'cs', 'ds'].includes(subdomain)) {
+  if (['cse', 'it', 'ds', 'cs'].includes(subdomain)) {
     branch = 'CS_IT_DS';
-  } 
-  // Group B: ECE, AIML, CYS
-  else if (['ece', 'aiml', 'cys', 'ecm'].includes(subdomain)) {
+  } else if (['ece', 'aiml', 'cys', 'ecm'].includes(subdomain)) {
     branch = 'AIML_ECE_CYS';
   }
 
-  // Detect Year from Roll Number
   let year: string | undefined;
   const rollNo = parts[0].toUpperCase();
   if (/^\d{2}/.test(rollNo)) {
@@ -169,18 +158,25 @@ class AuthService {
     }
   }
 
-  subscribeToUserProfile(uid: string, onUpdate: (data: Partial<UserProfile> | null) => void): Unsubscribe {
+  subscribeToUserProfile(
+    uid: string,
+    onUpdate: (data: Partial<UserProfile> | null) => void
+  ): Unsubscribe {
     const docRef = doc(db, "users", uid);
-    return onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        onUpdate(docSnap.data() as Partial<UserProfile>);
-      } else {
+    return onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          onUpdate(docSnap.data() as Partial<UserProfile>);
+        } else {
+          onUpdate(null);
+        }
+      },
+      (error) => {
+        console.error("❌ Live Profile Subscription Error:", error);
         onUpdate(null);
       }
-    }, (error) => {
-      console.error("❌ Live Profile Subscription Error:", error);
-      onUpdate(null);
-    });
+    );
   }
 
   async getAllUsers(): Promise<UserProfile[]> {
@@ -188,8 +184,8 @@ class AuthService {
       const usersRef = collection(db, "users");
       const snapshot = await getDocs(usersRef);
       const users: UserProfile[] = [];
-      snapshot.forEach((doc) => {
-        users.push({ uid: doc.id, ...doc.data() } as UserProfile);
+      snapshot.forEach((docSnap) => {
+        users.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
       });
       return users;
     } catch (e) {
@@ -204,41 +200,36 @@ class AuthService {
 export const extractDriveId = (url: string): string | null => {
   if (!url) return null;
 
-  // 1. Handle typical /d/ID pattern
   const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (idMatch && idMatch[1]) return idMatch[1];
 
-  // 2. Handle 'id=' query parameter
   const queryMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (queryMatch && queryMatch[1]) return queryMatch[1];
-
-  // Don't try parsing folders as files anymore
-  // Folders will now be treated as external links (downloadUrl)
-  // preventing the "Unable to open file" iframe error.
 
   return null;
 };
 
-// Timeout Helper to prevent infinite spinners
-export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
-    return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => 
-            setTimeout(() => reject(new Error('Request timed out')), ms)
-        )
-    ]);
+export const withTimeout = <T>(
+  promise: Promise<T>, 
+  ms: number = 10000
+): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out')), ms)
+    )
+  ]);
 };
 
 export const resourceService = {
   async addResource(resource: Omit<Resource, 'id'>) {
     try {
-      // Wrap the addDoc call in a timeout race to prevent infinite hanging
       const docRef = await withTimeout<DocumentReference>(
-          addDoc(collection(db, 'resources'), {
-            ...resource,
-            createdAt: Timestamp.now()
-          }),
-          10000 // 10 second timeout for uploads
+        addDoc(collection(db, 'resources'), {
+          ...resource,
+          createdAt: Timestamp.now()
+        }),
+        10000
       );
       return { id: docRef.id, ...resource };
     } catch (e) {
@@ -249,13 +240,12 @@ export const resourceService = {
 
   async getAllResources(): Promise<Resource[]> {
     try {
-      const q = query(collection(db, 'resources'));
-      const querySnapshot = await getDocs(q);
+      const qRef = query(collection(db, 'resources'));
+      const querySnapshot = await getDocs(qRef);
       const resources: Resource[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // @ts-ignore
-        resources.push({ id: doc.id, ...data } as Resource);
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        resources.push({ id: docSnap.id, ...data } as Resource);
       });
       return resources;
     } catch (e) {
@@ -265,19 +255,22 @@ export const resourceService = {
   },
 
   subscribeToResources(callback: (resources: Resource[]) => void): Unsubscribe {
-    const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
-    
-    return onSnapshot(q, (querySnapshot) => {
-      const resources: Resource[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // @ts-ignore
-        resources.push({ id: doc.id, ...data } as Resource);
-      });
-      callback(resources);
-    }, (error) => {
-      console.error("Error listening to resources:", error);
-    });
+    const qRef = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
+
+    return onSnapshot(
+      qRef,
+      (querySnapshot) => {
+        const resources: Resource[] = [];
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          resources.push({ id: docSnap.id, ...data } as Resource);
+        });
+        callback(resources);
+      },
+      (error) => {
+        console.error("Error listening to resources:", error);
+      }
+    );
   }
 };
 
