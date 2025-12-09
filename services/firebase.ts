@@ -9,7 +9,22 @@ import {
   User,
   UserCredential
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, Timestamp, query, onSnapshot, Unsubscribe, orderBy } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  getDocs, 
+  addDoc, 
+  Timestamp, 
+  query, 
+  onSnapshot, 
+  Unsubscribe, 
+  orderBy,
+  DocumentReference,
+  DocumentData
+} from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 import { UserProfile, Resource } from '../types';
 
@@ -46,7 +61,6 @@ const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Admin Email List - Controlled visibility
-// Emails are normalized to lowercase for comparison
 const ADMIN_EMAILS = [
   'admin@thecampushelper.com',
   'ramcharannarra8@gmail.com' 
@@ -60,7 +74,6 @@ export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS'
   if (parts.length < 2) return {};
 
   const domainPart = parts[1]; 
-  // If not sreenidhi.edu.in, we can't detect
   if (!domainPart.includes('sreenidhi.edu.in')) return {};
 
   const subdomain = domainPart.split('.')[0].toLowerCase(); 
@@ -71,7 +84,7 @@ export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS'
   if (['cse', 'it', 'ds', 'cs', 'ds'].includes(subdomain)) {
     branch = 'CS_IT_DS';
   } 
-  // Group B: ECE, AIML, CYS (ECM often grouped here or separately, assuming here for now)
+  // Group B: ECE, AIML, CYS
   else if (['ece', 'aiml', 'cys', 'ecm'].includes(subdomain)) {
     branch = 'AIML_ECE_CYS';
   }
@@ -81,8 +94,7 @@ export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS'
   const rollNo = parts[0].toUpperCase();
   if (/^\d{2}/.test(rollNo)) {
     const batchYear = parseInt(rollNo.substring(0, 2));
-    const currentYearShort = new Date().getFullYear() % 100; // e.g., 24
-    // Approx year calculation (Aug start)
+    const currentYearShort = new Date().getFullYear() % 100;
     const calculatedYear = (currentYearShort - batchYear) + 1;
     if (calculatedYear >= 1 && calculatedYear <= 4) {
       year = calculatedYear.toString();
@@ -93,7 +105,6 @@ export const detectBranchAndYear = (email: string | null): { branch?: 'CS_IT_DS'
 };
 
 const mapBasicUser = (firebaseUser: User): UserProfile => {
-  // Safe comparison by lowercasing
   const emailLower = firebaseUser.email?.toLowerCase();
   const isAdmin = emailLower && ADMIN_EMAILS.includes(emailLower);
 
@@ -107,7 +118,6 @@ const mapBasicUser = (firebaseUser: User): UserProfile => {
 };
 
 class AuthService {
-  
   async signInWithGoogle(): Promise<UserCredential | null> {
     try {
       console.log("👉 AuthService: Calling signInWithPopup...");
@@ -116,8 +126,6 @@ class AuthService {
       return result;
     } catch (error: any) {
       console.error("❌ AuthService Error:", error);
-      // 'auth/popup-closed-by-user' happens if user closes the window.
-      // We return null so the UI can handle it gracefully.
       if (error.code === 'auth/popup-closed-by-user') {
         return null;
       }
@@ -131,7 +139,6 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
-      console.log("👋 AuthService: Signing out...");
       await signOut(auth);
     } catch (error) {
       console.error("Error signing out", error);
@@ -141,49 +148,37 @@ class AuthService {
 
   async getUserData(uid: string): Promise<Partial<UserProfile> | null> {
     try {
-      console.log(`🔍 AuthService: Fetching user data for ${uid}...`);
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        console.log("📄 AuthService: User data found");
         return docSnap.data() as Partial<UserProfile>;
       }
-      console.log("🤷 AuthService: No user document found");
       return null;
     } catch (e) {
-      console.warn("⚠️ AuthService: Could not fetch user data (Firestore might be locked/unavailable):", e);
+      console.warn("⚠️ AuthService: Could not fetch user data:", e);
       return null;
     }
   }
 
   async saveUserData(uid: string, data: Partial<UserProfile>): Promise<void> {
     try {
-      console.log(`💾 AuthService: Saving user data for ${uid}...`);
       const docRef = doc(db, "users", uid);
       await setDoc(docRef, data, { merge: true });
     } catch (e) {
-      console.warn("⚠️ AuthService: Could not save user data (Firestore permissions/network):", e);
-      // We don't throw here to prevent login blocking
+      console.warn("⚠️ AuthService: Could not save user data:", e);
     }
   }
 
-  // --- NEW: Live Profile Listener ---
-  // This listens for any changes in the user's document in real-time
   subscribeToUserProfile(uid: string, onUpdate: (data: Partial<UserProfile> | null) => void): Unsubscribe {
     const docRef = doc(db, "users", uid);
-    
-    // onSnapshot fires immediately with current data, and then on any future change
     return onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
-        console.log("📦 Live Profile Update for:", uid);
         onUpdate(docSnap.data() as Partial<UserProfile>);
       } else {
-        console.log("✨ No profile doc found (Live listener)");
         onUpdate(null);
       }
     }, (error) => {
       console.error("❌ Live Profile Subscription Error:", error);
-      // Don't crash, just return null so app can proceed with basic auth
       onUpdate(null);
     });
   }
@@ -209,32 +204,43 @@ class AuthService {
 export const extractDriveId = (url: string): string | null => {
   if (!url) return null;
 
-  // 1. Handle typical /d/ID pattern (view, preview, edit)
-  // Matches: .../d/12345/..., .../d/12345
+  // 1. Handle typical /d/ID pattern
   const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (idMatch && idMatch[1]) return idMatch[1];
 
-  // 2. Handle 'id=' query parameter (e.g. drive.google.com/open?id=12345)
-  // Matches: ?id=12345, &id=12345
+  // 2. Handle 'id=' query parameter
   const queryMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (queryMatch && queryMatch[1]) return queryMatch[1];
 
-  // 3. Handle 'folders/' pattern (e.g. drive.google.com/drive/folders/12345)
+  // 3. Handle 'folders/' pattern
   const folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
   if (folderMatch && folderMatch[1]) return folderMatch[1];
 
-  // If no patterns match, return null to indicate "Not a recognizble Drive ID"
-  // The app should treat this as a standard external link.
+  // If no patterns match, return null gracefully (implies External Link)
   return null;
+};
+
+// Timeout Helper to prevent infinite spinners
+export const withTimeout = <T>(promise: Promise<T>, ms: number = 8000): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => 
+            setTimeout(() => reject(new Error('Request timed out')), ms)
+        )
+    ]);
 };
 
 export const resourceService = {
   async addResource(resource: Omit<Resource, 'id'>) {
     try {
-      const docRef = await addDoc(collection(db, 'resources'), {
-        ...resource,
-        createdAt: Timestamp.now()
-      });
+      // Wrap the addDoc call in a timeout race to prevent infinite hanging
+      const docRef = await withTimeout<DocumentReference>(
+          addDoc(collection(db, 'resources'), {
+            ...resource,
+            createdAt: Timestamp.now()
+          }),
+          10000 // 10 second timeout for uploads
+      );
       return { id: docRef.id, ...resource };
     } catch (e) {
       console.error("Error adding resource: ", e);
@@ -242,7 +248,6 @@ export const resourceService = {
     }
   },
 
-  // OLD: One-time fetch
   async getAllResources(): Promise<Resource[]> {
     try {
       const q = query(collection(db, 'resources'));
@@ -250,7 +255,6 @@ export const resourceService = {
       const resources: Resource[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // @ts-ignore
         resources.push({ id: doc.id, ...data } as Resource);
       });
       return resources;
@@ -260,16 +264,13 @@ export const resourceService = {
     }
   },
 
-  // NEW: Real-time Listener
   subscribeToResources(callback: (resources: Resource[]) => void): Unsubscribe {
     const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
     
-    // onSnapshot returns an unsubscribe function
     return onSnapshot(q, (querySnapshot) => {
       const resources: Resource[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // @ts-ignore
         resources.push({ id: doc.id, ...data } as Resource);
       });
       callback(resources);
