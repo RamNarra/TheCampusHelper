@@ -23,7 +23,8 @@ import {
   Plus,
   Link as LinkIcon,
   Loader2,
-  X
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdUnit from '../components/AdUnit';
@@ -46,13 +47,15 @@ const ResourcesPage: React.FC = () => {
 
   // Dynamic Resources State
   const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
+  // Optimistic Resources State (Local temporary resources)
+  const [optimisticResources, setOptimisticResources] = useState<Resource[]>([]);
+  
   const [isResourcesLoading, setIsResourcesLoading] = useState(true);
 
   // Upload Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadName, setUploadName] = useState('');
   const [uploadLink, setUploadLink] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
@@ -65,13 +68,19 @@ const ResourcesPage: React.FC = () => {
   useEffect(() => {
     setIsResourcesLoading(true);
     
-    // Subscribe to updates
     const unsubscribe = resourceService.subscribeToResources((fetchedResources) => {
       setDynamicResources(fetchedResources);
       setIsResourcesLoading(false);
+      // Clean up optimistic resources that have been confirmed by backend
+      setOptimisticResources(prev => {
+          if (prev.length === 0) return prev;
+          // Filter out optimistic items if they appear in fetched resources (by title/subject/driveID match)
+          return prev.filter(opt => 
+             !fetchedResources.some(real => real.driveFileId === opt.driveFileId)
+          );
+      });
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -97,7 +106,9 @@ const ResourcesPage: React.FC = () => {
     if (res.driveFileId) {
       setSelectedResource(res);
     } else {
-      window.open(res.downloadUrl, '_blank');
+      // Robustly handle missing drive IDs by opening standard link
+      const url = res.downloadUrl || '#';
+      window.open(url, '_blank');
     }
   };
 
@@ -110,43 +121,62 @@ const ResourcesPage: React.FC = () => {
       return;
     }
 
-    if (!semester || !subject || !selectedFolder || !selectedCategory) {
+    if (!semester || !subject || !selectedFolder) {
       setUploadError("Missing context. Please navigate to a specific folder.");
       return;
     }
 
-    const driveId = extractDriveId(uploadLink);
-    if (!driveId) {
-        setUploadError("Could not detect a valid Google Drive ID from the link.");
-        return;
+    // Determine if we are in an exam folder (PYQ/MidPaper)
+    const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
+
+    // Validation: Category is required only for Unit folders
+    if (!isExamFolder && !selectedCategory) {
+       setUploadError("Please select a file category (Notes, PPT, etc.)");
+       return;
     }
 
-    setIsUploading(true);
-    try {
-        const newResource: Omit<Resource, 'id'> = {
-            title: uploadName,
-            subject: subject,
-            branch: branch,
-            semester: semester,
-            unit: selectedFolder,
-            type: selectedCategory,
-            downloadUrl: uploadLink,
-            driveFileId: driveId,
-            status: 'approved'
-        };
+    // Extraction: Try to get Drive ID, but don't fail if we can't
+    const driveId = extractDriveId(uploadLink);
+    
+    // Fallback: If no category selected (Exam folder), use the folder name as type
+    const finalType = selectedCategory || (selectedFolder as ResourceType);
 
-        // We just add to DB. The subscribeToResources listener in useEffect will update the UI automatically.
+    const newResource: Omit<Resource, 'id'> = {
+        title: uploadName,
+        subject: subject,
+        branch: branch,
+        semester: semester,
+        unit: selectedFolder,
+        type: finalType,
+        downloadUrl: uploadLink,
+        driveFileId: driveId || undefined, // Store undefined if null
+        status: 'approved'
+    };
+
+    // --- OPTIMISTIC UPDATE ---
+    // 1. Create a temporary resource object
+    const optimisticResource: Resource = {
+        ...newResource,
+        id: `temp-${Date.now()}`,
+    };
+
+    // 2. Add to local state immediately
+    setOptimisticResources(prev => [optimisticResource, ...prev]);
+
+    // 3. Reset form and CLOSE MODAL INSTANTLY
+    setUploadName('');
+    setUploadLink('');
+    setShowUploadModal(false);
+
+    // 4. Perform network request in background
+    try {
         await resourceService.addResource(newResource);
-        
-        // Reset and close
-        setUploadName('');
-        setUploadLink('');
-        setShowUploadModal(false);
-    } catch (err) {
-        console.error(err);
-        setUploadError("Failed to save resource. Check console for details.");
-    } finally {
-        setIsUploading(false);
+        // Success! The real-time listener will eventually replace the optimistic item.
+    } catch (err: any) {
+        console.error("Upload failed in background:", err);
+        alert(`Failed to upload "${uploadName}". Please try again.`);
+        // Revert optimistic update on failure
+        setOptimisticResources(prev => prev.filter(r => r.id !== optimisticResource.id));
     }
   };
 
@@ -175,13 +205,18 @@ const ResourcesPage: React.FC = () => {
     { type: 'PPT', label: 'PPTs', icon: Presentation, color: 'text-blue-500 bg-blue-500/10' },
   ];
 
+  // LOGIC: Determine Current View
   const getCurrentView = (): ViewState => {
     if (!semester) return 'SEMESTERS';
     if (!subject) return 'SUBJECTS';
     if (!selectedFolder) return 'SUBJECT_ROOT';
     
-    const isUnit = ['1', '2', '3', '4', '5'].includes(selectedFolder);
-    if (isUnit && !selectedCategory) return 'UNIT_CONTENTS';
+    // Check if the selected folder is an Exam type (PYQ/MidPaper)
+    const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
+    
+    // If it's a Unit, we need to show content types (Notes/PPTs etc)
+    // If it's an Exam, we skip directly to Files
+    if (!isExamFolder && !selectedCategory) return 'UNIT_CONTENTS';
     
     return 'FILES';
   };
@@ -189,9 +224,8 @@ const ResourcesPage: React.FC = () => {
   const currentView = getCurrentView();
 
   const getFilteredResources = () => {
-    // Merge static and dynamic resources
-    // In a production app, you might want to fully move to dynamic resources eventually
-    const allResources = [...staticResources, ...dynamicResources];
+    // Merge static, dynamic, AND optimistic resources
+    const allResources = [...optimisticResources, ...dynamicResources, ...staticResources];
     
     return allResources.filter(r => {
       const matchBasic = r.branch === branch && 
@@ -199,9 +233,14 @@ const ResourcesPage: React.FC = () => {
                          r.subject === subject && 
                          r.status === 'approved';
       if (!matchBasic) return false;
+
+      // Special handling for Exam folders vs Unit folders
       if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
-        return r.type === selectedFolder;
+        // For Exams, just match the folder type (e.g. unit="PYQ" or type="PYQ")
+        // We check against type mostly
+        return r.type === selectedFolder || r.unit === selectedFolder;
       } else {
+        // For Units, match Unit Number AND Type (Notes/PPT)
         return r.unit === selectedFolder && r.type === selectedCategory;
       }
     });
@@ -218,7 +257,8 @@ const ResourcesPage: React.FC = () => {
 
   const getDownloadUrl = (res: Resource) => {
     if (res.downloadUrl && res.downloadUrl !== '#') return res.downloadUrl;
-    return `https://drive.google.com/u/0/uc?id=${res.driveFileId}&export=download`;
+    if (res.driveFileId) return `https://drive.google.com/u/0/uc?id=${res.driveFileId}&export=download`;
+    return '#';
   };
 
   const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
@@ -239,7 +279,11 @@ const ResourcesPage: React.FC = () => {
     return `Unit ${id}`;
   };
 
-  const getCategoryLabel = (type: ResourceType) => {
+  const getCategoryLabel = (type: ResourceType | null) => {
+    if (!type) {
+        // Fallback for Exam folders
+        return selectedFolder === 'PYQ' ? 'Previous Questions' : 'Mid Exam Papers';
+    }
     return unitFolders.find(f => f.type === type)?.label || type;
   };
 
@@ -309,7 +353,7 @@ const ResourcesPage: React.FC = () => {
             </>
           )}
 
-          {selectedCategory && (
+          {(selectedCategory || ['PYQ', 'MidPaper'].includes(selectedFolder || '')) && currentView === 'FILES' && (
             <>
               <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
               <button onClick={resetToFiles} className={`hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted ${currentView === 'FILES' ? 'text-primary font-semibold' : ''}`}>
@@ -449,7 +493,7 @@ const ResourcesPage: React.FC = () => {
             >
               <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-semibold text-foreground">
-                      Files for <span className="text-primary">{getCategoryLabel(selectedCategory!)}</span>
+                      Files for <span className="text-primary">{getCategoryLabel(selectedCategory)}</span>
                   </h3>
                   
                   {user?.role === 'admin' && (
@@ -463,44 +507,59 @@ const ResourcesPage: React.FC = () => {
                   )}
               </div>
 
-              {isResourcesLoading ? (
+              {isResourcesLoading && dynamicResources.length === 0 ? (
                   <div className="flex justify-center py-20">
                       <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
               ) : getFilteredResources().length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
-                  {getFilteredResources().map((res) => (
-                    <div
-                      key={res.id}
-                      onClick={() => handleResourceClick(res)}
-                      className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-md transition-all group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4 overflow-hidden">
-                        <div className="p-3 bg-muted rounded-lg text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
-                            {res.title}
-                          </h4>
-                          <div className="flex gap-2 text-xs text-muted-foreground mt-1">
-                            {res.unit && <span className="bg-muted px-2 py-0.5 rounded-md">Unit {res.unit}</span>}
-                            <span className="truncate">{res.subject}</span>
+                  {getFilteredResources().map((res) => {
+                    const isOptimistic = res.id.startsWith('temp-');
+                    return (
+                      <div
+                        key={res.id}
+                        onClick={() => !isOptimistic && handleResourceClick(res)}
+                        className={`flex items-center justify-between p-4 bg-card border border-border rounded-xl transition-all group ${isOptimistic ? 'opacity-70 cursor-wait' : 'hover:border-primary/50 hover:shadow-md cursor-pointer'}`}
+                      >
+                        <div className="flex items-center gap-4 overflow-hidden">
+                          <div className="p-3 bg-muted rounded-lg text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors relative">
+                            {/* Icon Logic based on Drive vs External */}
+                            {res.driveFileId ? <FileText className="w-6 h-6" /> : <ExternalLink className="w-6 h-6" />}
+                            
+                            {isOptimistic && (
+                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+                                </span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
+                              {res.title}
+                              {isOptimistic && <span className="text-xs text-muted-foreground ml-2 italic font-normal">(Uploading...)</span>}
+                            </h4>
+                            <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+                              {res.unit && !['PYQ', 'MidPaper'].includes(res.unit) && <span className="bg-muted px-2 py-0.5 rounded-md">Unit {res.unit}</span>}
+                              <span className="truncate">{res.subject}</span>
+                            </div>
                           </div>
                         </div>
+                        <button 
+                          className="p-2.5 bg-muted rounded-lg text-muted-foreground hover:bg-primary hover:text-white transition-colors flex-shrink-0 ml-3"
+                          title={user ? (res.driveFileId ? "Preview" : "Open Link") : "Login to Access"}
+                          onClick={(e) => {
+                             e.stopPropagation();
+                             if (!isOptimistic) handleResourceClick(res);
+                          }}
+                          disabled={isOptimistic}
+                        >
+                           {isOptimistic ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+                            (!user ? <Lock className="w-5 h-5" /> : (res.driveFileId ? <Eye className="w-5 h-5" /> : <ExternalLink className="w-5 h-5" />))
+                           }
+                        </button>
                       </div>
-                      <button 
-                        className="p-2.5 bg-muted rounded-lg text-muted-foreground hover:bg-primary hover:text-white transition-colors flex-shrink-0 ml-3"
-                        title={user ? (res.driveFileId ? "Preview" : "Download") : "Login to Access"}
-                        onClick={(e) => {
-                           e.stopPropagation();
-                           handleResourceClick(res);
-                        }}
-                      >
-                         {!user ? <Lock className="w-5 h-5" /> : (res.driveFileId ? <Eye className="w-5 h-5" /> : <Download className="w-5 h-5" />)}
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 bg-card border border-dashed border-border rounded-xl">
@@ -566,25 +625,25 @@ const ResourcesPage: React.FC = () => {
                           </div>
                           
                           <div className="space-y-2">
-                              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Google Drive Link</label>
+                              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Link (Drive or External)</label>
                               <div className="relative">
                                   <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                   <input 
                                       type="url" 
                                       value={uploadLink}
                                       onChange={(e) => setUploadLink(e.target.value)}
-                                      placeholder="https://drive.google.com/file/d/..."
+                                      placeholder="https://drive.google.com/..."
                                       className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground focus:border-primary outline-none transition-all"
                                   />
                               </div>
                               <p className="text-[10px] text-muted-foreground">
-                                  Supports 'View', 'Preview', and 'Edit' links. We will extract the ID automatically.
+                                  We support Google Drive links (preview) and direct external links.
                               </p>
                           </div>
 
                           <div className="bg-muted/50 p-3 rounded-lg border border-border text-xs text-muted-foreground space-y-1">
                               <p><span className="font-semibold">Context:</span> {branch} &gt; {semester} &gt; {subject}</p>
-                              <p><span className="font-semibold">Target:</span> {getFolderLabel(selectedFolder!)} &gt; {getCategoryLabel(selectedCategory!)}</p>
+                              <p><span className="font-semibold">Target:</span> {getFolderLabel(selectedFolder!)} &gt; {getCategoryLabel(selectedCategory)}</p>
                           </div>
 
                           {uploadError && (
@@ -593,10 +652,9 @@ const ResourcesPage: React.FC = () => {
 
                           <button
                               type="submit"
-                              disabled={isUploading}
-                              className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-md"
                           >
-                              {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload & Publish"}
+                               Upload & Publish Instantly
                           </button>
                       </form>
                   </motion.div>

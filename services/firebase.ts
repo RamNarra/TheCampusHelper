@@ -207,19 +207,24 @@ class AuthService {
 // --- RESOURCE MANAGEMENT ---
 
 export const extractDriveId = (url: string): string | null => {
-  // Regex to match typical Drive ID patterns in URL
-  const patterns = [
-    /\/d\/([a-zA-Z0-9_-]+)/, // .../d/ID/...
-    /id=([a-zA-Z0-9_-]+)/,   // ...id=ID...
-    /open\?id=([a-zA-Z0-9_-]+)/ // ...open?id=ID
-  ];
+  if (!url) return null;
 
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
-    }
-  }
+  // 1. Handle typical /d/ID pattern (view, preview, edit)
+  // Matches: .../d/12345/..., .../d/12345
+  const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (idMatch && idMatch[1]) return idMatch[1];
+
+  // 2. Handle 'id=' query parameter (e.g. drive.google.com/open?id=12345)
+  // Matches: ?id=12345, &id=12345
+  const queryMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (queryMatch && queryMatch[1]) return queryMatch[1];
+
+  // 3. Handle 'folders/' pattern (e.g. drive.google.com/drive/folders/12345)
+  const folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  if (folderMatch && folderMatch[1]) return folderMatch[1];
+
+  // If no patterns match, return null to indicate "Not a recognizble Drive ID"
+  // The app should treat this as a standard external link.
   return null;
 };
 

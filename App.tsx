@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ErrorInfo, ReactNode } from 'react';
+import React, { Component, useEffect, useState, ErrorInfo, ReactNode } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -15,6 +15,7 @@ import OnboardingTour from './components/OnboardingTour';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
+import EventsPage from './pages/EventsPage';
 
 // Google Analytics Measurement ID
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
@@ -30,10 +31,7 @@ interface ErrorBoundaryState {
 
 // --- Error Boundary Component ---
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  state: ErrorBoundaryState = { hasError: false, error: null };
 
   public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
@@ -136,6 +134,7 @@ const AppContent: React.FC = () => {
               <Route path="/resources" element={<ResourcesPage />} />
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
+              <Route path="/events" element={<EventsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>
