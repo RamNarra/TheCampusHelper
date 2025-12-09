@@ -1,48 +1,13 @@
 
 import React from 'react';
-import { motion, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowRight, Calculator, Camera, Library } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdUnit from '../components/AdUnit';
 
 const LandingPage: React.FC = () => {
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.1,
-        duration: 0.5
-      }
-    },
-    exit: { 
-      opacity: 0,
-      transition: { duration: 0.2 }
-    }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15
-      }
-    }
-  };
-
   return (
-    <motion.div 
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      variants={containerVariants}
-      className="min-h-screen bg-background pt-24 transition-colors duration-300"
-    >
+    <div className="min-h-screen bg-background pt-24 transition-colors duration-300">
       {/* Ambient BG */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>
@@ -51,21 +16,21 @@ const LandingPage: React.FC = () => {
       {/* Hero Section */}
       <section className="relative z-10 px-4 pt-12 pb-16 mx-auto max-w-7xl sm:px-6 lg:px-8 lg:pt-24 text-center">
         <div className="max-w-4xl mx-auto">
-          <motion.div variants={itemVariants} className="inline-flex items-center px-4 py-1.5 mb-8 rounded-full bg-muted border border-border shadow-sm">
+          <div className="inline-flex items-center px-4 py-1.5 mb-8 rounded-full bg-muted border border-border shadow-sm">
             <span className="flex h-2.5 w-2.5 rounded-full bg-secondary mr-2 animate-pulse"></span>
             <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Updated for R25 Regulations</span>
-          </motion.div>
+          </div>
           
-          <motion.h1 variants={itemVariants} className="text-5xl font-extrabold tracking-tight text-foreground sm:text-7xl mb-6 leading-tight">
+          <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-7xl mb-6 leading-tight">
             TheCampus <br className="hidden sm:block" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Helper</span>
-          </motion.h1>
+          </h1>
           
-          <motion.p variants={itemVariants} className="max-w-2xl mx-auto text-xl text-muted-foreground mb-10 leading-relaxed">
+          <p className="max-w-2xl mx-auto text-xl text-muted-foreground mb-10 leading-relaxed">
              One platform for all your academic needs. Lecture notes, previous year questions, and resources tailored for all branches.
-          </motion.p>
+          </p>
           
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link 
               to="/resources"
               className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 group"
@@ -79,7 +44,7 @@ const LandingPage: React.FC = () => {
             >
               Student Login
             </Link>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -95,7 +60,6 @@ const LandingPage: React.FC = () => {
             
             {/* Feature 1 */}
             <motion.div 
-              variants={itemVariants}
               whileHover={{ y: -8 }}
               className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
             >
@@ -109,7 +73,6 @@ const LandingPage: React.FC = () => {
             {/* Feature 2: CGPA Calculator */}
             <Link to="/calculator" className="block h-full">
               <motion.div 
-                variants={itemVariants}
                 whileHover={{ y: -8 }}
                 className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
               >
@@ -123,7 +86,6 @@ const LandingPage: React.FC = () => {
 
             {/* Feature 3 */}
             <motion.div 
-              variants={itemVariants}
               whileHover={{ y: -8 }}
               className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
             >
@@ -140,7 +102,7 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
-    </motion.div>
+    </div>
   );
 };
 

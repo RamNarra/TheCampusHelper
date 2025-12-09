@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
@@ -13,13 +13,13 @@ import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 
-// Google Analytics Measurement ID from Firebase config
+// Google Analytics Measurement ID
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -53,7 +53,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               {this.state.error?.toString()}
             </pre>
             <button 
-              onClick={() => window.location.href = '/'}
+              onClick={() => window.location.reload()}
               className="px-6 py-2 bg-white text-black rounded font-bold hover:bg-gray-200"
             >
               Reload Application
@@ -79,30 +79,11 @@ const Analytics = () => {
   return null;
 };
 
-// Automatically fixes legacy Hash URLs (e.g., /#/login -> /login)
-const HashRedirect = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    // Check window.location.hash directly as it handles the raw URL
-    const hash = window.location.hash;
-    if (hash && hash.startsWith('#/')) {
-      const cleanPath = hash.substring(1); // Remove the '#'
-      console.log(`Redirecting legacy hash ${hash} to ${cleanPath}`);
-      navigate(cleanPath, { replace: true });
-    }
-  }, [navigate]);
-
-  return null;
-};
-
 // --- Main App Content ---
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const location = useLocation(); // Critical for AnimatePresence to work correctly
 
   useEffect(() => {
     if (!loading && user) {
@@ -113,22 +94,24 @@ const AppContent: React.FC = () => {
     }
   }, [user, loading]);
 
+  // Global Loading State
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 transition-colors duration-300">
       <Analytics />
-      <HashRedirect />
       <Navbar />
       <CompleteProfileModal isOpen={showProfileModal} />
       
       <main className="flex-grow relative">
         <ErrorBoundary>
-          <AnimatePresence mode="wait">
-            {/* 
-              KEY FIX: Passing location and key to Routes ensures Framer Motion 
-              knows when to trigger enter/exit animations. 
-              Without this, pages can vanish or get stuck.
-            */}
-            <Routes location={location} key={location.pathname}>
+            <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/profile" element={<ProfilePage />} />
@@ -138,7 +121,6 @@ const AppContent: React.FC = () => {
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
-          </AnimatePresence>
         </ErrorBoundary>
       </main>
       
@@ -151,6 +133,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <ThemeProvider>
+        {/* Using HashRouter to guarantee routing works without server config */}
         <Router>
           <AppContent />
         </Router>
