@@ -38,6 +38,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+console.log("🔥 Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -109,12 +110,12 @@ class AuthService {
   
   async signInWithGoogle(): Promise<UserCredential | null> {
     try {
-      console.log("Starting Google Sign In...");
+      console.log("👉 AuthService: Calling signInWithPopup...");
       const result = await signInWithPopup(auth, googleProvider);
-      console.log("✅ Google Auth Popup Finished");
+      console.log("✅ AuthService: Google Popup Success", result.user?.email);
       return result;
     } catch (error: any) {
-      console.error("❌ Error in signInWithGoogle:", error);
+      console.error("❌ AuthService Error:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
         throw error;
       }
@@ -128,6 +129,7 @@ class AuthService {
 
   async logout(): Promise<void> {
     try {
+      console.log("👋 AuthService: Signing out...");
       await signOut(auth);
     } catch (error) {
       console.error("Error signing out", error);
@@ -137,24 +139,28 @@ class AuthService {
 
   async getUserData(uid: string): Promise<Partial<UserProfile> | null> {
     try {
+      console.log(`🔍 AuthService: Fetching user data for ${uid}...`);
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
+        console.log("📄 AuthService: User data found");
         return docSnap.data() as Partial<UserProfile>;
       }
+      console.log("🤷 AuthService: No user document found");
       return null;
     } catch (e) {
-      console.warn("Could not fetch user data (Firestore might be locked/unavailable):", e);
+      console.warn("⚠️ AuthService: Could not fetch user data (Firestore might be locked/unavailable):", e);
       return null;
     }
   }
 
   async saveUserData(uid: string, data: Partial<UserProfile>): Promise<void> {
     try {
+      console.log(`💾 AuthService: Saving user data for ${uid}...`);
       const docRef = doc(db, "users", uid);
       await setDoc(docRef, data, { merge: true });
     } catch (e) {
-      console.warn("Could not save user data (Firestore permissions/network):", e);
+      console.warn("⚠️ AuthService: Could not save user data (Firestore permissions/network):", e);
       // We don't throw here to prevent login blocking
     }
   }

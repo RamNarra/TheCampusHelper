@@ -21,26 +21,40 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
   // Reusable function to fetch and set user data
   const initUser = useCallback(async (firebaseUser: User) => {
+    console.log("🔄 initUser: Starting initialization for", firebaseUser.email);
     try {
       // 1. Map Basic Info from Google
       const basicProfile = mapBasicUser(firebaseUser);
+      console.log("👤 initUser: Basic profile mapped");
       
-      // 2. Fetch extra details from Firestore
-      const firestoreData = await authService.getUserData(firebaseUser.uid);
+      // 2. Fetch extra details from Firestore (WITH TIMEOUT)
+      // If Firestore is blocked or slow, we don't want to hang the entire app
+      console.log("🔥 initUser: Fetching Firestore data...");
+      const firestorePromise = authService.getUserData(firebaseUser.uid);
+      const timeoutPromise = new Promise<null>((resolve) => 
+        setTimeout(() => {
+          console.warn("⚠️ initUser: Firestore fetch timed out, proceeding with basic profile");
+          resolve(null);
+        }, 5000) // 5 second timeout for DB
+      );
+      
+      const firestoreData = await Promise.race([firestorePromise, timeoutPromise]);
+      console.log("📦 initUser: Firestore data received:", firestoreData ? "Yes" : "No");
       
       let fullProfile = { ...basicProfile, ...(firestoreData || {}) };
       
       // 3. New User Handling / Auto-Detection
       if (!firestoreData) {
+          console.log("✨ initUser: New user detected or no DB data. Attempting auto-detection...");
           const detected = detectBranchAndYear(firebaseUser.email);
           fullProfile = { ...fullProfile, ...detected };
           
           // Create initial record in background
-          await authService.saveUserData(firebaseUser.uid, {
+          authService.saveUserData(firebaseUser.uid, {
             ...fullProfile,
             createdAt: new Date().toISOString(),
             lastLogin: new Date().toISOString()
-          } as any);
+          } as any).catch(e => console.warn("Background save failed:", e));
       } else {
           // Update last login time
           authService.saveUserData(firebaseUser.uid, {
@@ -49,21 +63,27 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
       }
 
       // 4. Set final user state
+      console.log("✅ initUser: Setting user state");
       setUser(fullProfile);
     } catch (error) {
-      console.error("Error initializing user data:", error);
+      console.error("❌ Error initializing user data:", error);
       // Fallback
       setUser(mapBasicUser(firebaseUser));
     }
   }, []);
 
   useEffect(() => {
+    console.log("🎧 AuthContext: Setting up onAuthStateChanged listener");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("📣 onAuthStateChanged triggered. User:", firebaseUser?.email || "null");
+      
       if (firebaseUser) {
         await initUser(firebaseUser);
       } else {
         setUser(null);
       }
+      
+      console.log("🛑 AuthContext: Setting loading to false (listener)");
       setLoading(false);
     });
 
@@ -71,20 +91,35 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   }, [initUser]);
 
   const signInWithGoogle = async () => {
+    // Safety timeout to kill loader if everything hangs (e.g. unknown promise lock)
+    const safetyTimer = setTimeout(() => {
+        setLoading((currentLoading) => {
+            if (currentLoading) {
+                console.error("⏰ Login operation timed out globally (15s). Force resetting loader.");
+                return false;
+            }
+            return currentLoading;
+        });
+    }, 15000);
+
     try {
+      console.log("🚀 AuthContext: signInWithGoogle called");
       setLoading(true);
       const result = await authService.signInWithGoogle();
       
       if (result) {
+        console.log("✅ AuthContext: Google Sign In success, user:", result.user.email);
         // Explicitly initialize user to ensure state is updated before stopping loading
-        // This acts as a safeguard in case onAuthStateChanged is delayed or doesn't trigger for re-auth
         await initUser(result.user);
+      } else {
+         console.log("⚠️ AuthContext: Google Sign In returned null (cancelled?)");
       }
     } catch (error) {
-      console.error("Login failed", error);
+      console.error("❌ AuthContext: Login failed", error);
       alert("Google Sign-In failed. Please check your internet connection.");
     } finally {
-      // Always stop loading after the explicit attempt
+      console.log("🏁 AuthContext: signInWithGoogle finally block - stopping loader");
+      clearTimeout(safetyTimer);
       setLoading(false);
     }
   };
@@ -99,10 +134,13 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
   const logout = async () => {
     try {
+      setLoading(true);
       await authService.logout();
       setUser(null);
     } catch (error) {
       console.error("Logout failed", error);
+    } finally {
+      setLoading(false);
     }
   };
 
