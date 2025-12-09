@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { resources, getSubjects } from '../lib/data';
+import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { resourceService, extractDriveId } from '../services/firebase';
 import { 
   Folder, 
   FileText, 
@@ -18,7 +19,11 @@ import {
   Sparkles,
   ExternalLink,
   Eye,
-  Lock
+  Lock,
+  Plus,
+  Link as LinkIcon,
+  Loader2,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdUnit from '../components/AdUnit';
@@ -39,11 +44,38 @@ const ResourcesPage: React.FC = () => {
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
 
+  // Dynamic Resources State
+  const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
+  const [isResourcesLoading, setIsResourcesLoading] = useState(true);
+
+  // Upload Modal State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadLink, setUploadLink] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
   useEffect(() => {
     if (user && user.branch) {
       setBranch(user.branch);
     }
   }, [user]);
+
+  // Fetch Resources from Firestore
+  useEffect(() => {
+    const fetchResources = async () => {
+      setIsResourcesLoading(true);
+      try {
+        const fetched = await resourceService.getAllResources();
+        setDynamicResources(fetched);
+      } catch (err) {
+        console.error("Failed to load resources", err);
+      } finally {
+        setIsResourcesLoading(false);
+      }
+    };
+    fetchResources();
+  }, []);
 
   useEffect(() => {
     if (selectedResource) {
@@ -68,6 +100,58 @@ const ResourcesPage: React.FC = () => {
       setSelectedResource(res);
     } else {
       window.open(res.downloadUrl, '_blank');
+    }
+  };
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadError('');
+
+    if (!uploadName || !uploadLink) {
+      setUploadError("Please provide both name and link.");
+      return;
+    }
+
+    if (!semester || !subject || !selectedFolder || !selectedCategory) {
+      setUploadError("Missing context. Please navigate to a specific folder.");
+      return;
+    }
+
+    const driveId = extractDriveId(uploadLink);
+    if (!driveId) {
+        setUploadError("Could not detect a valid Google Drive ID from the link.");
+        return;
+    }
+
+    setIsUploading(true);
+    try {
+        const newResource: Omit<Resource, 'id'> = {
+            title: uploadName,
+            subject: subject,
+            branch: branch,
+            semester: semester,
+            unit: selectedFolder,
+            type: selectedCategory,
+            downloadUrl: uploadLink,
+            driveFileId: driveId,
+            status: 'approved'
+        };
+
+        const added = await resourceService.addResource(newResource);
+        
+        // Optimistic UI Update
+        // @ts-ignore
+        setDynamicResources(prev => [...prev, added]);
+        
+        // Reset and close
+        setUploadName('');
+        setUploadLink('');
+        setShowUploadModal(false);
+    } catch (err) {
+        console.error(err);
+        setUploadError("Failed to save resource. Try again.");
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -110,7 +194,8 @@ const ResourcesPage: React.FC = () => {
   const currentView = getCurrentView();
 
   const getFilteredResources = () => {
-    return resources.filter(r => {
+    const allResources = [...staticResources, ...dynamicResources];
+    return allResources.filter(r => {
       const matchBasic = r.branch === branch && 
                          r.semester === semester && 
                          r.subject === subject && 
@@ -126,7 +211,7 @@ const ResourcesPage: React.FC = () => {
 
   const getEmbedUrl = (res: Resource) => {
     if (!res.driveFileId) return '';
-    const isPresentation = res.type === 'PPT' || res.downloadUrl.includes('docs.google.com/presentation');
+    const isPresentation = res.type === 'PPT' || (res.downloadUrl && res.downloadUrl.includes('docs.google.com/presentation'));
     if (isPresentation) {
       return `https://docs.google.com/presentation/d/${res.driveFileId}/embed?start=false&loop=false&delayms=3000`;
     }
@@ -364,7 +449,27 @@ const ResourcesPage: React.FC = () => {
               animate="visible"
               exit="exit"
             >
-              {getFilteredResources().length > 0 ? (
+              <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-semibold text-foreground">
+                      Files for <span className="text-primary">{getCategoryLabel(selectedCategory!)}</span>
+                  </h3>
+                  
+                  {user?.role === 'admin' && (
+                      <button 
+                        onClick={() => setShowUploadModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-sm font-medium shadow-md"
+                      >
+                          <Plus className="w-4 h-4" />
+                          Add Resource
+                      </button>
+                  )}
+              </div>
+
+              {isResourcesLoading ? (
+                  <div className="flex justify-center py-20">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+              ) : getFilteredResources().length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
                   {getFilteredResources().map((res) => (
                     <div
@@ -422,6 +527,84 @@ const ResourcesPage: React.FC = () => {
         onClose={() => setShowAccessGate(false)} 
         resourceTitle={pendingResource?.title}
       />
+
+      {/* ADMIN UPLOAD MODAL */}
+      <AnimatePresence>
+          {showUploadModal && (
+              <div className="fixed inset-0 z-[160] flex items-center justify-center px-4">
+                  <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }} 
+                    onClick={() => setShowUploadModal(false)}
+                    className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+                  />
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                    className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl"
+                  >
+                      <div className="flex justify-between items-center mb-6">
+                          <h2 className="text-xl font-bold text-foreground">Upload Resource</h2>
+                          <button onClick={() => setShowUploadModal(false)} className="text-muted-foreground hover:text-foreground">
+                              <X className="w-5 h-5" />
+                          </button>
+                      </div>
+
+                      <form onSubmit={handleUploadSubmit} className="space-y-4">
+                          <div className="space-y-2">
+                              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Name</label>
+                              <div className="relative">
+                                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <input 
+                                      type="text" 
+                                      value={uploadName}
+                                      onChange={(e) => setUploadName(e.target.value)}
+                                      placeholder="e.g. Unit 1 Class Notes"
+                                      className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground focus:border-primary outline-none transition-all"
+                                  />
+                              </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Google Drive Link</label>
+                              <div className="relative">
+                                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <input 
+                                      type="url" 
+                                      value={uploadLink}
+                                      onChange={(e) => setUploadLink(e.target.value)}
+                                      placeholder="https://drive.google.com/file/d/..."
+                                      className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground focus:border-primary outline-none transition-all"
+                                  />
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">
+                                  Supports 'View', 'Preview', and 'Edit' links. We will extract the ID automatically.
+                              </p>
+                          </div>
+
+                          <div className="bg-muted/50 p-3 rounded-lg border border-border text-xs text-muted-foreground space-y-1">
+                              <p><span className="font-semibold">Context:</span> {branch} &gt; {semester} &gt; {subject}</p>
+                              <p><span className="font-semibold">Target:</span> {getFolderLabel(selectedFolder!)} &gt; {getCategoryLabel(selectedCategory!)}</p>
+                          </div>
+
+                          {uploadError && (
+                              <p className="text-red-500 text-xs bg-red-500/10 p-2 rounded border border-red-500/20">{uploadError}</p>
+                          )}
+
+                          <button
+                              type="submit"
+                              disabled={isUploading}
+                              className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                              {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload & Publish"}
+                          </button>
+                      </form>
+                  </motion.div>
+              </div>
+          )}
+      </AnimatePresence>
 
       {/* FULL SCREEN OVERLAY PREVIEW */}
       <AnimatePresence>

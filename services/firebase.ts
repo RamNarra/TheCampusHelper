@@ -8,9 +8,9 @@ import {
   onAuthStateChanged,
   User 
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, Timestamp, query } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
-import { UserProfile } from '../types';
+import { UserProfile, Resource } from '../types';
 
 // Helper to safely get environment variables
 const getEnv = (key: string, fallback: string) => {
@@ -171,6 +171,60 @@ class AuthService {
     }
   }
 }
+
+// --- RESOURCE MANAGEMENT ---
+
+export const extractDriveId = (url: string): string | null => {
+  // Regex to match typical Drive ID patterns in URL
+  const patterns = [
+    /\/d\/([a-zA-Z0-9_-]+)/, // .../d/ID/...
+    /id=([a-zA-Z0-9_-]+)/,   // ...id=ID...
+    /open\?id=([a-zA-Z0-9_-]+)/ // ...open?id=ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return null;
+};
+
+export const resourceService = {
+  async addResource(resource: Omit<Resource, 'id'>) {
+    try {
+      const docRef = await addDoc(collection(db, 'resources'), {
+        ...resource,
+        createdAt: Timestamp.now()
+      });
+      return { id: docRef.id, ...resource };
+    } catch (e) {
+      console.error("Error adding resource: ", e);
+      throw e;
+    }
+  },
+
+  async getAllResources(): Promise<Resource[]> {
+    try {
+      // In a real app with many items, you would use where() clauses
+      // For now, fetching all is fine for the scale
+      const q = query(collection(db, 'resources'));
+      const querySnapshot = await getDocs(q);
+      const resources: Resource[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Convert Firestore timestamp to string or ignore if strictly following type
+        // @ts-ignore
+        resources.push({ id: doc.id, ...data } as Resource);
+      });
+      return resources;
+    } catch (e) {
+      console.error("Error getting resources: ", e);
+      return [];
+    }
+  }
+};
 
 export const authService = new AuthService();
 export { auth, analytics, db, mapBasicUser };
