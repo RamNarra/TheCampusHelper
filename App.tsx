@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+
+import React, { useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
+import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
@@ -11,6 +12,7 @@ import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
+import OnboardingTour from './components/OnboardingTour';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
@@ -19,7 +21,7 @@ import { Loader2 } from 'lucide-react';
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
 
 interface ErrorBoundaryProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -28,17 +30,18 @@ interface ErrorBoundaryState {
 }
 
 // --- Error Boundary Component ---
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Define state as a class property to satisfy TypeScript strict property initialization
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
@@ -84,6 +87,8 @@ const Analytics = () => {
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && user) {
@@ -93,6 +98,17 @@ const AppContent: React.FC = () => {
       setShowProfileModal(false);
     }
   }, [user, loading]);
+
+  const handleProfileComplete = () => {
+    // 1. Close Modal
+    setShowProfileModal(false);
+    
+    // 2. Redirect to Home
+    navigate('/');
+    
+    // 3. Start Tour
+    setShowTour(true);
+  };
 
   // Global Loading State
   if (loading) {
@@ -107,7 +123,10 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 transition-colors duration-300">
       <Analytics />
       <Navbar />
-      <CompleteProfileModal isOpen={showProfileModal} />
+      
+      {/* Onboarding & Modals */}
+      <CompleteProfileModal isOpen={showProfileModal} onComplete={handleProfileComplete} />
+      <OnboardingTour isOpen={showTour} onClose={() => setShowTour(false)} />
       
       <main className="flex-grow relative">
         <ErrorBoundary>

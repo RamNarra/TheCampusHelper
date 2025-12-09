@@ -1,14 +1,15 @@
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { User, Calendar, BookOpen, GraduationCap, ArrowRight, Loader2 } from 'lucide-react';
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
+  onComplete?: () => void;
 }
 
-const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen }) => {
+const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onComplete }) => {
   const { user, updateProfile } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -50,10 +51,17 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen }) =
         branch: formData.branch as any,
         year: formData.year
       });
-      // Modal will close automatically via parent check
+      
+      // Artificial delay to ensure DB sync feels smooth, then trigger completion
+      setTimeout(() => {
+        setLoading(false);
+        if (onComplete) {
+            onComplete();
+        }
+      }, 500);
+
     } catch (err) {
       setError('Failed to save profile. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
