@@ -53,6 +53,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 console.log("🔥 Initializing Firebase...");
+console.log("🔥 Firebase project:", firebaseConfig.projectId);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -211,10 +212,10 @@ export const extractDriveId = (url: string): string | null => {
   const queryMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (queryMatch && queryMatch[1]) return queryMatch[1];
 
-  // 3. Removed Folder pattern handling to force external link behavior for folders
-  // This prevents iframe errors when users try to "preview" a folder.
+  // Don't try parsing folders as files anymore
+  // Folders will now be treated as external links (downloadUrl)
+  // preventing the "Unable to open file" iframe error.
 
-  // If no patterns match, return null gracefully (implies External Link)
   return null;
 };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ErrorInfo, ReactNode } from 'react';
+import React, { useEffect, useState, ErrorInfo, ReactNode, Component } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -30,14 +30,11 @@ interface ErrorBoundaryState {
 }
 
 // --- Error Boundary Component ---
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null
-    };
-  }
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
@@ -97,16 +94,12 @@ const AppContent: React.FC = () => {
       // 1. Check LocalStorage (Fastest, browser-specific)
       const localCompleted = localStorage.getItem('thc_profile_completed') === '1';
       
-      // 2. Check Database Flag (Persistent, cross-device)
-      const dbCompleted = user.profileCompleted === true;
+      // 2. Check Database Flag via user object (Persistent)
+      // We rely strictly on the flag or local storage. 
+      // Checking for field existence (user.branch etc) caused the loop issue.
+      const isProfileIncomplete = !user.profileCompleted && !localCompleted;
 
-      // 3. Fallback: Check if fields exist (Legacy support)
-      const hasFields = Boolean(user.branch && user.year && user.dateOfBirth);
-
-      // If ANY of these are true, the profile is considered complete
-      const isComplete = localCompleted || dbCompleted || hasFields;
-
-      setShowProfileModal(!isComplete);
+      setShowProfileModal(isProfileIncomplete);
     } else {
       setShowProfileModal(false);
     }
