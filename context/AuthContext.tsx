@@ -74,8 +74,17 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      await authService.signInWithGoogle();
-      // We do NOT set loading(false) here because onAuthStateChanged will handle it
+      const result = await authService.signInWithGoogle();
+      
+      // If result is null, it means the user closed the popup/cancelled.
+      // In this case, onAuthStateChanged WON'T fire (or state won't change), 
+      // so we must manually turn off loading.
+      if (!result) {
+        setLoading(false);
+      }
+      
+      // If result exists, onAuthStateChanged has been triggered by Firebase
+      // and it will handle fetching data and eventually setting loading(false).
     } catch (error) {
       console.error("Login failed", error);
       setLoading(false);

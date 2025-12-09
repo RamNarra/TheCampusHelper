@@ -6,7 +6,8 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
-  User 
+  User,
+  UserCredential
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, Timestamp, query } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
@@ -106,21 +107,23 @@ const mapBasicUser = (firebaseUser: User): UserProfile => {
 
 class AuthService {
   
-  async signInWithGoogle(): Promise<void> {
+  async signInWithGoogle(): Promise<UserCredential | null> {
     try {
       console.log("Starting Google Sign In...");
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
       console.log("✅ Google Auth Popup Finished");
+      return result;
     } catch (error: any) {
       console.error("❌ Error in signInWithGoogle:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
         throw error;
       }
+      return null;
     }
   }
 
   async signInAsAdmin(): Promise<void> {
-    return this.signInWithGoogle();
+    await this.signInWithGoogle();
   }
 
   async logout(): Promise<void> {
