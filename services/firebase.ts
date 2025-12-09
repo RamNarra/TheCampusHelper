@@ -116,10 +116,12 @@ class AuthService {
       return result;
     } catch (error: any) {
       console.error("❌ AuthService Error:", error);
-      if (error.code !== 'auth/popup-closed-by-user') {
-        throw error;
+      // 'auth/popup-closed-by-user' happens if user closes the window.
+      // We return null so the UI can handle it gracefully.
+      if (error.code === 'auth/popup-closed-by-user') {
+        return null;
       }
-      return null;
+      throw error;
     }
   }
 

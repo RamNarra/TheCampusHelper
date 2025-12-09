@@ -85,11 +85,11 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   }, []);
 
   const signInWithGoogle = async () => {
-    // Safety timeout in case popup hangs
+    // Safety timeout in case popup hangs or listener fails
     const safetyTimer = setTimeout(() => {
         setLoading((current) => {
             if (current) {
-                console.warn("⏰ Login timed out");
+                console.warn("⏰ Login timed out - forcing loading false");
                 return false; 
             }
             return current;
@@ -98,8 +98,16 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
     try {
       setLoading(true);
-      await authService.signInWithGoogle();
-      // onAuthStateChanged will handle the rest
+      const result = await authService.signInWithGoogle();
+      
+      // CRITICAL FIX: If user cancels popup (result is null), stop loading
+      if (!result) {
+          console.log("⚠️ Login cancelled or failed");
+          setLoading(false);
+      }
+      // If result is success, the onAuthStateChanged listener above will fire,
+      // fetch the profile, and then set loading(false).
+      
     } catch (error) {
       console.error("Login failed", error);
       alert("Login failed. Please try again.");
@@ -121,7 +129,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
     try {
       setLoading(true);
       await authService.logout();
-      // onAuthStateChanged will set user to null
+      // onAuthStateChanged will set user to null and loading to false
     } catch (error) {
       console.error("Logout failed", error);
       setLoading(false);
