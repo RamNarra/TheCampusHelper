@@ -102,14 +102,14 @@ const CompilerPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col">
+    <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col transition-colors duration-300">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
             <Terminal className="w-8 h-8 text-secondary" />
             Online C Compiler
           </h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Write, Compile & Run C code online. Powered by GCC.
           </p>
         </div>
@@ -117,7 +117,7 @@ const CompilerPage: React.FC = () => {
         <div className="flex items-center gap-3 w-full md:w-auto">
            <button
             onClick={resetCode}
-            className="flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 rounded-lg transition-all text-sm font-medium"
+            className="flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-card hover:bg-muted border border-border text-muted-foreground hover:text-foreground rounded-lg transition-all text-sm font-medium"
           >
             <RotateCcw className="w-4 h-4" />
             Reset
@@ -139,26 +139,26 @@ const CompilerPage: React.FC = () => {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Editor Section */}
-        <div className="lg:col-span-2 flex flex-col h-[500px] lg:h-[600px] bg-[#1e1e1e] rounded-xl border border-white/10 overflow-hidden shadow-2xl relative group">
+        <div className="lg:col-span-2 flex flex-col h-[500px] lg:h-[600px] bg-card rounded-xl border border-border overflow-hidden shadow-sm relative group transition-colors">
           
           {/* Editor Header */}
-          <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-white/5">
+          <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border transition-colors">
             <div className="flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-medium text-gray-300">main.c</span>
+              <Code2 className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium text-foreground">main.c</span>
             </div>
             <button 
               onClick={copyCode}
-              className="p-1.5 hover:bg-white/10 rounded-md transition-colors text-gray-400 hover:text-white"
+              className="p-1.5 hover:bg-background rounded-md transition-colors text-muted-foreground hover:text-foreground"
               title="Copy Code"
             >
-              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
 
-          <div className="relative flex-1">
-             {/* Line Numbers (Visual Only - simplified) */}
-            <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#1e1e1e] border-r border-white/5 pt-4 text-right pr-3 text-gray-600 font-mono text-sm select-none pointer-events-none hidden sm:block">
+          <div className="relative flex-1 bg-card">
+             {/* Line Numbers */}
+            <div className="absolute left-0 top-0 bottom-0 w-12 bg-muted/30 border-r border-border pt-4 text-right pr-3 text-muted-foreground/60 font-mono text-sm select-none pointer-events-none hidden sm:block transition-colors">
               {Array.from({ length: 30 }).map((_, i) => (
                 <div key={i} className="leading-6">{i + 1}</div>
               ))}
@@ -170,7 +170,7 @@ const CompilerPage: React.FC = () => {
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={handleKeyDown}
               spellCheck={false}
-              className="absolute inset-0 w-full h-full bg-transparent text-gray-200 font-mono text-sm p-4 sm:pl-14 resize-none outline-none leading-6 selection:bg-primary/30"
+              className="absolute inset-0 w-full h-full bg-transparent text-foreground font-mono text-sm p-4 sm:pl-14 resize-none outline-none leading-6 selection:bg-primary/30 placeholder:text-muted-foreground/50"
               placeholder="// Write your C code here..."
             />
           </div>
@@ -180,34 +180,35 @@ const CompilerPage: React.FC = () => {
         <div className="flex flex-col gap-6 h-full">
           
           {/* Input Section */}
-          <div className="flex flex-col bg-card border border-white/10 rounded-xl overflow-hidden h-1/3 min-h-[150px]">
-            <div className="px-4 py-2 bg-white/5 border-b border-white/10">
-              <h3 className="text-sm font-bold text-gray-300">Custom Input (Stdin)</h3>
+          <div className="flex flex-col bg-card border border-border rounded-xl overflow-hidden h-1/3 min-h-[150px] transition-colors">
+            <div className="px-4 py-2 bg-muted border-b border-border transition-colors">
+              <h3 className="text-sm font-bold text-foreground">Custom Input (Stdin)</h3>
             </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 w-full bg-[#18181b] p-4 text-gray-300 font-mono text-sm resize-none outline-none focus:bg-[#1f1f22] transition-colors"
+              className="flex-1 w-full bg-card p-4 text-foreground font-mono text-sm resize-none outline-none focus:bg-muted/50 transition-colors placeholder:text-muted-foreground"
               placeholder="Enter input for your program here..."
             />
           </div>
 
           {/* Output Section */}
-          <div className="flex flex-col bg-card border border-white/10 rounded-xl overflow-hidden flex-1 min-h-[200px]">
-             <div className="px-4 py-2 bg-white/5 border-b border-white/10 flex justify-between items-center">
-              <h3 className="text-sm font-bold text-gray-300">Output</h3>
+          <div className="flex flex-col bg-card border border-border rounded-xl overflow-hidden flex-1 min-h-[200px] transition-colors">
+             <div className="px-4 py-2 bg-muted border-b border-border flex justify-between items-center transition-colors">
+              <h3 className="text-sm font-bold text-foreground">Output</h3>
               <button 
                 onClick={() => setOutput('')}
-                className="text-xs text-gray-500 hover:text-white transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Clear
               </button>
             </div>
-            <div className="flex-1 bg-black p-4 overflow-auto font-mono text-sm">
+            {/* Terminal output stays dark (classic look) but adapts border/container */}
+            <div className="flex-1 bg-zinc-950 p-4 overflow-auto font-mono text-sm">
               {output ? (
                 <pre className="whitespace-pre-wrap text-green-400">{output}</pre>
               ) : (
-                <span className="text-gray-600 italic">Run the code to see output...</span>
+                <span className="text-zinc-500 italic">Run the code to see output...</span>
               )}
             </div>
           </div>
