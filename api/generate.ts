@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 // Vercel Node.js Serverless Function
 export const config = {
@@ -17,17 +17,23 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Prompt is required" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("Missing GEMINI_API_KEY");
+    // The API key must be obtained exclusively from the environment variable process.env.API_KEY
+    if (!process.env.API_KEY) {
+      console.error("Missing API_KEY");
       return res.status(500).json({ error: "Server misconfiguration" });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    // Always use new GoogleGenAI({apiKey: process.env.API_KEY});
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // Use gemini-2.5-flash for basic text tasks
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+    
+    // Access the .text property directly
+    const text = response.text;
 
     return res.status(200).json({ text });
   } catch (error: any) {

@@ -158,9 +158,9 @@ const CompilerPage: React.FC = () => {
 
           <div className="relative flex-1 bg-card">
              {/* Line Numbers */}
-            <div className="absolute left-0 top-0 bottom-0 w-12 bg-muted/30 border-r border-border pt-4 text-right pr-3 text-muted-foreground/60 font-mono text-sm select-none pointer-events-none hidden sm:block transition-colors">
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-muted/30 border-r border-border pt-4 text-right pr-4 text-muted-foreground/60 font-mono text-lg select-none pointer-events-none hidden sm:block transition-colors">
               {Array.from({ length: 30 }).map((_, i) => (
-                <div key={i} className="leading-6">{i + 1}</div>
+                <div key={i} className="leading-8">{i + 1}</div>
               ))}
             </div>
 
@@ -170,7 +170,7 @@ const CompilerPage: React.FC = () => {
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={handleKeyDown}
               spellCheck={false}
-              className="absolute inset-0 w-full h-full bg-transparent text-foreground font-mono text-sm p-4 sm:pl-14 resize-none outline-none leading-6 selection:bg-primary/30 placeholder:text-muted-foreground/50"
+              className="absolute inset-0 w-full h-full bg-transparent text-foreground font-mono text-lg p-4 sm:pl-20 resize-none outline-none leading-8 selection:bg-primary/30 placeholder:text-muted-foreground/50"
               placeholder="// Write your C code here..."
             />
           </div>
@@ -187,7 +187,7 @@ const CompilerPage: React.FC = () => {
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 w-full bg-card p-4 text-foreground font-mono text-sm resize-none outline-none focus:bg-muted/50 transition-colors placeholder:text-muted-foreground"
+              className="flex-1 w-full bg-card p-4 text-foreground font-mono text-lg resize-none outline-none focus:bg-muted/50 transition-colors placeholder:text-muted-foreground"
               placeholder="Enter input for your program here..."
             />
           </div>
@@ -204,9 +204,9 @@ const CompilerPage: React.FC = () => {
               </button>
             </div>
             {/* Terminal output stays dark (classic look) but adapts border/container */}
-            <div className="flex-1 bg-zinc-950 p-4 overflow-auto font-mono text-sm">
+            <div className="flex-1 bg-zinc-950 p-4 overflow-auto font-mono text-lg">
               {output ? (
-                <pre className="whitespace-pre-wrap text-green-400">{output}</pre>
+                <pre className="whitespace-pre-wrap text-green-400 font-medium">{output}</pre>
               ) : (
                 <span className="text-zinc-500 italic">Run the code to see output...</span>
               )}
