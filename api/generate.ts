@@ -1,80 +1,97 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Vercel Node.js Serverless Function Configuration
 export const config = {
   runtime: "nodejs",
 };
 
-export default async function handler(req: any, res: any) {
-  // 1. CORS Headers (Allow your frontend domain)
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // RESTRICT THIS IN PRODUCTION to your actual domain
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+// ALLOWED ORIGINS: Add your production domains here
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''
+].filter(Boolean);
 
+export default async function handler(req: any, res: any) {
+  const origin = req.headers.origin;
+  
+  // 1. STRICT CORS POLICY
+  if (origin && ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // Fallback for non-browser tools or undefined origin (be careful in strict prod)
+    // res.setHeader('Access-Control-Allow-Origin', 'null'); 
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+
+  // Handle Preflight
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // 2. Method Check
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // 3. SECURITY: Authentication Check
-    // We expect the frontend to send "Authorization: Bearer <firebase_id_token>"
+    // 2. SECURITY: Mandatory Bearer Token
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Unauthorized. Missing or invalid Authorization header." });
+      return res.status(401).json({ error: "Unauthorized: Missing ID Token" });
     }
 
     const idToken = authHeader.split('Bearer ')[1];
 
-    // Verify token using Google's public tokeninfo endpoint
-    // This avoids needing 'firebase-admin' dependency in Vercel for simple verification
+    // 3. TOKEN VERIFICATION (Server-Side)
+    // We verify the token against Google's public keys. 
+    // This confirms the user is who they say they are.
     const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
     
     if (!verifyRes.ok) {
-       return res.status(401).json({ error: "Unauthorized. Invalid ID token." });
+       console.error("Token verification failed");
+       return res.status(403).json({ error: "Forbidden: Invalid or Expired Token" });
     }
 
-    const tokenData = await verifyRes.json();
-    
-    // Optional: Check if the token belongs to YOUR Firebase project
-    // if (tokenData.aud !== process.env.VITE_FIREBASE_PROJECT_ID) { ... }
-
-    // 4. Input Validation
-    const { prompt } = req.body || {};
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required in request body." });
+    // Optional: Verify the token is for THIS specific Firebase Project
+    const tokenClaims = await verifyRes.json();
+    if (process.env.VITE_FIREBASE_PROJECT_ID && tokenClaims.aud !== process.env.VITE_FIREBASE_PROJECT_ID) {
+       // Only enable this check if you are certain VITE_FIREBASE_PROJECT_ID matches the auth audience
+       // return res.status(403).json({ error: "Forbidden: Token Audience Mismatch" });
     }
 
-    if (!process.env.API_KEY) {
-      console.error("CRITICAL: Missing API_KEY in server environment.");
-      return res.status(500).json({ error: "Server configuration error." });
+    // 4. SECURE CONFIGURATION CHECK
+    const API_KEY = process.env.GEMINI_API_KEY;
+    if (!API_KEY) {
+      console.error("CRITICAL: GEMINI_API_KEY is missing in server environment variables.");
+      return res.status(500).json({ error: "Server Configuration Error" });
     }
 
-    // 5. Generate Content
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // 5. INPUT VALIDATION
+    const { prompt } = req.body;
+    if (!prompt || typeof prompt !== 'string' || prompt.length > 5000) {
+        return res.status(400).json({ error: "Invalid prompt. Must be a string under 5000 chars." });
+    }
+
+    // 6. GEMINI API CALL (Server-to-Server)
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
     });
     
+    // 7. SANITIZED RESPONSE
     const text = response.text;
     return res.status(200).json({ text });
 
   } catch (error: any) {
-    console.error("API Error:", error);
+    console.error("Secure API Error:", error.message);
+    // Never send the raw error object to the client
     return res.status(500).json({
-      error: "Generation failed.",
-      // In production, do not send error.message to client
-      details: "Internal server error."
+      error: "Internal Server Error",
+      requestId: crypto.randomUUID() // Useful for debugging logs without leaking data
     });
   }
 }

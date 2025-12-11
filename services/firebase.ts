@@ -21,8 +21,7 @@ import {
   serverTimestamp,
   Firestore
 } from 'firebase/firestore';
-// Import types separately to avoid build issues
-import type { DocumentData, QuerySnapshot } from 'firebase/firestore';
+import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource } from '../types';
 
 // --- CONFIGURATION ---
@@ -38,10 +37,8 @@ const firebaseConfig = {
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Validate config presence
 const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined';
 
-// Initialize instances
 let app;
 let auth: Auth;
 let db: Firestore;
@@ -58,9 +55,19 @@ if (isConfigured) {
   }
 }
 
-// --- UTILITIES ---
+// --- SECURE HELPERS ---
 
-// 1. Timeout Wrapper for Async Operations (Prevents infinite spinners)
+/**
+ * Gets the current user's ID token for making authenticated backend requests.
+ * @returns Promise<string | null>
+ */
+export const getAuthToken = async (): Promise<string | null> => {
+  if (!auth || !auth.currentUser) return null;
+  // forceRefresh = false (uses cached token if valid)
+  return auth.currentUser.getIdToken(false);
+};
+
+// Timeout Wrapper for Async Operations
 export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
     return Promise.race([
         promise,
@@ -70,14 +77,12 @@ export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise
     ]);
 };
 
-// 2. Drive ID Extractor
 export const extractDriveId = (url: string): string | null => {
   if (!url) return null;
   const match = url.match(/[-\w]{25,}/);
   return match ? match[0] : null;
 };
 
-// 3. User Mapper (Auth User -> App Profile)
 export const mapAuthToProfile = (user: User): UserProfile => {
   const email = user.email?.toLowerCase() || '';
   const adminEmails = (env.VITE_ADMIN_EMAILS || "").split(',').map((e: string) => e.trim().toLowerCase());
@@ -89,7 +94,6 @@ export const mapAuthToProfile = (user: User): UserProfile => {
     email: user.email,
     photoURL: user.photoURL,
     role: isAdmin ? 'admin' : 'user',
-    // These will be overwritten by Firestore if data exists
     branch: undefined,
     year: undefined
   };
@@ -109,16 +113,13 @@ export const api = {
         return signOut(auth);
     },
 
-    // PROFILE METHODS
-    // Updates user profile in Firestore
+    // PROFILE METHODS (Direct Firestore Access via Rules)
     updateProfile: async (uid: string, data: Partial<UserProfile>) => {
         if (!db) return;
         const docRef = doc(db, 'users', uid);
-        // Use withTimeout to ensure UI doesn't hang if offline
         return withTimeout(setDoc(docRef, data, { merge: true }), 5000);
     },
 
-    // Fetches all users (Admin only)
     getAllUsers: async (): Promise<UserProfile[]> => {
         if (!db) return [];
         const snap = await getDocs(collection(db, 'users'));
@@ -128,7 +129,6 @@ export const api = {
     // RESOURCE METHODS
     addResource: async (resource: Omit<Resource, 'id'>) => {
         if (!db) throw new Error("Database not configured");
-        
         return withTimeout(
             addDoc(collection(db, 'resources'), {
                 ...resource,
@@ -139,13 +139,11 @@ export const api = {
     },
 
     // SUBSCRIPTIONS
-    // 1. Auth State
     onAuthStateChanged: (cb: (user: User | null) => void) => {
         if (!auth) { cb(null); return () => {}; }
         return onAuthStateChanged(auth, cb);
     },
 
-    // 2. Profile Data (Specific User)
     onProfileChanged: (uid: string, cb: (data: DocumentData | undefined) => void) => {
         if (!db) { cb(undefined); return () => {}; }
         return onSnapshot(doc(db, 'users', uid), (snap) => {
@@ -153,7 +151,6 @@ export const api = {
         });
     },
 
-    // 3. Resources List
     onResourcesChanged: (cb: (resources: Resource[]) => void) => {
         if (!db) { cb([]); return () => {}; }
         const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
@@ -161,6 +158,32 @@ export const api = {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
             cb(list);
         });
+    },
+    
+    /**
+     * Call the Vercel Backend Function securely.
+     * Automatically attaches the Authorization header.
+     */
+    generateContent: async (prompt: string): Promise<string> => {
+       const token = await getAuthToken();
+       if (!token) throw new Error("User must be logged in to use AI features.");
+
+       const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ prompt })
+       });
+
+       if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || "Generation failed");
+       }
+
+       const data = await response.json();
+       return data.text;
     }
 };
 

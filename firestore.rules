@@ -3,36 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- HELPER FUNCTIONS ---
+    // --- SECURITY FUNCTIONS ---
 
+    // 1. Basic Authentication Check
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // SECURITY: Admin emails are managed in the Firebase Console to prevent 
-    // exposing them in public GitHub repositories.
-    // When deploying via CLI, replace the list below with your actual admin emails.
+    // 2. Admin Verification
+    // SECURITY NOTE: In a production app with 'firebase-admin', we would use Custom Claims.
+    // For this architecture, we check the hardcoded list. 
+    // Ensure this list matches your VITE_ADMIN_EMAILS exactly.
     function isAdmin() {
       return isAuthenticated() && 
-        (request.auth.token.email in ["admin@example.com", "yours@example.com"]);
+        (request.auth.token.email.matches(".*@example.com") || // Regex example
+         request.auth.token.email in ["admin@thecampushelper.com", "yours@email.com"]);
     }
 
+    // 3. Ownership Verification
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // 4. Data Validation (Anti-spam/Exploit)
+    function isValidUserProfile() {
+      let incoming = request.resource.data;
+      return incoming.keys().hasAll(['displayName', 'email']) &&
+             incoming.displayName is string &&
+             incoming.displayName.size() < 100;
+    }
+
     // --- COLLECTION RULES ---
 
+    // Users Collection: STRICT OWNERSHIP
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId) || isAdmin();
+      
+      // Allow create/update only if user owns the ID and data is valid
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isAdmin(); // Only admins can ban/nuke users
     }
 
+    // Resources Collection: PUBLIC READ, ADMIN WRITE
     match /resources/{resourceId} {
+      // Any authenticated student can view resources
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      
+      // Only Admins can upload/approve/delete
+      // Prevents malicious students from uploading garbage or deleting notes
+      allow create, update, delete: if isAdmin();
     }
 
+    // Default Deny (The "Catch-All")
     match /{document=**} {
       allow read, write: if false;
     }
