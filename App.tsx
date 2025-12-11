@@ -80,21 +80,28 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only decide to show modal when:
-    // 1. Auth check is done (!loading)
-    // 2. User is logged in (user)
-    // 3. Firestore profile fetch has returned (profileLoaded)
+    // CONDITION: Show modal ONLY when:
+    // 1. Auth is done (!loading)
+    // 2. User is logged in (!!user)
+    // 3. Profile fetch returned (profileLoaded)
+    // 4. Profile data is actually incomplete
+    
     if (!loading && user && profileLoaded) {
-      const localCompleted = localStorage.getItem('thc_profile_completed') === '1';
-      const isProfileIncomplete = (!user.branch || !user.year) && !localCompleted;
+      const isProfileIncomplete = (!user.branch || !user.year);
+      const isLocallyCompleted = localStorage.getItem('thc_profile_completed') === '1';
 
-      setShowProfileModal(isProfileIncomplete);
+      if (isProfileIncomplete && !isLocallyCompleted) {
+        setShowProfileModal(true);
+      } else {
+        setShowProfileModal(false);
+      }
     } else {
       setShowProfileModal(false);
     }
   }, [user, loading, profileLoaded]);
 
   const handleProfileComplete = () => {
+    // Mark locally to prevent immediate re-pop if DB write is slow
     localStorage.setItem('thc_profile_completed', '1');
     setShowProfileModal(false);
     navigate('/');

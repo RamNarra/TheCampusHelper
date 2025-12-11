@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/firebase';
+import { api } from '../services/firebase';
 import { UserProfile } from '../types';
 import { pendingUploads } from '../lib/data';
 import { motion } from 'framer-motion';
@@ -20,7 +20,7 @@ const AdminDashboard: React.FC = () => {
     if (activeTab === 'users' && user?.role === 'admin') {
       const fetchUsers = async () => {
         setIsLoadingUsers(true);
-        const data = await authService.getAllUsers();
+        const data = await api.getAllUsers();
         setUsersList(data);
         setIsLoadingUsers(false);
       };

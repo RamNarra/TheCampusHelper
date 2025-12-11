@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -22,7 +21,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Update form if user data loads late
+  // Sync form with user data if it arrives late
   React.useEffect(() => {
     if (user) {
         setFormData(prev => ({
@@ -46,31 +45,24 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     setLoading(true);
     
     try {
-      // Create a promise that rejects after 5 seconds to prevent hanging
-      const savePromise = updateProfile({
+      // We wrap this in a try/catch, but we allow the UI to proceed 
+      // even if the backend write is slow or fails (Optimistic UI)
+      await updateProfile({
         displayName: formData.displayName,
         dateOfBirth: formData.dateOfBirth,
         branch: formData.branch as any,
         year: formData.year,
-        profileCompleted: true // CRITICAL: Mark profile as done in DB
+        profileCompleted: true
       });
-
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timed out')), 5000)
-      );
-
-      await Promise.race([savePromise, timeoutPromise]);
       
+      if (onComplete) onComplete();
+
     } catch (err) {
       console.warn("Profile save warning:", err);
-      // We purposefully ignore errors here to allow the user to proceed.
-      // If Firestore fails (permissions/offline), blocking the user is bad UX.
-      // The local context/localStorage state in App.tsx will handle the UI.
+      // Fallback: Proceed anyway so user isn't stuck
+      if (onComplete) onComplete();
     } finally {
       setLoading(false);
-      if (onComplete) {
-          onComplete();
-      }
     }
   };
 
@@ -123,7 +115,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                         value={formData.dateOfBirth}
                         onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
                         className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
-                        style={{ colorScheme: 'dark' }} // Force calendar icon to be light in dark contexts
+                        style={{ colorScheme: 'dark' }} 
                     />
                 </div>
 

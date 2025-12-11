@@ -6,36 +6,26 @@ import {
   signOut, 
   onAuthStateChanged,
   User,
-  UserCredential,
   Auth
 } from 'firebase/auth';
 import { 
   getFirestore, 
   doc, 
-  getDoc, 
   setDoc, 
-  collection, 
   addDoc, 
+  collection, 
   getDocs, 
   query, 
   orderBy, 
   onSnapshot, 
   serverTimestamp,
-  Timestamp,
-  // Types are imported separately to avoid "no exported member" errors
+  Firestore
 } from 'firebase/firestore';
-import type {
-  Firestore,
-  DocumentReference,
-  DocumentData
-} from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+// Import types separately to avoid build issues
+import type { DocumentData, QuerySnapshot } from 'firebase/firestore';
 import { UserProfile, Resource } from '../types';
 
-// Unsubscribe is often an alias for () => void and might not be exported as a value
-type Unsubscribe = () => void;
-
-// Access env safely
+// --- CONFIGURATION ---
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
@@ -48,21 +38,13 @@ const firebaseConfig = {
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-const isValidConfig = (config: typeof firebaseConfig) => {
-  return (
-    !!config.apiKey && 
-    config.apiKey.length > 20 && 
-    config.apiKey !== 'undefined' &&
-    !config.apiKey.includes('placeholder')
-  );
-};
+// Validate config presence
+const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined';
 
-let isConfigured = isValidConfig(firebaseConfig);
-
+// Initialize instances
 let app;
 let auth: Auth;
 let db: Firestore;
-let analytics;
 let googleProvider: GoogleAuthProvider;
 
 if (isConfigured) {
@@ -71,125 +53,115 @@ if (isConfigured) {
     auth = getAuth(app);
     db = getFirestore(app);
     googleProvider = new GoogleAuthProvider();
-  } catch (error) {
-    console.error("❌ Firebase Initialization Error:", error);
-    isConfigured = false;
+  } catch (e) {
+    console.error("Firebase Init Failed:", e);
   }
 }
 
-// --- HELPER: Timeout Promise ---
+// --- UTILITIES ---
+
+// 1. Timeout Wrapper for Async Operations (Prevents infinite spinners)
 export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
     return Promise.race([
         promise,
         new Promise<T>((_, reject) => 
-            setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms)
+            setTimeout(() => reject(new Error('Operation timed out. Check your connection.')), ms)
         )
     ]);
 };
 
-// --- AUTH HELPERS ---
-
-export const mapBasicUser = (firebaseUser: User): UserProfile => {
-  // Simple mapping, admin check should be robust in real apps
-  const emailLower = firebaseUser.email?.toLowerCase();
-  const admins = (env.VITE_ADMIN_EMAILS || "").split(',').map((e:string) => e.trim().toLowerCase());
-  const isAdmin = emailLower && admins.includes(emailLower);
-
-  return {
-    uid: firebaseUser.uid,
-    displayName: firebaseUser.displayName,
-    email: firebaseUser.email,
-    photoURL: firebaseUser.photoURL,
-    role: isAdmin ? 'admin' : 'user',
-  };
-};
-
-export const subscribeToAuthChanges = (callback: (user: User | null) => void): Unsubscribe => {
-  if (isConfigured && auth) {
-    return onAuthStateChanged(auth, callback);
-  }
-  // Mock for demo/fallback
-  callback(null);
-  return () => {};
-};
-
-// --- SERVICES ---
-
-export const authService = {
-  async signInWithGoogle() {
-    if (!isConfigured || !auth) throw new Error("Firebase not configured");
-    return signInWithPopup(auth, googleProvider);
-  },
-
-  async logout() {
-    if (!isConfigured || !auth) return;
-    return signOut(auth);
-  },
-
-  async saveUserData(uid: string, data: Partial<UserProfile>) {
-    if (!isConfigured || !db) return;
-    const docRef = doc(db, "users", uid);
-    // Merge true is critical to not overwrite existing data
-    return setDoc(docRef, data, { merge: true });
-  },
-
-  subscribeToUserProfile(uid: string, onUpdate: (data: Partial<UserProfile> | null) => void): Unsubscribe {
-    if (!isConfigured || !db) {
-       onUpdate(null);
-       return () => {};
-    }
-    return onSnapshot(doc(db, "users", uid), (docSnap) => {
-      if (docSnap.exists()) {
-        onUpdate(docSnap.data() as Partial<UserProfile>);
-      } else {
-        onUpdate(null);
-      }
-    });
-  },
-
-  async getAllUsers(): Promise<UserProfile[]> {
-      if (!isConfigured || !db) return [];
-      const snap = await getDocs(collection(db, "users"));
-      return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
-  },
-  
-  async signInAsAdmin() {
-      // Mock helper for dev
-      console.warn("Admin simulation not available in prod mode");
-  }
-};
-
+// 2. Drive ID Extractor
 export const extractDriveId = (url: string): string | null => {
   if (!url) return null;
   const match = url.match(/[-\w]{25,}/);
   return match ? match[0] : null;
 };
 
-export const resourceService = {
-  async addResource(resource: Omit<Resource, 'id'>) {
-    if (!isConfigured || !db) throw new Error("Database not connected");
-    
-    // Wrap in timeout to prevent infinite spinners
-    return withTimeout(
-        addDoc(collection(db, 'resources'), {
-            ...resource,
-            createdAt: serverTimestamp()
-        }),
-        15000 // 15s timeout
-    );
-  },
+// 3. User Mapper (Auth User -> App Profile)
+export const mapAuthToProfile = (user: User): UserProfile => {
+  const email = user.email?.toLowerCase() || '';
+  const adminEmails = (env.VITE_ADMIN_EMAILS || "").split(',').map((e: string) => e.trim().toLowerCase());
+  const isAdmin = adminEmails.includes(email);
 
-  subscribeToResources(callback: (resources: Resource[]) => void): Unsubscribe {
-    if (!isConfigured || !db) {
-        callback([]);
-        return () => {};
+  return {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+    role: isAdmin ? 'admin' : 'user',
+    // These will be overwritten by Firestore if data exists
+    branch: undefined,
+    year: undefined
+  };
+};
+
+// --- CORE SERVICES ---
+
+export const api = {
+    // AUTH METHODS
+    signIn: async () => {
+        if (!auth) throw new Error("Auth not configured");
+        return signInWithPopup(auth, googleProvider);
+    },
+
+    signOut: async () => {
+        if (!auth) return;
+        return signOut(auth);
+    },
+
+    // PROFILE METHODS
+    // Updates user profile in Firestore
+    updateProfile: async (uid: string, data: Partial<UserProfile>) => {
+        if (!db) return;
+        const docRef = doc(db, 'users', uid);
+        // Use withTimeout to ensure UI doesn't hang if offline
+        return withTimeout(setDoc(docRef, data, { merge: true }), 5000);
+    },
+
+    // Fetches all users (Admin only)
+    getAllUsers: async (): Promise<UserProfile[]> => {
+        if (!db) return [];
+        const snap = await getDocs(collection(db, 'users'));
+        return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
+    },
+
+    // RESOURCE METHODS
+    addResource: async (resource: Omit<Resource, 'id'>) => {
+        if (!db) throw new Error("Database not configured");
+        
+        return withTimeout(
+            addDoc(collection(db, 'resources'), {
+                ...resource,
+                createdAt: serverTimestamp()
+            }), 
+            15000
+        );
+    },
+
+    // SUBSCRIPTIONS
+    // 1. Auth State
+    onAuthStateChanged: (cb: (user: User | null) => void) => {
+        if (!auth) { cb(null); return () => {}; }
+        return onAuthStateChanged(auth, cb);
+    },
+
+    // 2. Profile Data (Specific User)
+    onProfileChanged: (uid: string, cb: (data: DocumentData | undefined) => void) => {
+        if (!db) { cb(undefined); return () => {}; }
+        return onSnapshot(doc(db, 'users', uid), (snap) => {
+            cb(snap.exists() ? snap.data() : undefined);
+        });
+    },
+
+    // 3. Resources List
+    onResourcesChanged: (cb: (resources: Resource[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            cb(list);
+        });
     }
-    const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-        const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
-        callback(items);
-    });
-  }
 };
 
 export { auth, db, isConfigured };

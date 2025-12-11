@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { resourceService, extractDriveId } from '../services/firebase';
+import { api, extractDriveId } from '../services/firebase';
 import { 
   Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
   FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
-  Lock, Plus, Link as LinkIcon, Loader2, X 
+  Lock, Plus, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AdUnit from '../components/AdUnit';
 import AccessGate from '../components/AccessGate';
 
 type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
@@ -21,20 +20,20 @@ const ResourcesPage: React.FC = () => {
   const [branch, setBranch] = useState<'CS_IT_DS' | 'AIML_ECE_CYS'>('CS_IT_DS');
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null); // Unit number or 'PYQ'/'MidPaper'
-  const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null); // 'Note', 'PPT' etc.
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null);
   
   // Data State
   const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
   const [isResourcesLoading, setIsResourcesLoading] = useState(true);
   
-  // Modal State
+  // UI State
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   
-  // Upload Form State
+  // Upload State
   const [uploadName, setUploadName] = useState('');
   const [uploadLink, setUploadLink] = useState('');
   const [uploadError, setUploadError] = useState('');
@@ -48,7 +47,7 @@ const ResourcesPage: React.FC = () => {
 
   // Real-time Fetch
   useEffect(() => {
-    const unsubscribe = resourceService.subscribeToResources((fetched) => {
+    const unsubscribe = api.onResourcesChanged((fetched) => {
       setDynamicResources(fetched);
       setIsResourcesLoading(false);
     });
@@ -76,22 +75,21 @@ const ResourcesPage: React.FC = () => {
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError('');
-    setIsUploading(true); // START SPINNER
+    setIsUploading(true);
 
     try {
-        // 1. Validation
-        if (!uploadName || !uploadLink) throw new Error("Name and Link are required");
-        if (!semester || !subject || !selectedFolder) throw new Error("Context missing");
+        // 1. Validate Context
+        if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
+        if (!uploadName.trim()) throw new Error("Resource name is required.");
+        if (!uploadLink.trim()) throw new Error("Link is required.");
 
+        // 2. Validate Category
         const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
-        
-        // If it's a Unit folder, user MUST pick a category (Notes, PPT...)
-        // If it's an Exam folder, the Category IS the folder name.
         if (!isExamFolder && !selectedCategory) {
             throw new Error("Please select a category (Notes, PPT, etc.)");
         }
 
-        // 2. Prepare Data
+        // 3. Prepare Object
         const finalType = isExamFolder ? (selectedFolder as ResourceType) : selectedCategory!;
         const driveId = extractDriveId(uploadLink);
 
@@ -104,22 +102,22 @@ const ResourcesPage: React.FC = () => {
             type: finalType,
             downloadUrl: uploadLink,
             driveFileId: driveId || undefined,
-            status: 'approved'
+            status: 'approved' // Auto-approve for admins
         };
 
-        // 3. Send to Firestore (with Timeout Safety)
-        await resourceService.addResource(newResource);
+        // 4. Send to Firebase (Protected by Timeout)
+        await api.addResource(newResource);
 
-        // 4. Reset Form
+        // 5. Success State
         setUploadName('');
         setUploadLink('');
         setShowUploadModal(false);
 
     } catch (err: any) {
         console.error("Upload error:", err);
-        setUploadError(err.message || "Upload failed");
+        setUploadError(err.message || "Failed to upload resource. Please try again.");
     } finally {
-        setIsUploading(false); // STOP SPINNER ALWAYS
+        setIsUploading(false);
     }
   };
 
@@ -128,13 +126,8 @@ const ResourcesPage: React.FC = () => {
     if (!semester) return 'SEMESTERS';
     if (!subject) return 'SUBJECTS';
     if (!selectedFolder) return 'SUBJECT_ROOT';
-    
-    // Exam folders jump straight to files
     if (['PYQ', 'MidPaper'].includes(selectedFolder)) return 'FILES';
-    
-    // Unit folders need category selection first
     if (!selectedCategory) return 'UNIT_CONTENTS';
-    
     return 'FILES';
   };
 
@@ -168,7 +161,6 @@ const ResourcesPage: React.FC = () => {
     { type: 'PPT', label: 'PPTs', icon: Presentation, color: 'text-blue-500 bg-blue-500/10' },
   ];
 
-  // Navigation Resets
   const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
   const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
   const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); };
@@ -180,15 +172,8 @@ const ResourcesPage: React.FC = () => {
       return `Unit ${id}`;
   };
 
-  const getCategoryLabel = () => {
-      if (!selectedFolder) return '';
-      if (['PYQ', 'MidPaper'].includes(selectedFolder)) return getFolderLabel(selectedFolder);
-      return unitFolders.find(f => f.type === selectedCategory)?.label || selectedCategory;
-  };
-
   return (
     <div className="min-h-screen pt-24 pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* HEADER */}
         <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8">
             <div>
                 <h1 className="text-3xl font-bold text-foreground">Resources</h1>
@@ -200,18 +185,15 @@ const ResourcesPage: React.FC = () => {
             </div>
         </div>
 
-        {/* BREADCRUMBS */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 pb-2 border-b border-border/50 overflow-x-auto">
             <button onClick={resetToHome}><Home className="w-4 h-4" /></button>
             {semester && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSemester}>Sem {semester}</button></>}
             {subject && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSubject} className="truncate max-w-[150px]">{subject}</button></>}
             {selectedFolder && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToFolder}>{getFolderLabel(selectedFolder)}</button></>}
-            {selectedCategory && <><ChevronRight className="w-4 h-4 opacity-50" /><span>{getCategoryLabel()}</span></>}
+            {selectedCategory && <><ChevronRight className="w-4 h-4 opacity-50" /><span>{selectedCategory}</span></>}
         </nav>
 
-        {/* CONTENT AREA */}
         <AnimatePresence mode="wait">
-            
             {currentView === 'SEMESTERS' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {semesters.map(sem => (
@@ -337,10 +319,8 @@ const ResourcesPage: React.FC = () => {
             )}
         </AnimatePresence>
 
-        {/* ACCESS GATE */}
         <AccessGate isOpen={showAccessGate} onClose={() => setShowAccessGate(false)} resourceTitle={pendingResource?.title} />
 
-        {/* PREVIEW OVERLAY */}
         {selectedResource && (
              <div className="fixed inset-0 z-[200] bg-black flex flex-col">
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900 text-white">

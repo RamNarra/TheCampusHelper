@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '../types';
-import { authService, mapBasicUser, subscribeToAuthChanges } from '../services/firebase';
+import { api, mapAuthToProfile } from '../services/firebase';
 
 interface AuthContextType {
   user: UserProfile | null;
-  loading: boolean; // True only during initial Auth check
-  profileLoaded: boolean; // True once Firestore has responded (data or no data)
+  loading: boolean;        // Layer 1: Is Firebase Auth initialized?
+  profileLoaded: boolean;  // Layer 2: Is Firestore profile data fetched?
   signInWithGoogle: () => Promise<void>;
-  signInAsAdmin: () => Promise<void>;
+  signInAsAdmin: () => Promise<void>; // Kept for interface compatibility
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
@@ -20,32 +20,31 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
-    // LAYER 1: Auth State Listener
-    const unsubscribeAuth = subscribeToAuthChanges((firebaseUser) => {
+    // LAYER 1: Firebase Auth Listener
+    const unsubscribeAuth = api.onAuthStateChanged((firebaseUser) => {
       if (firebaseUser) {
-        // 1. Immediate UI: Set basic user from Google Auth
-        const basicProfile = mapBasicUser(firebaseUser);
+        // 1. Immediate: Map basic data from Google Token
+        const basicProfile = mapAuthToProfile(firebaseUser);
         
-        // Optimistically set user to unblock UI immediately
+        // 2. Optimistic Update: Unblock the UI immediately
         setUser(prev => ({ ...prev, ...basicProfile }));
         setLoading(false);
 
-        // LAYER 2: Background Profile Fetch
-        // Subscribe to Firestore for this specific user
-        const unsubscribeProfile = authService.subscribeToUserProfile(firebaseUser.uid, (firestoreData) => {
-            if (firestoreData) {
-                // Merge Firestore data into existing user state
-                setUser(prev => prev ? ({ ...prev, ...firestoreData }) : null);
+        // LAYER 2: Firestore Profile Listener
+        // Subscribe to real-time updates for this user's profile
+        const unsubscribeProfile = api.onProfileChanged(firebaseUser.uid, (data) => {
+            if (data) {
+                // Merge DB data with existing state
+                setUser(prev => prev ? ({ ...prev, ...data }) : null);
             }
-            // Mark profile as loaded regardless of whether data exists
+            // Mark profile as "Loaded" (success or empty)
             setProfileLoaded(true);
         });
 
-        // Cleanup profile listener when auth user changes
         return () => unsubscribeProfile();
-        
+
       } else {
-        // User logged out
+        // User Logged Out
         setUser(null);
         setLoading(false);
         setProfileLoaded(false);
@@ -55,45 +54,54 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
+  // --- ACTIONS ---
+
   const signInWithGoogle = async () => {
     try {
-      await authService.signInWithGoogle();
-      // No manual state setting needed; onAuthStateChanged handles it
+      await api.signIn();
     } catch (error) {
-      console.error("Login failed", error);
+      console.error("Login Error:", error);
     }
-  };
-
-  const signInAsAdmin = async () => {
-    await authService.signInAsAdmin();
   };
 
   const logout = async () => {
     try {
-      await authService.logout();
-      // setUser(null) handled by listener
+      await api.signOut();
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error("Logout Error:", error);
     }
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
     
-    // 1. Optimistic Update
+    // Optimistic UI Update
     setUser(prev => prev ? ({ ...prev, ...data }) : null);
 
-    // 2. Background Save
     try {
-        await authService.saveUserData(user.uid, data);
+        await api.updateProfile(user.uid, data);
     } catch (error) {
-        console.error("Failed to save profile:", error);
-        // Optional: Revert state if critical
+        console.error("Profile Update Failed:", error);
+        // We don't revert optimistic update to keep UI fluid, 
+        // but real-time listener would eventually correct it if offline.
     }
   };
 
+  const signInAsAdmin = async () => {
+    // Alias for standard login in this implementation
+    await signInWithGoogle();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, profileLoaded, signInWithGoogle, signInAsAdmin, logout, updateProfile }}>
+    <AuthContext.Provider value={{ 
+        user, 
+        loading, 
+        profileLoaded, 
+        signInWithGoogle, 
+        signInAsAdmin, 
+        logout, 
+        updateProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );
