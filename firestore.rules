@@ -3,59 +3,77 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- SECURITY FUNCTIONS ---
+    // --- HELPER FUNCTIONS ---
 
-    // 1. Basic Authentication Check
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // 2. Admin Verification
-    // SECURITY NOTE: In a production app with 'firebase-admin', we would use Custom Claims.
-    // For this architecture, we check the hardcoded list. 
-    // Ensure this list matches your VITE_ADMIN_EMAILS exactly.
     function isAdmin() {
       return isAuthenticated() && 
-        (request.auth.token.email.matches(".*@example.com") || // Regex example
+        (request.auth.token.email.matches(".*@example.com") || 
          request.auth.token.email in ["admin@thecampushelper.com", "yours@email.com"]);
     }
 
-    // 3. Ownership Verification
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // 4. Data Validation (Anti-spam/Exploit)
-    function isValidUserProfile() {
-      let incoming = request.resource.data;
-      return incoming.keys().hasAll(['displayName', 'email']) &&
-             incoming.displayName is string &&
-             incoming.displayName.size() < 100;
+    // Validates that the uploaded resource has all required fields and reasonable limits
+    function isValidResource(data) {
+      return data.keys().hasAll(['title', 'subject', 'type', 'downloadUrl'])
+             && data.title is string && data.title.size() > 3 && data.title.size() < 200
+             && data.subject is string && data.subject.size() > 0
+             && data.downloadUrl is string && data.downloadUrl.size() < 2000;
+    }
+
+    // Prevents privilege escalation during profile updates
+    function isValidProfileUpdate(newData, currentData) {
+      // 1. Prevent setting 'role' or 'isAdmin' fields if they don't exist
+      // 2. If they exist, ensure they haven't changed (unless it's a backend trigger, but here we assume client only)
+      // Ideally, simple constraint: Users cannot write to 'role' or 'isAdmin'
+      
+      let isRoleUnchanged = !("role" in newData) || (currentData != null && "role" in currentData && newData.role == currentData.role);
+      let isAdminUnchanged = !("isAdmin" in newData) || (currentData != null && "isAdmin" in currentData && newData.isAdmin == currentData.isAdmin);
+      
+      return isRoleUnchanged && isAdminUnchanged;
     }
 
     // --- COLLECTION RULES ---
 
-    // Users Collection: STRICT OWNERSHIP
+    // USERS COLLECTION
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       
-      // Allow create/update only if user owns the ID and data is valid
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isAdmin(); // Only admins can ban/nuke users
+      // Create: User can create their own profile, but cannot set role/isAdmin
+      allow create: if isOwner(userId) && isValidProfileUpdate(request.resource.data, null);
+      
+      // Update: User can update non-privileged fields
+      allow update: if isOwner(userId) && isValidProfileUpdate(request.resource.data, resource.data);
+      
+      // Delete: Only admins
+      allow delete: if isAdmin();
     }
 
-    // Resources Collection: PUBLIC READ, ADMIN WRITE
+    // RESOURCES COLLECTION
     match /resources/{resourceId} {
-      // Any authenticated student can view resources
+      // Read: Public for authenticated users
       allow read: if isAuthenticated();
       
-      // Only Admins can upload/approve/delete
-      // Prevents malicious students from uploading garbage or deleting notes
-      allow create, update, delete: if isAdmin();
+      // Create: Admin Only + Validation + Server Timestamp Enforcement
+      allow create: if isAdmin() 
+                    && isValidResource(request.resource.data)
+                    && request.resource.data.createdAt == request.time;
+                    
+      // Update: Admin Only + Validation
+      allow update: if isAdmin() 
+                    && isValidResource(request.resource.data);
+                    
+      // Delete: Admin Only
+      allow delete: if isAdmin();
     }
 
-    // Default Deny (The "Catch-All")
+    // Default Deny
     match /{document=**} {
       allow read, write: if false;
     }
