@@ -17,7 +17,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 import EventsPage from './pages/EventsPage';
 
-// Google Analytics Measurement ID
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
 
 interface ErrorBoundaryProps {
@@ -29,7 +28,6 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// --- Error Boundary Component ---
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   declare props: Readonly<ErrorBoundaryProps>;
 
@@ -53,9 +51,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           <div className="max-w-md">
             <h1 className="text-2xl font-bold text-red-500 mb-4">Something went wrong</h1>
             <p className="text-zinc-400 mb-6">The application encountered an unexpected error.</p>
-            <pre className="bg-black/50 p-4 rounded text-left text-xs text-red-300 overflow-auto mb-6 border border-red-500/20">
-              {this.state.error?.toString()}
-            </pre>
             <button 
               onClick={() => window.location.reload()}
               className="px-6 py-2 bg-white text-black rounded font-bold hover:bg-gray-200"
@@ -70,58 +65,42 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-// --- Helper Components ---
-
 const Analytics = () => {
   const location = useLocation();
   useEffect(() => {
-    if (GA_MEASUREMENT_ID) {
-      console.log(`Analytics: Page View ${location.pathname}`);
-    }
     window.scrollTo(0, 0);
   }, [location]);
   return null;
 };
 
-// --- Main App Content ---
-
 const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, profileLoaded } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user) {
-      // 1. Check LocalStorage (Fastest, browser-specific)
+    // Only decide to show modal when:
+    // 1. Auth check is done (!loading)
+    // 2. User is logged in (user)
+    // 3. Firestore profile fetch has returned (profileLoaded)
+    if (!loading && user && profileLoaded) {
       const localCompleted = localStorage.getItem('thc_profile_completed') === '1';
-      
-      // 2. Check Database Flag via user object (Persistent)
-      // We rely strictly on the flag or local storage. 
-      // Checking for field existence (user.branch etc) caused the loop issue.
-      const isProfileIncomplete = !user.profileCompleted && !localCompleted;
+      const isProfileIncomplete = (!user.branch || !user.year) && !localCompleted;
 
       setShowProfileModal(isProfileIncomplete);
     } else {
       setShowProfileModal(false);
     }
-  }, [user, loading]);
+  }, [user, loading, profileLoaded]);
 
   const handleProfileComplete = () => {
-    // 1. Set LocalStorage flag immediately to prevent loop on reload
     localStorage.setItem('thc_profile_completed', '1');
-
-    // 2. Close Modal
     setShowProfileModal(false);
-    
-    // 3. Redirect to Home
     navigate('/');
-    
-    // 4. Start Tour
     setShowTour(true);
   };
 
-  // Global Loading State
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
@@ -135,7 +114,6 @@ const AppContent: React.FC = () => {
       <Analytics />
       <Navbar />
       
-      {/* Onboarding & Modals */}
       <CompleteProfileModal isOpen={showProfileModal} onComplete={handleProfileComplete} />
       <OnboardingTour isOpen={showTour} onClose={() => setShowTour(false)} />
       
@@ -164,7 +142,6 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <ThemeProvider>
-        {/* Using HashRouter to guarantee routing works without server config */}
         <Router>
           <AppContent />
         </Router>

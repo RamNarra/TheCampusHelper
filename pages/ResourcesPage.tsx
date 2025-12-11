@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
@@ -18,22 +17,24 @@ type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | '
 const ResourcesPage: React.FC = () => {
   const { user } = useAuth();
   
+  // Navigation State
   const [branch, setBranch] = useState<'CS_IT_DS' | 'AIML_ECE_CYS'>('CS_IT_DS');
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null); // Unit number or 'PYQ'/'MidPaper'
+  const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null); // 'Note', 'PPT' etc.
   
+  // Data State
+  const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
+  const [isResourcesLoading, setIsResourcesLoading] = useState(true);
+  
+  // Modal State
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
-
-  // Dynamic Resources State
-  const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
-  const [isResourcesLoading, setIsResourcesLoading] = useState(true);
-
-  // Upload Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
+  
+  // Upload Form State
   const [uploadName, setUploadName] = useState('');
   const [uploadLink, setUploadLink] = useState('');
   const [uploadError, setUploadError] = useState('');
@@ -45,24 +46,14 @@ const ResourcesPage: React.FC = () => {
     }
   }, [user]);
 
-  // Fetch Resources from Firestore (REAL-TIME LISTENER)
+  // Real-time Fetch
   useEffect(() => {
-    setIsResourcesLoading(true);
-    const unsubscribe = resourceService.subscribeToResources((fetchedResources) => {
-      setDynamicResources(fetchedResources);
+    const unsubscribe = resourceService.subscribeToResources((fetched) => {
+      setDynamicResources(fetched);
       setIsResourcesLoading(false);
     });
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (selectedResource) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [selectedResource]);
 
   const handleResourceClick = (res: Resource) => {
     if (!user) {
@@ -77,47 +68,33 @@ const ResourcesPage: React.FC = () => {
     if (res.driveFileId) {
       setSelectedResource(res);
     } else {
-      // Robustly handle missing drive IDs by opening standard link
-      const url = res.downloadUrl || '#';
-      window.open(url, '_blank');
+      window.open(res.downloadUrl, '_blank');
     }
   };
 
+  // --- UPLOAD LOGIC ---
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError('');
-    setIsUploading(true);
-
-    // 1. Basic Form Validation
-    if (!uploadName || !uploadLink) {
-      setUploadError("Please provide both name and link.");
-      setIsUploading(false);
-      return;
-    }
-
-    if (!semester || !subject || !selectedFolder) {
-      setUploadError("Missing context. Please navigate to a specific folder.");
-      setIsUploading(false);
-      return;
-    }
-
-    // 2. Exam vs Unit Validation
-    const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
-    if (!isExamFolder && !selectedCategory) {
-       setUploadError("Please select a file category (Notes, PPT, etc.)");
-       setIsUploading(false);
-       return;
-    }
+    setIsUploading(true); // START SPINNER
 
     try {
-        // 3. Extract ID (Permissive)
-        const driveId = extractDriveId(uploadLink);
+        // 1. Validation
+        if (!uploadName || !uploadLink) throw new Error("Name and Link are required");
+        if (!semester || !subject || !selectedFolder) throw new Error("Context missing");
+
+        const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
         
-        // 4. Construct Payload
-        // If it's an exam folder, the type matches the folder name (PYQ/MidPaper)
-        // If it's a unit folder, type is the selected category (Note/PPT/ImpQ)
+        // If it's a Unit folder, user MUST pick a category (Notes, PPT...)
+        // If it's an Exam folder, the Category IS the folder name.
+        if (!isExamFolder && !selectedCategory) {
+            throw new Error("Please select a category (Notes, PPT, etc.)");
+        }
+
+        // 2. Prepare Data
         const finalType = isExamFolder ? (selectedFolder as ResourceType) : selectedCategory!;
-        
+        const driveId = extractDriveId(uploadLink);
+
         const newResource: Omit<Resource, 'id'> = {
             title: uploadName,
             subject: subject,
@@ -126,35 +103,56 @@ const ResourcesPage: React.FC = () => {
             unit: selectedFolder,
             type: finalType,
             downloadUrl: uploadLink,
-            driveFileId: driveId || undefined, // undefined if not a Drive link
+            driveFileId: driveId || undefined,
             status: 'approved'
         };
 
-        // 5. Submit with Timeout Safety (defined in firebase.ts)
+        // 3. Send to Firestore (with Timeout Safety)
         await resourceService.addResource(newResource);
-        
-        // 6. Success
+
+        // 4. Reset Form
         setUploadName('');
         setUploadLink('');
         setShowUploadModal(false);
 
     } catch (err: any) {
-        console.error("Upload failed:", err);
-        setUploadError("Upload failed. Please check your connection and try again.");
+        console.error("Upload error:", err);
+        setUploadError(err.message || "Upload failed");
     } finally {
-        setIsUploading(false);
+        setIsUploading(false); // STOP SPINNER ALWAYS
     }
   };
 
-  useEffect(() => {
-    if (user && pendingResource) {
-      openResource(pendingResource);
-      setPendingResource(null);
-    }
-  }, [user, pendingResource]);
+  // --- VIEW HELPERS ---
+  const getCurrentView = (): ViewState => {
+    if (!semester) return 'SEMESTERS';
+    if (!subject) return 'SUBJECTS';
+    if (!selectedFolder) return 'SUBJECT_ROOT';
+    
+    // Exam folders jump straight to files
+    if (['PYQ', 'MidPaper'].includes(selectedFolder)) return 'FILES';
+    
+    // Unit folders need category selection first
+    if (!selectedCategory) return 'UNIT_CONTENTS';
+    
+    return 'FILES';
+  };
 
+  const currentView = getCurrentView();
+
+  const getFilteredResources = () => {
+    return [...dynamicResources, ...staticResources].filter(r => {
+      if (r.branch !== branch || r.semester !== semester || r.subject !== subject) return false;
+      
+      if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
+         return r.unit === selectedFolder || r.type === selectedFolder;
+      }
+      return r.unit === selectedFolder && r.type === selectedCategory;
+    });
+  };
+
+  // --- UI CONSTANTS ---
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
-  
   const subjectFolders = [
     { id: '1', label: 'Unit 1', type: 'unit' },
     { id: '2', label: 'Unit 2', type: 'unit' },
@@ -164,524 +162,198 @@ const ResourcesPage: React.FC = () => {
     { id: 'PYQ', label: 'PYQs', type: 'exam' },
     { id: 'MidPaper', label: 'Mid Exams', type: 'exam' },
   ];
-
   const unitFolders = [
     { type: 'ImpQ', label: 'Important Qs', icon: HelpCircle, color: 'text-orange-500 bg-orange-500/10' },
     { type: 'Note', label: 'Notes', icon: Book, color: 'text-emerald-500 bg-emerald-500/10' },
     { type: 'PPT', label: 'PPTs', icon: Presentation, color: 'text-blue-500 bg-blue-500/10' },
   ];
 
-  // --- VIEW LOGIC REFACTOR ---
-  const getCurrentView = (): ViewState => {
-    if (!semester) return 'SEMESTERS';
-    if (!subject) return 'SUBJECTS';
-    if (!selectedFolder) return 'SUBJECT_ROOT';
-    
-    // CRITICAL FIX: If it's an exam folder, skip UNIT_CONTENTS and go straight to FILES
-    const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
-    if (isExamFolder) return 'FILES';
-    
-    // For Units, only go to FILES if category is selected
-    if (!selectedCategory) return 'UNIT_CONTENTS';
-    
-    return 'FILES';
-  };
-
-  const currentView = getCurrentView();
-
-  const getFilteredResources = () => {
-    const allResources = [...dynamicResources, ...staticResources];
-    
-    return allResources.filter(r => {
-      const matchBasic = r.branch === branch && 
-                         r.semester === semester && 
-                         r.subject === subject && 
-                         r.status === 'approved';
-      if (!matchBasic) return false;
-
-      // Special handling for Exam folders vs Unit folders
-      if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
-        // For exams, we accept resources where Type matches Folder OR Unit matches Folder
-        return r.type === selectedFolder || r.unit === selectedFolder;
-      } else {
-        return r.unit === selectedFolder && r.type === selectedCategory;
-      }
-    });
-  };
-
-  const getEmbedUrl = (res: Resource) => {
-    if (!res.driveFileId) return '';
-    
-    // --- UNIVERSAL DRIVE PREVIEW URL ---
-    // This is the most robust way to embed Drive files (PDF, Slides, Docs, Images).
-    // It avoids "Unable to open" errors for Slides often caused by specific '/embed' endpoints.
-    return `https://drive.google.com/file/d/${res.driveFileId}/preview`;
-  };
-
-  const getDownloadUrl = (res: Resource) => {
-    if (res.downloadUrl && res.downloadUrl !== '#') return res.downloadUrl;
-    if (res.driveFileId) return `https://drive.google.com/u/0/uc?id=${res.driveFileId}&export=download`;
-    return '#';
-  };
-
-  const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
-  const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
-  const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); setSelectedResource(null); };
-  const resetToFolder = () => { setSelectedCategory(null); setSelectedResource(null); };
-  const resetToFiles = () => { setSelectedResource(null); };
-
-  const containerVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 }
-  };
+  // Navigation Resets
+  const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
+  const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
+  const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); };
+  const resetToFolder = () => { setSelectedCategory(null); };
 
   const getFolderLabel = (id: string) => {
-    if (id === 'PYQ') return 'PYQs';
-    if (id === 'MidPaper') return 'Mid Papers';
-    return `Unit ${id}`;
+      if (id === 'PYQ') return 'PYQs';
+      if (id === 'MidPaper') return 'Mid Papers';
+      return `Unit ${id}`;
   };
 
-  const getCategoryLabel = (type: ResourceType | null) => {
-    if (!type) {
-        // Fallback for Exam folders
-        return selectedFolder === 'PYQ' ? 'Previous Questions' : 'Mid Exam Papers';
-    }
-    return unitFolders.find(f => f.type === type)?.label || type;
+  const getCategoryLabel = () => {
+      if (!selectedFolder) return '';
+      if (['PYQ', 'MidPaper'].includes(selectedFolder)) return getFolderLabel(selectedFolder);
+      return unitFolders.find(f => f.type === selectedCategory)?.label || selectedCategory;
   };
-
-  const branches = [
-    { id: 'CS_IT_DS', label: 'CS / IT / DS' },
-    { id: 'AIML_ECE_CYS', label: 'AIML / ECE / CYS' }
-  ];
 
   return (
-    <>
-      <div className="min-h-screen pt-24 pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Resources</h1>
-            <p className="text-muted-foreground mt-1">Select your branch and semester to access materials</p>
-          </div>
-          
-          <div className="flex bg-muted p-1 rounded-xl">
-            {branches.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => { setBranch(b.id as any); resetToHome(); }}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  branch === b.id 
-                    ? 'bg-card text-foreground shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {b.label}
-              </button>
-            ))}
-          </div>
+    <div className="min-h-screen pt-24 pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8">
+            <div>
+                <h1 className="text-3xl font-bold text-foreground">Resources</h1>
+                <p className="text-muted-foreground">Select branch and semester</p>
+            </div>
+            <div className="flex bg-muted p-1 rounded-xl h-fit">
+                <button onClick={() => setBranch('CS_IT_DS')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${branch === 'CS_IT_DS' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>CS / IT / DS</button>
+                <button onClick={() => setBranch('AIML_ECE_CYS')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${branch === 'AIML_ECE_CYS' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>AIML / ECE</button>
+            </div>
         </div>
 
-        {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-hide mb-8 pb-2 border-b border-border/50">
-          <button onClick={resetToHome} className="flex items-center gap-2 hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted">
-            <Home className="w-4 h-4" />
-          </button>
-          
-          {semester && (
-            <>
-              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
-              <button onClick={resetToSemester} className={`hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted ${currentView === 'SUBJECTS' ? 'text-primary font-semibold' : ''}`}>
-                Sem {semester}
-              </button>
-            </>
-          )}
-
-          {subject && (
-            <>
-              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
-              <button onClick={resetToSubject} className={`hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted ${currentView === 'SUBJECT_ROOT' ? 'text-primary font-semibold' : ''}`}>
-                {subject.length > 25 ? subject.substring(0, 25) + '...' : subject}
-              </button>
-            </>
-          )}
-
-          {selectedFolder && (
-            <>
-              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
-              <button onClick={resetToFolder} className={`hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted ${currentView === 'UNIT_CONTENTS' ? 'text-primary font-semibold' : ''}`}>
-                {getFolderLabel(selectedFolder)}
-              </button>
-            </>
-          )}
-
-          {currentView === 'FILES' && (
-            <>
-              <ChevronRight className="w-4 h-4 opacity-50 flex-shrink-0" />
-              <button onClick={resetToFiles} className={`hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted ${currentView === 'FILES' ? 'text-primary font-semibold' : ''}`}>
-                {getCategoryLabel(selectedCategory)}
-              </button>
-            </>
-          )}
+        {/* BREADCRUMBS */}
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 pb-2 border-b border-border/50 overflow-x-auto">
+            <button onClick={resetToHome}><Home className="w-4 h-4" /></button>
+            {semester && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSemester}>Sem {semester}</button></>}
+            {subject && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSubject} className="truncate max-w-[150px]">{subject}</button></>}
+            {selectedFolder && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToFolder}>{getFolderLabel(selectedFolder)}</button></>}
+            {selectedCategory && <><ChevronRight className="w-4 h-4 opacity-50" /><span>{getCategoryLabel()}</span></>}
         </nav>
 
+        {/* CONTENT AREA */}
         <AnimatePresence mode="wait">
-          
-          {/* VIEW 1: SEMESTERS */}
-          {currentView === 'SEMESTERS' && (
-            <motion.div
-              key="semesters"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="grid grid-cols-2 md:grid-cols-4 gap-6"
-            >
-              {semesters.map((sem) => (
-                <button
-                  key={sem}
-                  onClick={() => setSemester(sem)}
-                  className="group relative p-6 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-lg transition-all text-left overflow-hidden min-h-[160px]"
-                >
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <span className="text-8xl font-bold text-foreground">{sem}</span>
-                  </div>
-                  <div className="relative z-10 flex flex-col h-full justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Folder className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-foreground">Semester {sem}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">View Subjects</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </motion.div>
-          )}
-
-          {/* VIEW 2: SUBJECTS LIST */}
-          {currentView === 'SUBJECTS' && (
-            <motion.div
-              key="subjects"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {getSubjects(branch, semester!).map((sub) => (
-                  <button
-                    key={sub}
-                    onClick={() => setSubject(sub)}
-                    className="flex items-center p-5 bg-card border border-border rounded-xl hover:bg-muted/50 hover:border-primary/30 transition-all text-left group shadow-sm hover:shadow-md"
-                  >
-                    <div className="p-3 bg-secondary/10 rounded-lg text-secondary mr-4 group-hover:scale-105 transition-transform flex-shrink-0">
-                      <Book className="w-5 h-5" />
-                    </div>
-                    <span className="font-semibold text-base text-foreground group-hover:text-primary transition-colors line-clamp-2">{sub}</span>
-                    <ChevronRight className="w-5 h-5 ml-auto text-muted-foreground group-hover:translate-x-1 transition-transform flex-shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* VIEW 3: SUBJECT ROOT */}
-          {currentView === 'SUBJECT_ROOT' && (
-            <motion.div
-              key="subject_root"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                {subjectFolders.map((folder) => (
-                  <button
-                    key={folder.id}
-                    onClick={() => setSelectedFolder(folder.id)}
-                    className="flex flex-col items-center justify-center p-6 bg-card border border-border rounded-xl hover:bg-muted/30 hover:border-primary/30 hover:shadow-lg transition-all group text-center relative overflow-hidden h-40"
-                  >
-                     <div className={`absolute top-0 left-0 w-full h-1.5 ${folder.type === 'unit' ? 'bg-primary/50' : 'bg-secondary/50'}`}></div>
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${folder.type === 'unit' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-                      <FolderOpen className="w-6 h-6" />
-                    </div>
-                    <h3 className="font-bold text-base text-foreground mb-1">{folder.label}</h3>
-                    <p className="text-xs text-muted-foreground leading-tight">{folder.type === 'unit' ? 'Notes & Materials' : 'Question Papers'}</p>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* VIEW 4: UNIT CONTENTS */}
-          {currentView === 'UNIT_CONTENTS' && (
-            <motion.div
-              key="unit_contents"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {unitFolders.map((cat) => (
-                  <button
-                    key={cat.type}
-                    onClick={() => setSelectedCategory(cat.type as any)}
-                    className="flex items-center p-6 bg-card border border-border rounded-xl hover:bg-muted/30 hover:border-border transition-all text-left group shadow-sm hover:shadow-md"
-                  >
-                    <div className={`p-4 rounded-xl mr-5 ${cat.color} group-hover:scale-110 transition-transform`}>
-                      <cat.icon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-foreground">{cat.label}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Browse files</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* VIEW 5: FILES LIST */}
-          {currentView === 'FILES' && (
-            <motion.div
-              key="files"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold text-foreground">
-                      Files for <span className="text-primary">{getCategoryLabel(selectedCategory)}</span>
-                  </h3>
-                  
-                  {user?.role === 'admin' && (
-                      <button 
-                        onClick={() => setShowUploadModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-sm font-medium shadow-md"
-                      >
-                          <Plus className="w-4 h-4" />
-                          Add Resource
-                      </button>
-                  )}
-              </div>
-
-              {isResourcesLoading && dynamicResources.length === 0 ? (
-                  <div className="flex justify-center py-20">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-              ) : getFilteredResources().length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
-                  {getFilteredResources().map((res) => (
-                      <div
-                        key={res.id}
-                        onClick={() => handleResourceClick(res)}
-                        className="flex items-center justify-between p-4 bg-card border border-border rounded-xl transition-all group hover:border-primary/50 hover:shadow-md cursor-pointer"
-                      >
-                        <div className="flex items-center gap-4 overflow-hidden">
-                          <div className="p-3 bg-muted rounded-lg text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors relative">
-                            {/* Icon Logic based on Drive vs External */}
-                            {res.driveFileId ? <FileText className="w-6 h-6" /> : <ExternalLink className="w-6 h-6" />}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
-                              {res.title}
-                            </h4>
-                            <div className="flex gap-2 text-xs text-muted-foreground mt-1">
-                              {res.unit && !['PYQ', 'MidPaper'].includes(res.unit) && <span className="bg-muted px-2 py-0.5 rounded-md">Unit {res.unit}</span>}
-                              <span className="truncate">{res.subject}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <button 
-                          className="p-2.5 bg-muted rounded-lg text-muted-foreground hover:bg-primary hover:text-white transition-colors flex-shrink-0 ml-3"
-                          title={user ? (res.driveFileId ? "Preview" : "Open Link") : "Login to Access"}
-                          onClick={(e) => {
-                             e.stopPropagation();
-                             handleResourceClick(res);
-                          }}
-                        >
-                           {!user ? <Lock className="w-5 h-5" /> : (res.driveFileId ? <Eye className="w-5 h-5" /> : <ExternalLink className="w-5 h-5" />)}
+            
+            {currentView === 'SEMESTERS' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {semesters.map(sem => (
+                        <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
+                            <span className="text-xl font-bold block mb-1">Semester {sem}</span>
+                            <span className="text-sm text-muted-foreground">View Subjects</span>
                         </button>
-                      </div>
-                    )
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20 bg-card border border-dashed border-border rounded-xl">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                    <Sparkles className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-2">Coming Soon</h3>
-                  <p className="text-sm text-muted-foreground">We are constantly updating our database.</p>
-                </div>
-              )}
-            </motion.div>
-          )}
+                    ))}
+                </motion.div>
+            )}
 
+            {currentView === 'SUBJECTS' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {getSubjects(branch, semester!).map(sub => (
+                        <button key={sub} onClick={() => setSubject(sub)} className="p-4 bg-card border border-border rounded-xl hover:border-primary transition-all text-left flex items-center justify-between group">
+                            <span className="font-medium">{sub}</span>
+                            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                    ))}
+                </motion.div>
+            )}
+
+            {currentView === 'SUBJECT_ROOT' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {subjectFolders.map(folder => (
+                        <button key={folder.id} onClick={() => setSelectedFolder(folder.id)} className={`p-6 bg-card border border-border rounded-xl hover:shadow-lg transition-all text-center flex flex-col items-center gap-3 relative overflow-hidden ${folder.type === 'unit' ? 'hover:border-primary/50' : 'hover:border-secondary/50'}`}>
+                            <div className={`absolute top-0 w-full h-1 ${folder.type === 'unit' ? 'bg-primary' : 'bg-secondary'}`} />
+                            <FolderOpen className={`w-8 h-8 ${folder.type === 'unit' ? 'text-primary' : 'text-secondary'}`} />
+                            <span className="font-bold">{folder.label}</span>
+                        </button>
+                    ))}
+                </motion.div>
+            )}
+
+            {currentView === 'UNIT_CONTENTS' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {unitFolders.map(cat => (
+                        <button key={cat.type} onClick={() => setSelectedCategory(cat.type as any)} className="p-6 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all flex items-center gap-4">
+                            <div className={`p-3 rounded-lg ${cat.color}`}><cat.icon className="w-6 h-6" /></div>
+                            <div className="text-left">
+                                <h3 className="font-bold">{cat.label}</h3>
+                                <p className="text-xs text-muted-foreground">Browse files</p>
+                            </div>
+                        </button>
+                    ))}
+                </motion.div>
+            )}
+
+            {currentView === 'FILES' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-bold">Files</h2>
+                        {user?.role === 'admin' && (
+                            <button onClick={() => setShowUploadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90">
+                                <Plus className="w-4 h-4" /> Add Resource
+                            </button>
+                        )}
+                    </div>
+
+                    {isResourcesLoading ? (
+                        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+                    ) : getFilteredResources().length > 0 ? (
+                        <div className="grid gap-3">
+                            {getFilteredResources().map(res => (
+                                <div key={res.id} onClick={() => handleResourceClick(res)} className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer flex items-center justify-between group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-muted rounded-lg"><FileText className="w-5 h-5 text-foreground" /></div>
+                                        <div>
+                                            <h4 className="font-medium group-hover:text-primary transition-colors">{res.title}</h4>
+                                            <p className="text-xs text-muted-foreground">{res.subject}</p>
+                                        </div>
+                                    </div>
+                                    {res.driveFileId ? <Eye className="w-5 h-5 text-muted-foreground" /> : <ExternalLink className="w-5 h-5 text-muted-foreground" />}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 text-muted-foreground">
+                            <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                            <p>No resources found here yet.</p>
+                        </div>
+                    )}
+                </motion.div>
+            )}
         </AnimatePresence>
-        
-        <AdUnit className="mt-8" />
-      </div>
 
-      {/* ACCESS GATE MODAL */}
-      <AccessGate 
-        isOpen={showAccessGate} 
-        onClose={() => setShowAccessGate(false)} 
-        resourceTitle={pendingResource?.title}
-      />
+        {/* UPLOAD MODAL */}
+        <AnimatePresence>
+            {showUploadModal && (
+                <div className="fixed inset-0 z-[150] flex items-center justify-center px-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isUploading && setShowUploadModal(false)} />
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-card w-full max-w-md p-6 rounded-2xl border border-border shadow-2xl">
+                        <h2 className="text-xl font-bold mb-4">Upload Resource</h2>
+                        <form onSubmit={handleUploadSubmit} className="space-y-4">
+                            <input 
+                                type="text" 
+                                placeholder="Display Name (e.g. Unit 1 Notes)" 
+                                value={uploadName}
+                                onChange={e => setUploadName(e.target.value)}
+                                className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
+                            />
+                            <input 
+                                type="url" 
+                                placeholder="Drive Link or URL" 
+                                value={uploadLink}
+                                onChange={e => setUploadLink(e.target.value)}
+                                className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
+                            />
+                            
+                            <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                                Using context: {branch} &gt; {semester} &gt; {subject} <br/>
+                                Target: {selectedFolder} {selectedCategory ? `> ${selectedCategory}` : ''}
+                            </div>
 
-      {/* ADMIN UPLOAD MODAL */}
-      <AnimatePresence>
-          {showUploadModal && (
-              <div className="fixed inset-0 z-[160] flex items-center justify-center px-4">
-                  <motion.div 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }} 
-                    exit={{ opacity: 0 }} 
-                    onClick={() => setShowUploadModal(false)}
-                    className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
-                  />
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                    className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl"
-                  >
-                      <div className="flex justify-between items-center mb-6">
-                          <h2 className="text-xl font-bold text-foreground">Upload Resource</h2>
-                          <button onClick={() => setShowUploadModal(false)} className="text-muted-foreground hover:text-foreground">
-                              <X className="w-5 h-5" />
-                          </button>
-                      </div>
+                            {uploadError && <div className="text-red-500 text-sm">{uploadError}</div>}
 
-                      <form onSubmit={handleUploadSubmit} className="space-y-4">
-                          <div className="space-y-2">
-                              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Name</label>
-                              <div className="relative">
-                                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <input 
-                                      type="text" 
-                                      value={uploadName}
-                                      onChange={(e) => setUploadName(e.target.value)}
-                                      placeholder="e.g. Unit 1 Class Notes"
-                                      className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground focus:border-primary outline-none transition-all"
-                                  />
-                              </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Link (Drive or External)</label>
-                              <div className="relative">
-                                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <input 
-                                      type="url" 
-                                      value={uploadLink}
-                                      onChange={(e) => setUploadLink(e.target.value)}
-                                      placeholder="https://drive.google.com/..."
-                                      className="w-full bg-muted border border-border rounded-lg pl-10 pr-4 py-2.5 text-foreground focus:border-primary outline-none transition-all"
-                                  />
-                              </div>
-                              <p className="text-[10px] text-muted-foreground">
-                                  We support Google Drive links (preview) and direct external links.
-                              </p>
-                          </div>
-
-                          <div className="bg-muted/50 p-3 rounded-lg border border-border text-xs text-muted-foreground space-y-1">
-                              <p><span className="font-semibold">Context:</span> {branch} &gt; {semester} &gt; {subject}</p>
-                              <p><span className="font-semibold">Target:</span> {getFolderLabel(selectedFolder!)} &gt; {getCategoryLabel(selectedCategory)}</p>
-                          </div>
-
-                          {uploadError && (
-                              <p className="text-red-500 text-xs bg-red-500/10 p-2 rounded border border-red-500/20">{uploadError}</p>
-                          )}
-
-                          <button
-                              type="submit"
-                              disabled={isUploading}
-                              className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-                          >
-                               {isUploading ? (
-                                   <>
-                                     <Loader2 className="w-5 h-5 animate-spin" /> Uploading...
-                                   </>
-                               ) : "Upload & Publish Instantly"}
-                          </button>
-                      </form>
-                  </motion.div>
-              </div>
-          )}
-      </AnimatePresence>
-
-      {/* FULL SCREEN OVERLAY PREVIEW */}
-      <AnimatePresence>
-        {selectedResource && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
-          >
-            {/* Toolbar */}
-            <div className="flex items-center justify-between px-6 py-4 bg-zinc-900 border-b border-zinc-800 h-18">
-              <button 
-                onClick={resetToFiles} 
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-white"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Back</span>
-              </button>
-              
-              <div className="flex-1 text-center px-4 hidden sm:block">
-                 <span className="text-base font-medium text-white truncate block max-w-xl mx-auto">{selectedResource.title}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                 <a 
-                  href={getDownloadUrl(selectedResource)}
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Download</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Iframe Container */}
-            <div className="flex-1 w-full h-full bg-zinc-900 relative">
-               {selectedResource.driveFileId ? (
-                <iframe
-                  src={getEmbedUrl(selectedResource)}
-                  className="absolute inset-0 w-full h-full border-0"
-                  allow="autoplay; fullscreen"
-                  title="File Preview"
-                  sandbox="allow-forms allow-scripts allow-popups allow-same-origin allow-presentation"
-                ></iframe>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-zinc-500">
-                  <ExternalLink className="w-16 h-16 mb-4 opacity-50" />
-                  <p className="mb-4">This resource is hosted externally.</p>
-                  <a 
-                     href={selectedResource.downloadUrl}
-                     target="_blank"
-                     rel="noreferrer"
-                     className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-                  >
-                     Open Link in New Tab
-                  </a>
+                            <button disabled={isUploading} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex justify-center">
+                                {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Upload"}
+                            </button>
+                        </form>
+                    </motion.div>
                 </div>
-              )}
-            </div>
-          </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* ACCESS GATE */}
+        <AccessGate isOpen={showAccessGate} onClose={() => setShowAccessGate(false)} resourceTitle={pendingResource?.title} />
+
+        {/* PREVIEW OVERLAY */}
+        {selectedResource && (
+             <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900 text-white">
+                    <button onClick={() => setSelectedResource(null)} className="flex items-center gap-2 hover:text-gray-300"><ArrowLeft className="w-4 h-4" /> Back</button>
+                    <span className="font-bold truncate max-w-md">{selectedResource.title}</span>
+                    <a href={selectedResource.downloadUrl || `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`} target="_blank" rel="noreferrer" className="bg-primary px-4 py-2 rounded-lg text-sm hover:bg-primary/90">Download</a>
+                </div>
+                <div className="flex-1 bg-zinc-900">
+                    <iframe src={`https://drive.google.com/file/d/${selectedResource.driveFileId}/preview`} className="w-full h-full border-0" allow="autoplay" title="Preview" />
+                </div>
+             </div>
         )}
-      </AnimatePresence>
-    </>
+    </div>
   );
 };
 

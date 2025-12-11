@@ -1,13 +1,11 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '../types';
-import { authService, auth, mapBasicUser, detectBranchAndYear } from '../services/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { Unsubscribe } from 'firebase/firestore';
+import { authService, mapBasicUser, subscribeToAuthChanges } from '../services/firebase';
 
 interface AuthContextType {
   user: UserProfile | null;
-  loading: boolean;
+  loading: boolean; // True only during initial Auth check
+  profileLoaded: boolean; // True once Firestore has responded (data or no data)
   signInWithGoogle: () => Promise<void>;
   signInAsAdmin: () => Promise<void>;
   logout: () => Promise<void>;
@@ -19,131 +17,83 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
-    console.log("🎧 AuthContext: Initializing Auth Listener");
-    
-    let profileUnsubscribe: Unsubscribe | undefined;
-
-    const authUnsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // 1. Clean up previous profile listener if it exists
-      if (profileUnsubscribe) {
-          profileUnsubscribe();
-          profileUnsubscribe = undefined;
-      }
-
+    // LAYER 1: Auth State Listener
+    const unsubscribeAuth = subscribeToAuthChanges((firebaseUser) => {
       if (firebaseUser) {
-        console.log("👤 User detected:", firebaseUser.email);
-        
-        // IMMEDIATE: Set basic user details
+        // 1. Immediate UI: Set basic user from Google Auth
         const basicProfile = mapBasicUser(firebaseUser);
-        setUser(basicProfile);
         
-        // CRITICAL CHANGE: Stop loading IMMEDIATELY. 
-        // Do not wait for Firestore. Do not wait for timeouts.
-        // The app opens NOW.
-        setLoading(false); 
-        
-        // 2. Setup live listener for this user (happens in background)
-        profileUnsubscribe = authService.subscribeToUserProfile(firebaseUser.uid, (firestoreData) => {
-             if (firestoreData) {
-                 // Database has data, merge it silently
-                 setUser(prev => ({ ...prev, ...basicProfile, ...firestoreData }));
-             } else {
-                 // No data in DB yet (First time user)
-                 console.log("✨ Creating new user profile (Local)...");
-                 const detected = detectBranchAndYear(firebaseUser.email);
-                 const newProfile = { 
-                     ...basicProfile, 
-                     ...detected,
-                     createdAt: new Date().toISOString(), 
-                     lastLogin: new Date().toISOString()
-                 };
-                 
-                 // Update local state
-                 setUser(newProfile as UserProfile);
+        // Optimistically set user to unblock UI immediately
+        setUser(prev => ({ ...prev, ...basicProfile }));
+        setLoading(false);
 
-                 // Async save to DB (Background)
-                 authService.saveUserData(firebaseUser.uid, newProfile).catch(e => 
-                    console.error("Failed to create initial profile in DB", e)
-                 );
-             }
+        // LAYER 2: Background Profile Fetch
+        // Subscribe to Firestore for this specific user
+        const unsubscribeProfile = authService.subscribeToUserProfile(firebaseUser.uid, (firestoreData) => {
+            if (firestoreData) {
+                // Merge Firestore data into existing user state
+                setUser(prev => prev ? ({ ...prev, ...firestoreData }) : null);
+            }
+            // Mark profile as loaded regardless of whether data exists
+            setProfileLoaded(true);
         });
 
+        // Cleanup profile listener when auth user changes
+        return () => unsubscribeProfile();
+        
       } else {
         // User logged out
-        console.log("👋 User logged out");
         setUser(null);
         setLoading(false);
+        setProfileLoaded(false);
       }
     });
 
-    return () => {
-      authUnsubscribe();
-      if (profileUnsubscribe) profileUnsubscribe();
-    };
+    return () => unsubscribeAuth();
   }, []);
 
   const signInWithGoogle = async () => {
-    // Safety timer for the POPUP itself (only for the login window interaction)
-    const popupTimer = setTimeout(() => {
-        setLoading((current) => {
-            if (current) return false; 
-            return current;
-        });
-    }, 15000);
-
     try {
-      setLoading(true);
-      const result = await authService.signInWithGoogle();
-      
-      if (!result) {
-          setLoading(false);
-      }
-      // If success, onAuthStateChanged handles the rest INSTANTLY
-      
+      await authService.signInWithGoogle();
+      // No manual state setting needed; onAuthStateChanged handles it
     } catch (error) {
       console.error("Login failed", error);
-      alert("Login failed. Please try again.");
-      setLoading(false);
-    } finally {
-      clearTimeout(popupTimer);
     }
   };
 
   const signInAsAdmin = async () => {
-    try {
-      await authService.signInAsAdmin();
-    } catch (error) {
-      console.error("Admin Login failed", error);
-    }
+    await authService.signInAsAdmin();
   };
 
   const logout = async () => {
     try {
-      setLoading(true);
       await authService.logout();
+      // setUser(null) handled by listener
     } catch (error) {
       console.error("Logout failed", error);
-      setLoading(false);
     }
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
+    
+    // 1. Optimistic Update
+    setUser(prev => prev ? ({ ...prev, ...data }) : null);
+
+    // 2. Background Save
     try {
-      // Optimistic update local state
-      setUser(prev => prev ? ({ ...prev, ...data }) : null);
-      // Background save
-      await authService.saveUserData(user.uid, data);
+        await authService.saveUserData(user.uid, data);
     } catch (error) {
-      console.error("Update profile failed", error);
-      // Don't revert local state to avoid UI jumpiness, just log error
+        console.error("Failed to save profile:", error);
+        // Optional: Revert state if critical
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAsAdmin, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, profileLoaded, signInWithGoogle, signInAsAdmin, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
