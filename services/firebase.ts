@@ -163,11 +163,14 @@ export const api = {
     /**
      * Call the Vercel Backend Function securely.
      * Automatically attaches the Authorization header.
+     * SECURITY NOTE: This fetches from the internal /api/generate proxy.
+     * It DOES NOT call Google APIs directly.
      */
     generateContent: async (prompt: string): Promise<string> => {
        const token = await getAuthToken();
        if (!token) throw new Error("User must be logged in to use AI features.");
 
+       // Direct call to our secure proxy
        const response = await fetch('/api/generate', {
           method: 'POST',
           headers: {
