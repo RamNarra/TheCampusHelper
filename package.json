@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "echo '⚠️ SECURITY WARNING: Use \"npm run dev:secure\" to run the backend proxy locally.' && vite",
+    "dev:secure": "vercel dev",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -24,6 +25,7 @@
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.4.2",
+    "vercel": "^32.3.0",
     "vite": "^5.1.5"
   }
 }
