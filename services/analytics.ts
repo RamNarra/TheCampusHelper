@@ -1,4 +1,4 @@
-import { LearningAnalytics, StudySession, QuizResult } from '../types';
+import { LearningAnalytics, StudySession, QuizResult, ResourceType } from '../types';
 
 // Mock data generator for demonstration purposes
 // In a real app, this would fetch from Firestore
@@ -12,7 +12,7 @@ export const generateMockStudySessions = (userId: string): StudySession[] => {
     'Database Management Systems'
   ];
   
-  const resourceTypes: any[] = ['Note', 'PYQ', 'Lab Record', 'PPT'];
+  const resourceTypes: ResourceType[] = ['Note', 'PYQ', 'Lab Record', 'PPT'];
   const sessions: StudySession[] = [];
   
   // Generate last 30 days of data
@@ -185,7 +185,7 @@ export const calculateAnalytics = (
   const preferredResourceTypes = Object.entries(resourceTypeCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
-    .map(([type]) => type);
+    .map(([type]) => type as ResourceType);
   
   // Calculate average session length
   const averageSessionLength = sessions.length > 0

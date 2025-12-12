@@ -48,7 +48,7 @@ export interface Performance {
 
 export interface Habits {
   mostActiveTime: string;
-  preferredResourceTypes: string[];
+  preferredResourceTypes: ResourceType[];
   averageSessionLength: number;
 }
 
