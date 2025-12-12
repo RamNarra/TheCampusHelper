@@ -56,16 +56,17 @@ const ResourcesPage: React.FC = () => {
 
   // Real-time Fetch
   useEffect(() => {
-    // Important: Firestore rules require auth for reads.
-    // Also, queries must be constrained so they cannot include unreadable docs (e.g. pending resources).
-
-    if (!user?.uid) {
-      setDynamicResources([]);
-      setIsResourcesLoading(false);
-      return;
-    }
-
+    // Queries must be constrained so they cannot include unreadable docs (e.g. pending resources for non-owners).
     setIsResourcesLoading(true);
+
+    // Signed-out users: show approved resources (public).
+    if (!user?.uid) {
+      const unsub = api.onApprovedResourcesChanged((fetched) => {
+        setDynamicResources(fetched);
+        setIsResourcesLoading(false);
+      });
+      return () => unsub();
+    }
 
     // Staff can see everything (including pending).
     if (user.role === 'admin' || user.role === 'mod') {

@@ -115,13 +115,17 @@ service cloud.firestore {
 
     // RESOURCES COLLECTION
     match /resources/{resourceId} {
-      // Only show pending resources to admins or the owner.
+      // Public can read APPROVED resources.
+      // Pending/rejected remain visible only to staff or the owner.
       // Back-compat: if status doesn't exist, treat as approved.
-      allow read: if isAuthenticated() && (
+      allow read: if (
         !('status' in resource.data) ||
-        resource.data.status == 'approved' ||
-        isMod() ||
-        (('ownerId' in resource.data) && resource.data.ownerId == request.auth.uid)
+        resource.data.status == 'approved'
+      ) || (
+        isAuthenticated() && (
+          isMod() ||
+          (('ownerId' in resource.data) && resource.data.ownerId == request.auth.uid)
+        )
       );
       
       // CREATE: Any authenticated user can submit a pending resource.
