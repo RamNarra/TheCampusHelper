@@ -15,7 +15,6 @@ const ALLOWED_ORIGINS = new Set(
   [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://thecampushelper.vercel.app', // Production domain
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
   ].filter(Boolean) as string[]
 );
@@ -81,18 +80,19 @@ interface VercelResponse {
   end: () => void;
 }
 
+interface StudyContext {
+  subject: string;
+  topic: string;
+  difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
+  previousInteractions: string[];
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = crypto.randomUUID();
   
   // 1. ORIGIN VALIDATION
   const originHeader = req.headers.origin;
   const validatedOrigin = getValidatedOrigin(originHeader);
-
-  if (originHeader && !validatedOrigin) {
-     console.warn(`[${requestId}] Blocked request from unauthorized origin: ${originHeader}`);
-     return res.status(403).json({ error: "Forbidden Origin" });
-  }
-
 
   if (originHeader && !validatedOrigin) {
      console.warn(`[${requestId}] Blocked request from unauthorized origin: ${originHeader}`);
@@ -157,20 +157,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 6. RATE LIMIT CHECK
-    const rateLimitKey = `${uid}:${ip}`;
+    const rateLimitKey = `study:${uid}:${ip}`;
     if (await rateLimitExceeded(rateLimitKey)) {
         console.warn(`[${requestId}] Rate limit exceeded for: ${rateLimitKey}`);
         return res.status(429).json({ error: "Too Many Requests" });
     }
 
     // 7. INPUT VALIDATION
-    const { prompt } = req.body;
+    const { context, question } = req.body as { context: StudyContext; question: string };
 
-    if (!prompt || typeof prompt !== 'string' || prompt.length > 5000) {
-        return res.status(400).json({ error: "Invalid prompt. Must be a string < 5000 chars." });
+    if (!context || !question) {
+        return res.status(400).json({ error: "Missing required fields: context and question" });
     }
 
-    // 8. GEMINI CALL
+    if (typeof question !== 'string' || question.length > 5000) {
+        return res.status(400).json({ error: "Invalid question. Must be a string < 5000 chars." });
+    }
+
+    if (!context.subject || !context.topic || !context.difficultyLevel) {
+        return res.status(400).json({ error: "Invalid context. Must include subject, topic, and difficultyLevel." });
+    }
+
+    if (!['beginner', 'intermediate', 'advanced'].includes(context.difficultyLevel)) {
+        return res.status(400).json({ error: "Invalid difficultyLevel. Must be 'beginner', 'intermediate', or 'advanced'." });
+    }
+
+    // 8. BUILD ENHANCED PROMPT
+    const previousContext = context.previousInteractions && context.previousInteractions.length > 0
+      ? context.previousInteractions.slice(-5).join('\n')
+      : 'No previous interactions';
+
+    const enhancedPrompt = `
+You are an expert ${context.subject} tutor at JNTUH (Jawaharlal Nehru Technological University Hyderabad), helping a ${context.difficultyLevel} level student.
+
+Current Topic: ${context.topic}
+
+Previous Conversation Context:
+${previousContext}
+
+Student's Question: ${question}
+
+Instructions:
+- Provide a clear, step-by-step explanation tailored to a ${context.difficultyLevel} student
+- Include relevant formulas in LaTeX format when applicable (use $ for inline and $$ for display math)
+- Provide practical examples related to JNTUH curriculum where relevant
+- If the question is about a complex topic, break it down into smaller, digestible parts
+- Use simple language for beginners, more technical terms for intermediate/advanced students
+- Include diagrams or visual descriptions when they help clarify concepts
+- Reference JNTUH-specific course materials or syllabus topics when appropriate
+
+Your response should be educational, encouraging, and directly answer the student's question while building on any previous conversation context.
+`;
+
+    // 9. GEMINI CALL
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
         console.error(`[${requestId}] Server Misconfiguration: Missing API Key`);
@@ -183,7 +222,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
-            contents: prompt,
+            contents: enhancedPrompt,
         });
         
         // Defensive Extraction using Helper

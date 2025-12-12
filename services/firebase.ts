@@ -15,16 +15,25 @@ import {
   addDoc, 
   collection, 
   getDocs, 
+  getDoc,
   query, 
+  where,
   orderBy, 
+  limit,
   onSnapshot, 
   serverTimestamp,
-  Firestore
+  updateDoc,
+  deleteDoc,
+  arrayUnion,
+  arrayRemove,
+  Firestore,
+  FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource } from '../types';
+import { UserProfile, Resource, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
+const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
@@ -159,6 +168,60 @@ export const api = {
             cb(list);
         });
     },
+
+    // INTERACTION TRACKING METHODS
+    trackInteraction: async (interaction: Omit<ResourceInteraction, 'id' | 'timestamp'>) => {
+        if (!db) return;
+        return withTimeout(
+            addDoc(collection(db, 'interactions'), {
+                ...interaction,
+                timestamp: serverTimestamp()
+            }),
+            5000
+        );
+    },
+
+    getUserInteractions: async (userId: string): Promise<ResourceInteraction[]> => {
+        if (!db) return [];
+        try {
+            const q = query(
+                collection(db, 'interactions'),
+                where('userId', '==', userId),
+                orderBy('timestamp', 'desc')
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() } as ResourceInteraction));
+        } catch (error) {
+            console.error('Error fetching user interactions:', error);
+            return [];
+        }
+    },
+
+    getAllInteractions: async (options?: { sinceDate?: Date }): Promise<ResourceInteraction[]> => {
+        if (!db) return [];
+        try {
+            // Note: We fetch all recent interactions but filter by a reasonable window
+            // The timestamp field uses serverTimestamp() which converts to milliseconds in the stored document
+            const q = query(
+                collection(db, 'interactions'),
+                orderBy('timestamp', 'desc')
+            );
+            const snap = await getDocs(q);
+            const cutoffTime = (options?.sinceDate || new Date(Date.now() - DEFAULT_INTERACTION_DAYS * 24 * 60 * 60 * 1000)).getTime();
+            
+            return snap.docs
+                .map(d => ({ id: d.id, ...d.data() } as ResourceInteraction))
+                .filter(interaction => {
+                    const timestamp = typeof interaction.timestamp === 'number' 
+                        ? interaction.timestamp 
+                        : (interaction.timestamp as any)?.toMillis?.() || 0;
+                    return timestamp >= cutoffTime;
+                });
+        } catch (error) {
+            console.error('Error fetching all interactions:', error);
+            return [];
+        }
+    },
     
     /**
      * Call the Vercel Backend Function securely.
@@ -187,6 +250,200 @@ export const api = {
 
        const data = await response.json();
        return data.text;
+    },
+
+    // STUDY GROUPS METHODS
+    
+    createStudyGroup: async (groupData: Omit<StudyGroup, 'id' | 'createdAt'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, 'studyGroups'), {
+                ...groupData,
+                createdAt: serverTimestamp()
+            }),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateStudyGroup: async (groupId: string, data: Partial<StudyGroup>) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(updateDoc(docRef, data), 5000);
+    },
+
+    deleteStudyGroup: async (groupId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    joinStudyGroup: async (groupId: string, userId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(updateDoc(docRef, {
+            members: arrayUnion(userId)
+        }), 5000);
+    },
+
+    leaveStudyGroup: async (groupId: string, userId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(updateDoc(docRef, {
+            members: arrayRemove(userId)
+        }), 5000);
+    },
+
+    getStudyGroup: async (groupId: string): Promise<StudyGroup | null> => {
+        if (!db) return null;
+        const docRef = doc(db, 'studyGroups', groupId);
+        const docSnap = await withTimeout(getDoc(docRef), 5000);
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as StudyGroup;
+        }
+        return null;
+    },
+
+    onStudyGroupsChanged: (cb: (groups: StudyGroup[]) => void, userId?: string) => {
+        if (!db) { cb([]); return () => {}; }
+        let q;
+        if (userId) {
+            // Filter groups where user is a member
+            q = query(
+                collection(db, 'studyGroups'),
+                where('members', 'array-contains', userId),
+                orderBy('createdAt', 'desc')
+            );
+        } else {
+            // Get all public groups
+            q = query(
+                collection(db, 'studyGroups'),
+                where('isPrivate', '==', false),
+                orderBy('createdAt', 'desc')
+            );
+        }
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyGroup));
+            cb(list);
+        });
+    },
+
+    // MESSAGES METHODS
+
+    sendMessage: async (groupId: string, messageData: Omit<Message, 'id' | 'timestamp'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, `studyGroups/${groupId}/messages`), {
+                ...messageData,
+                timestamp: serverTimestamp()
+            }),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateMessage: async (groupId: string, messageId: string, content: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/messages`, messageId);
+        return withTimeout(updateDoc(docRef, {
+            content,
+            edited: true,
+            editedAt: serverTimestamp()
+        }), 5000);
+    },
+
+    deleteMessage: async (groupId: string, messageId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/messages`, messageId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    onMessagesChanged: (groupId: string, cb: (messages: Message[]) => void, limitCount: number = 50) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, `studyGroups/${groupId}/messages`),
+            orderBy('timestamp', 'desc'),
+            limit(limitCount)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Message)).reverse();
+            cb(list);
+        });
+    },
+
+    // SESSIONS METHODS
+
+    createSession: async (groupId: string, sessionData: Omit<Session, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, `studyGroups/${groupId}/sessions`), sessionData),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateSession: async (groupId: string, sessionId: string, data: Partial<Session>) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
+        return withTimeout(updateDoc(docRef, data), 5000);
+    },
+
+    deleteSession: async (groupId: string, sessionId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    onSessionsChanged: (groupId: string, cb: (sessions: Session[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, `studyGroups/${groupId}/sessions`),
+            orderBy('scheduledAt', 'asc')
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Session));
+            cb(list);
+        });
+    },
+
+    // COLLABORATIVE NOTES METHODS
+
+    createNote: async (groupId: string, noteData: Omit<CollaborativeNote, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, `studyGroups/${groupId}/notes`), noteData),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateNote: async (groupId: string, noteId: string, content: string, userId: string, userName: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/notes`, noteId);
+        return withTimeout(updateDoc(docRef, {
+            content,
+            lastEditedBy: userId,
+            lastEditedByName: userName,
+            lastEditedAt: serverTimestamp()
+        }), 5000);
+    },
+
+    deleteNote: async (groupId: string, noteId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/notes`, noteId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    onNotesChanged: (groupId: string, cb: (notes: CollaborativeNote[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, `studyGroups/${groupId}/notes`),
+            orderBy('lastEditedAt', 'desc')
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as CollaborativeNote));
+            cb(list);
+        });
     }
 };
 

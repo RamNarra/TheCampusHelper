@@ -5,7 +5,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="TheCampusHelper - A comprehensive student resource platform for JNTUH colleges featuring lecture notes, CGPA calculator, and academic tools." />
-    <meta name="theme-color" content="#09090b" />
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#09090b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CampusHelper" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
     <title>TheCampusHelper | Student Resource Platform</title>
     
     <!-- Using Tailwind CDN with CSS Variables configuration -->
@@ -138,6 +145,37 @@
         background-color: var(--muted);
         color: var(--foreground);
       }
+      
+      /* PWA prompt animations */
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .animate-slide-up {
+        animation: slideUp 0.3s ease-out;
+      }
+      
+      .animate-slide-down {
+        animation: slideDown 0.3s ease-out;
+      }
     </style>
   <script type="importmap">
 {
@@ -155,7 +193,15 @@
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
     "@google/generative-ai": "https://aistudiocdn.com/@google/generative-ai@^0.24.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.32.0",
-    "crypto": "https://esm.sh/crypto@^1.0.1"
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "firebase-admin": "https://esm.sh/firebase-admin@^13.6.0",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "path": "https://esm.sh/path@^0.12.7",
+    "url": "https://esm.sh/url@^0.11.4",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "firebase-admin/": "https://esm.sh/firebase-admin@^13.6.0/",
+    "@vercel/kv": "https://esm.sh/@vercel/kv@^3.0.0",
+    "@upstash/redis": "https://esm.sh/@upstash/redis@^1.35.7"
   }
 }
 </script>
