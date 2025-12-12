@@ -70,21 +70,25 @@ const ExamPrepPage: React.FC = () => {
       }
     ];
 
-    // Generate study schedules
-    sampleExams.forEach(exam => {
-      exam.studyPlan = generateStudySchedule(exam.subjects, exam.examDate);
-      const completed = exam.studyPlan.filter(t => t.completed).length;
-      exam.progress = {
-        completed,
-        remaining: exam.studyPlan.length - completed,
-        predictedReadiness: calculateReadiness(exam)
+    // Generate study schedules immutably
+    const initializedExams = sampleExams.map(exam => {
+      const studyPlan = generateStudySchedule(exam.subjects, exam.examDate);
+      const completed = studyPlan.filter(t => t.completed).length;
+      return {
+        ...exam,
+        studyPlan,
+        progress: {
+          completed,
+          remaining: studyPlan.length - completed,
+          predictedReadiness: calculateReadiness({ ...exam, studyPlan })
+        },
+        stressLevel: calculateStressLevel({ ...exam, studyPlan })
       };
-      exam.stressLevel = calculateStressLevel(exam);
     });
 
-    setExams(sampleExams);
-    if (sampleExams.length > 0) {
-      setSelectedExam(sampleExams[0]);
+    setExams(initializedExams);
+    if (initializedExams.length > 0) {
+      setSelectedExam(initializedExams[0]);
     }
   }, []);
 
