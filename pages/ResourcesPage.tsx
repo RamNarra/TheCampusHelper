@@ -126,12 +126,12 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
-  const handleResourceClick = (res: Resource) => {
+  const handleResourceClick = async (res: Resource) => {
     if (!user) {
       setPendingResource(res);
       setShowAccessGate(true);
     } else {
-      trackInteraction(res.id, 'view', res);
+      await trackInteraction(res.id, 'view', res);
       openResource(res);
     }
   };
