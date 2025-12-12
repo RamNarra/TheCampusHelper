@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Navigate } from 'react-router-dom';
 import { 
   Calendar, 
   Clock, 
@@ -27,6 +28,16 @@ const ExamPrepPage: React.FC = () => {
   const { user } = useAuth();
   const [exams, setExams] = useState<ExamPrep[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamPrep | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update countdown timer every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Initialize with sample data
   useEffect(() => {
@@ -115,13 +126,19 @@ const ExamPrepPage: React.FC = () => {
   };
 
   const getCountdown = (examDate: Date) => {
-    const now = new Date();
-    const diff = examDate.getTime() - now.getTime();
+    const date = examDate instanceof Date ? examDate : new Date(examDate);
+    const diff = date.getTime() - currentTime.getTime();
+    
+    // Handle past exam dates
+    if (diff < 0) {
+      return { days: 0, hours: 0, minutes: 0, isPast: true };
+    }
+    
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    return { days, hours, minutes };
+    return { days, hours, minutes, isPast: false };
   };
 
   const getStressColor = (level?: 'low' | 'medium' | 'high') => {
@@ -140,15 +157,7 @@ const ExamPrepPage: React.FC = () => {
   };
 
   if (!user) {
-    return (
-      <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex items-center justify-center">
-        <div className="text-center">
-          <Brain className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Login Required</h2>
-          <p className="text-gray-400">Please log in to access your exam preparation dashboard.</p>
-        </div>
-      </div>
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -193,7 +202,9 @@ const ExamPrepPage: React.FC = () => {
               >
                 <div className="flex flex-col items-start">
                   <span>{exam.examName}</span>
-                  <span className="text-xs opacity-75">{countdown.days}d {countdown.hours}h</span>
+                  <span className="text-xs opacity-75">
+                    {countdown.isPast ? 'Completed' : `${countdown.days}d ${countdown.hours}h`}
+                  </span>
                 </div>
               </button>
             );
@@ -216,12 +227,21 @@ const ExamPrepPage: React.FC = () => {
                 <span className="text-sm font-medium">Time Remaining</span>
               </div>
               {(() => {
-                const { days, hours, minutes } = getCountdown(selectedExam.examDate);
+                const { days, hours, minutes, isPast } = getCountdown(selectedExam.examDate);
                 return (
                   <div className="space-y-1">
-                    <div className="text-3xl font-bold">{days}</div>
-                    <div className="text-sm opacity-90">days</div>
-                    <div className="text-xs opacity-75">{hours}h {minutes}m</div>
+                    {isPast ? (
+                      <>
+                        <div className="text-xl font-bold">Completed</div>
+                        <div className="text-sm opacity-90">Exam has passed</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-3xl font-bold">{days}</div>
+                        <div className="text-sm opacity-90">days</div>
+                        <div className="text-xs opacity-75">{hours}h {minutes}m</div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -360,6 +380,7 @@ const ExamPrepPage: React.FC = () => {
                       >
                         <button
                           onClick={() => toggleTaskCompletion(task.id)}
+                          aria-label={`Mark ${task.topic} as ${task.completed ? 'incomplete' : 'complete'}`}
                           className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                             task.completed
                               ? 'bg-green-500 border-green-500'
