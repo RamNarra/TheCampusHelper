@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
-import { Resource, ResourceType } from '../types';
+import { Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api, extractDriveId } from '../services/firebase';
 import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
 import { 
   Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
   FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
-  Lock, Plus, Loader2
+  Lock, Plus, Loader2, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AccessGate from '../components/AccessGate';
+import { 
+  buildUserPreferences, 
+  getHybridRecommendations 
+} from '../lib/recommendationService';
 
 type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
 
@@ -27,6 +31,10 @@ const ResourcesPage: React.FC = () => {
   // Data State
   const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
   const [isResourcesLoading, setIsResourcesLoading] = useState(true);
+  
+  // Recommendation State
+  const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   
   // UI State
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
@@ -55,11 +63,75 @@ const ResourcesPage: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleResourceClick = (res: Resource) => {
+  const loadRecommendations = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    setIsLoadingRecommendations(true);
+    try {
+      const [userInteractions, allInteractions] = await Promise.all([
+        api.getUserInteractions(user.uid),
+        api.getAllInteractions()
+      ]);
+      
+      const allResources = [...dynamicResources, ...staticResources];
+      const userPrefs = buildUserPreferences(
+        userInteractions, 
+        user.studyPattern || 'mixed',
+        user.uid
+      );
+      
+      const recs = getHybridRecommendations(
+        user.uid,
+        userPrefs,
+        userInteractions,
+        allInteractions,
+        allResources,
+        6
+      );
+      
+      setRecommendations(recs);
+    } catch (error) {
+      console.error('Error loading recommendations:', error);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  }, [user, dynamicResources]);
+
+  // Load recommendations when user is logged in and not browsing a specific semester
+  useEffect(() => {
+    if (user?.uid && !semester) {
+      loadRecommendations();
+    }
+  }, [user, semester, loadRecommendations]);
+
+  const trackInteraction = async (
+    resourceId: string, 
+    type: 'view' | 'download',
+    resource: Resource
+  ) => {
+    if (!user?.uid) return;
+    
+    try {
+      await api.trackInteraction({
+        userId: user.uid,
+        resourceId,
+        interactionType: type,
+        subject: resource.subject,
+        resourceType: resource.type,
+        semester: resource.semester,
+        branch: resource.branch
+      });
+    } catch (error) {
+      console.error('Error tracking interaction:', error);
+    }
+  };
+
+  const handleResourceClick = async (res: Resource) => {
     if (!user) {
       setPendingResource(res);
       setShowAccessGate(true);
     } else {
+      await trackInteraction(res.id, 'view', res);
       openResource(res);
     }
   };
@@ -208,14 +280,80 @@ const ResourcesPage: React.FC = () => {
 
         <AnimatePresence mode="wait">
             {currentView === 'SEMESTERS' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {semesters.map(sem => (
-                        <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
-                            <span className="text-xl font-bold block mb-1">Semester {sem}</span>
-                            <span className="text-sm text-muted-foreground">View Subjects</span>
-                        </button>
-                    ))}
-                </motion.div>
+                <>
+                    {/* Recommendations Section */}
+                    {user && recommendations.length > 0 && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            className="mb-8"
+                        >
+                            <div className="flex items-center gap-2 mb-4">
+                                <Sparkles className="w-5 h-5 text-primary" />
+                                <h2 className="text-xl font-bold text-foreground">Recommended for You</h2>
+                                <span className="text-xs text-muted-foreground">Based on your activity</span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {recommendations.map((rec, idx) => (
+                                    <motion.div
+                                        key={rec.resource.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        onClick={() => handleResourceClick(rec.resource)}
+                                        className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer group relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-2 right-2">
+                                            <div className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
+                                                <TrendingUp className="w-3 h-3" />
+                                                {rec.reason === 'collaborative' && 'Popular'}
+                                                {rec.reason === 'content-based' && 'Matched'}
+                                                {rec.reason === 'time-based' && 'Timely'}
+                                                {rec.reason === 'popular' && 'Trending'}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-muted rounded-lg">
+                                                <FileText className="w-5 h-5 text-foreground" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-medium group-hover:text-primary transition-colors line-clamp-1">
+                                                    {rec.resource.title}
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {rec.resource.subject}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                                    <span>Sem {rec.resource.semester}</span>
+                                                    <span>•</span>
+                                                    <span>{rec.resource.type}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {isLoadingRecommendations && user && (
+                        <div className="flex items-center gap-2 text-muted-foreground mb-8">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-sm">Loading personalized recommendations...</span>
+                        </div>
+                    )}
+
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {semesters.map(sem => (
+                            <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
+                                <span className="text-xl font-bold block mb-1">Semester {sem}</span>
+                                <span className="text-sm text-muted-foreground">View Subjects</span>
+                            </button>
+                        ))}
+                    </motion.div>
+                </>
             )}
 
             {currentView === 'SUBJECTS' && (
@@ -339,7 +477,18 @@ const ResourcesPage: React.FC = () => {
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900 text-white">
                     <button onClick={() => setSelectedResource(null)} className="flex items-center gap-2 hover:text-gray-300"><ArrowLeft className="w-4 h-4" /> Back</button>
                     <span className="font-bold truncate max-w-md">{selectedResource.title}</span>
-                    <a href={selectedResource.downloadUrl || `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`} target="_blank" rel="noreferrer" className="bg-primary px-4 py-2 rounded-lg text-sm hover:bg-primary/90">Download</a>
+                    <a 
+                        href={selectedResource.downloadUrl || `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        onClick={() => {
+                            // Track interaction asynchronously without blocking the download
+                            trackInteraction(selectedResource.id, 'download', selectedResource);
+                        }}
+                        className="bg-primary px-4 py-2 rounded-lg text-sm hover:bg-primary/90"
+                    >
+                        Download
+                    </a>
                 </div>
                 <div className="flex-1 bg-zinc-900">
                     <iframe src={`https://drive.google.com/file/d/${selectedResource.driveFileId}/preview`} className="w-full h-full border-0" allow="autoplay" title="Preview" />
