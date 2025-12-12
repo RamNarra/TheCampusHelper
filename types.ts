@@ -31,3 +31,55 @@ export interface StatMetric {
   value: string;
   change?: string;
 }
+
+// Learning Analytics Types
+export interface StudyTime {
+  daily: number[];
+  weekly: number[];
+  bySubject: Map<string, number>;
+}
+
+export interface Performance {
+  quizScores: number[];
+  improvementRate: number;
+  strongTopics: string[];
+  weakTopics: string[];
+}
+
+export interface Habits {
+  mostActiveTime: string;
+  preferredResourceTypes: string[];
+  averageSessionLength: number;
+}
+
+export interface Predictions {
+  examReadiness: number;
+  recommendedFocusAreas: string[];
+}
+
+export interface LearningAnalytics {
+  studyTime: StudyTime;
+  performance: Performance;
+  habits: Habits;
+  predictions: Predictions;
+}
+
+export interface StudySession {
+  id: string;
+  userId: string;
+  subject: string;
+  resourceType: ResourceType;
+  duration: number; // in minutes
+  timestamp: Date;
+  completed: boolean;
+}
+
+export interface QuizResult {
+  id: string;
+  userId: string;
+  topic: string;
+  score: number; // percentage
+  timestamp: Date;
+  totalQuestions: number;
+  correctAnswers: number;
+}
