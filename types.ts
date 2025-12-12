@@ -31,3 +31,17 @@ export interface StatMetric {
   value: string;
   change?: string;
 }
+
+export interface StudyContext {
+  subject: string;
+  topic: string;
+  difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
+  previousInteractions: string[];
+}
+
+export interface StudyMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
