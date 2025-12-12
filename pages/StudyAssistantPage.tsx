@@ -3,6 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { Brain, Send, Loader2, BookOpen, GraduationCap } from 'lucide-react';
 import { StudyContext, StudyMessage } from '../types';
 
+// Constants
+const CONTEXT_TRUNCATE_LENGTH = 200;
+
+// Helper function to generate unique message ID
+const generateMessageId = () => crypto.randomUUID();
+
 // Helper function to get auth token
 const getAuthToken = async () => {
   const auth = (await import('../services/firebase')).auth;
@@ -38,7 +44,7 @@ const StudyAssistantPage: React.FC = () => {
       setShowContextForm(false);
       // Add welcome message
       const welcomeMessage: StudyMessage = {
-        id: Date.now().toString(),
+        id: generateMessageId(),
         role: 'assistant',
         content: `Great! I'm ready to help you with ${context.subject} - ${context.topic}. I'll tailor my explanations to a ${context.difficultyLevel} level. What would you like to know?`,
         timestamp: Date.now(),
@@ -52,7 +58,7 @@ const StudyAssistantPage: React.FC = () => {
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: StudyMessage = {
-      id: Date.now().toString(),
+      id: generateMessageId(),
       role: 'user',
       content: inputMessage,
       timestamp: Date.now(),
@@ -97,7 +103,7 @@ const StudyAssistantPage: React.FC = () => {
       const data = await response.json();
 
       const assistantMessage: StudyMessage = {
-        id: (Date.now() + 1).toString(),
+        id: generateMessageId(),
         role: 'assistant',
         content: data.text,
         timestamp: Date.now(),
@@ -106,17 +112,21 @@ const StudyAssistantPage: React.FC = () => {
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Update context with assistant response
+      const truncatedResponse = data.text.length > CONTEXT_TRUNCATE_LENGTH
+        ? `${data.text.substring(0, CONTEXT_TRUNCATE_LENGTH)}...`
+        : data.text;
+      
       setContext({
         ...updatedContext,
         previousInteractions: [
           ...updatedContext.previousInteractions,
-          `Assistant: ${data.text.substring(0, 200)}...`,
+          `Assistant: ${truncatedResponse}`,
         ].slice(-5),
       });
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: StudyMessage = {
-        id: (Date.now() + 1).toString(),
+        id: generateMessageId(),
         role: 'assistant',
         content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         timestamp: Date.now(),
