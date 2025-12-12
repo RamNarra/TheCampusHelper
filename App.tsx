@@ -12,6 +12,8 @@ import CompilerPage from './pages/CompilerPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import OnboardingTour from './components/OnboardingTour';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
@@ -123,6 +125,10 @@ const AppContent: React.FC = () => {
       
       <CompleteProfileModal isOpen={showProfileModal} onComplete={handleProfileComplete} />
       <OnboardingTour isOpen={showTour} onClose={() => setShowTour(false)} />
+      
+      {/* PWA Features */}
+      <PWAInstallPrompt />
+      <PWAUpdatePrompt />
       
       <main className="flex-grow relative">
         <ErrorBoundary>
