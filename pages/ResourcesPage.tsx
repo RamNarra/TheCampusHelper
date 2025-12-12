@@ -146,7 +146,10 @@ const ResourcesPage: React.FC = () => {
     // Award XP for viewing resource
     if (user) {
       await awardXP(user.uid, XP_REWARDS.RESOURCE_VIEW, 'Viewed a resource');
-      await unlockAchievement(user.uid, 'first_resource');
+      // Only unlock 'first_resource' if not already unlocked
+      if (!user.achievements || !user.achievements.includes('first_resource')) {
+        await unlockAchievement(user.uid, 'first_resource');
+      }
     }
   };
 
