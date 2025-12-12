@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
-import { Resource, ResourceType, ResourceInteraction, RecommendationResult } from '../types';
+import { Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api, extractDriveId } from '../services/firebase';
 import { 
