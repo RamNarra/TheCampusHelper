@@ -16,7 +16,7 @@ const LoginPage: React.FC = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden transition-colors duration-300 p-4">
+    <div className="flex-1 flex items-center justify-center bg-background relative overflow-hidden transition-colors duration-300 p-4">
       {/* Ambient background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px]"></div>

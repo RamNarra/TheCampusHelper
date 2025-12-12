@@ -19,7 +19,7 @@ const EventsPage: React.FC = () => {
   const categories = ['All', 'Hackathon', 'Workshop', 'Cultural'];
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-10 text-center sm:text-left">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 flex items-center justify-center sm:justify-start gap-3">

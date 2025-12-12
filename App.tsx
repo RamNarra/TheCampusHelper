@@ -135,6 +135,8 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 transition-colors duration-300">
       <Analytics />
       <Navbar />
+      {/* Offset for fixed navbar (h-16) */}
+      <div className="h-16 shrink-0" />
       
       <CompleteProfileModal isOpen={showProfileModal} onComplete={handleProfileComplete} />
       <OnboardingTour isOpen={showTour} onClose={() => setShowTour(false)} />
@@ -143,7 +145,7 @@ const AppContent: React.FC = () => {
       <PWAInstallPrompt />
       <PWAUpdatePrompt />
       
-      <main className="flex-grow relative">
+      <main className="flex-grow relative flex flex-col">
         <ErrorBoundary>
             <Routes>
               <Route path="/" element={<LandingPage />} />

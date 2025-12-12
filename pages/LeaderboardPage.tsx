@@ -42,7 +42,7 @@ const LeaderboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}

@@ -5,7 +5,7 @@ import { Home, AlertCircle } from 'lucide-react';
 
 const NotFoundPage: React.FC = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center pt-20 pb-12 px-4">
+    <div className="flex-1 flex items-center justify-center py-12 px-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

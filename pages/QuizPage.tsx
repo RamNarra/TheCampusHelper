@@ -176,7 +176,7 @@ const QuizPage: React.FC = () => {
   // Show login prompt if user is not authenticated
   if (!user) {
     return (
-      <div className="min-h-screen bg-background pt-24 pb-12 transition-colors duration-300">
+      <div className="flex-1 bg-background pt-8 pb-12 transition-colors duration-300">
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>
         </div>
@@ -212,7 +212,7 @@ const QuizPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 transition-colors duration-300">
+    <div className="flex-1 bg-background pt-8 pb-12 transition-colors duration-300">
       {/* Ambient Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>

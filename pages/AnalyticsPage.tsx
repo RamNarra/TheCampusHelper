@@ -34,7 +34,7 @@ const AnalyticsPage: React.FC = () => {
 
   if (!analytics) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex-1 flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -67,7 +67,7 @@ const AnalyticsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}

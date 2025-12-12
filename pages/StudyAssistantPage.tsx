@@ -144,7 +144,7 @@ const StudyAssistantPage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+      <div className="flex-1 flex items-center justify-center bg-background text-foreground p-6">
         <div className="text-center max-w-md">
           <Brain className="w-16 h-16 mx-auto mb-4 text-primary" />
           <h2 className="text-2xl font-bold mb-2">AI Study Assistant</h2>
@@ -157,7 +157,7 @@ const StudyAssistantPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-8 text-center">

@@ -78,7 +78,7 @@ const StudyGroupsPage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
+      <div className="flex-1 px-4 py-12 flex items-center justify-center">
         <div className="text-center">
           <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">Please Sign In</h2>
@@ -89,7 +89,7 @@ const StudyGroupsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-10">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 flex items-center gap-3">
