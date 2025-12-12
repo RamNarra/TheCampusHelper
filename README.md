@@ -93,5 +93,7 @@ Users can install TheCampusHelper on:
 
 The app will automatically prompt eligible users to install after a few seconds of use. The prompt can be dismissed and will reappear after 7 days.
 
+> **Note**: The current icon files are placeholder SVGs. For production deployment, replace these with proper PNG files generated at the required sizes (72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512). You can use tools like [Favicon Generator](https://realfavicongenerator.net/) or [PWA Asset Generator](https://github.com/onderceylan/pwa-asset-generator) to create proper PWA icons from your logo.
+
 ## 🛠️ Deployment
 Connect this repository to Vercel. The `api/` directory will automatically be deployed as Serverless Functions. The PWA service worker is automatically generated during the build process.

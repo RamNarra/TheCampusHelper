@@ -145,6 +145,37 @@
         background-color: var(--muted);
         color: var(--foreground);
       }
+      
+      /* PWA prompt animations */
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .animate-slide-up {
+        animation: slideUp 0.3s ease-out;
+      }
+      
+      .animate-slide-down {
+        animation: slideDown 0.3s ease-out;
+      }
     </style>
   <script type="importmap">
 {
