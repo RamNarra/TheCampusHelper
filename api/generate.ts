@@ -1,5 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import crypto from 'crypto';
+import * as admin from 'firebase-admin';
+import { Buffer } from 'buffer';
+import { rateLimitExceeded } from '../lib/rateLimit';
 
 export const config = {
   runtime: "nodejs",
@@ -8,49 +11,62 @@ export const config = {
 // --- SECURITY CONFIGURATION ---
 
 // 1. ALLOWED ORIGINS (Strict Whitelist)
-const ALLOWED_ORIGINS = new Set([
-  'http://localhost:5173',
-  'http://localhost:3000',
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
-  // Add your production domain here, e.g., 'https://thecampushelper.com'
-]);
+const ALLOWED_ORIGINS = new Set(
+  [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://thecampushelper.vercel.app', // Production domain
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+  ].filter(Boolean) as string[]
+);
+
+function getValidatedOrigin(origin?: string | string[]) {
+  const o = Array.isArray(origin) ? origin[0] : origin;
+  if (!o) return null;
+  return ALLOWED_ORIGINS.has(o) ? o : null;
+}
 
 // 2. PAYLOAD LIMITS
 const MAX_BODY_SIZE = 200 * 1024; // 200KB
 
-// 3. RATE LIMITING (Token Bucket - In-Memory)
-// Note: For production with multiple instances, use Redis (e.g., Vercel KV).
-type Bucket = { tokens: number; last: number };
-const RATE_LIMIT_MAP = new Map<string, Bucket>();
-const RL_CAPACITY = 10;     // Max burst
-const RL_REFILL_RATE = 0.5; // Tokens per second
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  let bucket = RATE_LIMIT_MAP.get(ip);
+// --- HELPER: Normalize AI Response ---
+function normalizeAiResponse(res: any): string {
+  if (!res) return '';
+  if (typeof res === 'string') return res;
+  if (res.text) return res.text; // Standard @google/genai shape
+  if (res.outputText) return res.outputText; // Legacy/Alternative shape
   
-  if (!bucket) {
-    bucket = { tokens: RL_CAPACITY, last: now };
-    RATE_LIMIT_MAP.set(ip, bucket);
+  // Handle Candidates array
+  if (Array.isArray(res.candidates) && res.candidates[0]) {
+    return res.candidates[0].content?.parts?.[0]?.text ?? '';
   }
-
-  const elapsedSeconds = (now - bucket.last) / 1000;
-  bucket.tokens = Math.min(RL_CAPACITY, bucket.tokens + (elapsedSeconds * RL_REFILL_RATE));
-  bucket.last = now;
-
-  if (bucket.tokens >= 1) {
-    bucket.tokens -= 1;
-    return true;
-  }
-  return false;
+  
+  return '';
 }
 
-// --- TYPES ---
+// --- FIREBASE ADMIN INIT ---
+if (!admin.apps.length) {
+    if (process.env.FIREBASE_PRIVATE_KEY) {
+        try {
+            admin.initializeApp({
+                credential: admin.credential.cert({
+                    projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
+                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                }),
+            });
+        } catch (e) {
+            console.error('Firebase Admin Init Error:', e);
+        }
+    }
+}
+
+// --- HANDLER ---
 
 interface VercelRequest {
   headers: { [key: string]: string | string[] | undefined };
   method: string;
-  body: { prompt?: unknown }; 
+  body: any; 
 }
 
 interface VercelResponse {
@@ -60,18 +76,21 @@ interface VercelResponse {
   end: () => void;
 }
 
-// --- HANDLER ---
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = crypto.randomUUID();
   
-  // Normalize Origin and IP
-  const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
-  const ip = (req.headers['x-forwarded-for'] as string) || 'unknown-ip';
+  // 1. ORIGIN VALIDATION
+  const originHeader = req.headers.origin;
+  const validatedOrigin = getValidatedOrigin(originHeader);
 
-  // 1. CORS Headers & Preflight
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  if (originHeader && !validatedOrigin) {
+     console.warn(`[${requestId}] Blocked request from unauthorized origin: ${originHeader}`);
+     return res.status(403).json({ error: "Forbidden Origin" });
+  }
+
+  if (validatedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', validatedOrigin);
+    res.setHeader('Vary', 'Origin');
   }
   
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -79,19 +98,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
-  // 2. STRICT METHOD CHECK
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // 3. ORIGIN ENFORCEMENT
-  if (origin && !ALLOWED_ORIGINS.has(origin)) {
-     console.warn(`[${requestId}] Blocked request from unauthorized origin: ${origin}`);
-     return res.status(403).json({ error: "Forbidden Origin" });
-  }
+  // 3. IP EXTRACTION
+  const xff = req.headers['x-forwarded-for'];
+  const rawIp = Array.isArray(xff) ? xff[0] : xff || '';
+  const ip = rawIp.split(',')[0].trim() || 'unknown-ip';
 
   try {
     // 4. CONTENT TYPE & SIZE CHECKS
@@ -102,18 +119,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(415).json({ error: "Unsupported Media Type. Use application/json." });
     }
 
-    const contentLength = parseInt((req.headers['content-length'] as string) || '0', 10);
-    if (contentLength > MAX_BODY_SIZE) {
-        return res.status(413).json({ error: "Payload Too Large" });
+    // Note: JSON.stringify is reliable for JSON payloads but not for multipart/binary.
+    const bodySize = Buffer.byteLength(JSON.stringify(req.body || {}), 'utf8');
+    if (bodySize > MAX_BODY_SIZE) {
+         return res.status(413).json({ error: "Payload Too Large" });
     }
 
-    // 5. RATE LIMIT CHECK
-    if (!checkRateLimit(ip)) {
-        console.warn(`[${requestId}] Rate limit exceeded for IP: ${ip}`);
-        return res.status(429).json({ error: "Too Many Requests" });
-    }
-
-    // 6. AUTHENTICATION (Bearer Token)
+    // 5. AUTHENTICATION
     const authHeader = req.headers.authorization;
     const bearerToken = Array.isArray(authHeader) ? authHeader[0] : authHeader;
 
@@ -122,23 +134,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const idToken = bearerToken.split('Bearer ')[1];
 
-    // Verify Token (Lightweight verification via Google API)
-    // Note: In a full Node environment with service accounts, use firebase-admin.
-    const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-    if (!verifyRes.ok) {
-       console.error(`[${requestId}] Invalid Token`);
-       return res.status(403).json({ error: "Forbidden: Invalid Token" });
+    let uid = 'anonymous';
+
+    try {
+        if (!admin.apps.length) throw new Error("Firebase Admin not initialized");
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        uid = decodedToken.uid;
+    } catch (authError) {
+        console.error(`[${requestId}] Auth Failed:`, authError);
+        return res.status(403).json({ error: "Forbidden: Invalid Token" });
+    }
+
+    // 6. RATE LIMIT CHECK
+    const rateLimitKey = `${uid}:${ip}`;
+    if (await rateLimitExceeded(rateLimitKey)) {
+        console.warn(`[${requestId}] Rate limit exceeded for: ${rateLimitKey}`);
+        return res.status(429).json({ error: "Too Many Requests" });
     }
 
     // 7. INPUT VALIDATION
-    const body = req.body as { prompt?: string };
-    const prompt = body.prompt;
+    const { prompt } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || prompt.length > 5000) {
         return res.status(400).json({ error: "Invalid prompt. Must be a string < 5000 chars." });
     }
 
-    // 8. GEMINI CALL (Server-Side)
+    // 8. GEMINI CALL
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
         console.error(`[${requestId}] Server Misconfiguration: Missing API Key`);
@@ -146,15 +167,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    let aiText = '';
     
-    return res.status(200).json({ text: response.text });
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+        });
+        
+        // Defensive Extraction using Helper
+        aiText = normalizeAiResponse(response);
+        
+        if (!aiText && response.candidates && response.candidates.length > 0) {
+             console.warn(`[${requestId}] Parsing failed for response candidates`);
+             aiText = "Response generated but could not be parsed.";
+        }
+    } catch (aiError: any) {
+         console.error(`[${requestId}] AI Service Error:`, aiError.message);
+         return res.status(502).json({ error: "AI Service Unavailable", requestId });
+    }
+
+    if (!aiText) {
+         return res.status(500).json({ error: "Empty response from AI", requestId });
+    }
+    
+    return res.status(200).json({ text: aiText });
 
   } catch (error: any) {
-    console.error(`[${requestId}] Error:`, error.message);
+    console.error(`[${requestId}] Critical Error:`, error.message);
     return res.status(500).json({ error: "Internal Server Error", requestId });
   }
 }
