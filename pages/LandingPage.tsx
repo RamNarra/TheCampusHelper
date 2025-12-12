@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Calculator, Camera, Library, Brain } from 'lucide-react';
+import { ArrowRight, Calculator, Library, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdUnit from '../components/AdUnit';
 
