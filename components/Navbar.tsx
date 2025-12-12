@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Trophy, Users, BarChart3, Brain, Calendar } from 'lucide-react';
+import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Trophy, Users, BarChart3, Brain, Calendar, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -11,23 +11,47 @@ const Navbar: React.FC = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const [isStudyOpen, setIsStudyOpen] = useState(false);
+  const studyMenuRef = useRef<HTMLDivElement | null>(null);
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const navLinks = [
-    { name: 'Home', path: '/', icon: null },
-    { name: 'Resources', path: '/resources', icon: <BookOpen className="w-4 h-4 mr-2" /> },
-    { name: 'Exam Prep', path: '/exam-prep', icon: <Brain className="w-4 h-4 mr-2" /> },
-    { name: 'Events', path: '/events', icon: <Calendar className="w-4 h-4 mr-2" /> },
-    { name: 'Quiz', path: '/quiz', icon: <Brain className="w-4 h-4 mr-2" /> },
-    { name: 'Study Groups', path: '/study-groups', icon: <Users className="w-4 h-4 mr-2" /> },
-    ...(user ? [{ name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
-    { name: 'Study Assistant', path: '/study-assistant', icon: <Brain className="w-4 h-4 mr-2" /> },
-    { name: 'Calculator', path: '/calculator', icon: <Calculator className="w-4 h-4 mr-2" /> },
-    { name: 'Compiler', path: '/compiler', icon: <Terminal className="w-4 h-4 mr-2" /> },
-    { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
-    ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
-  ];
+  const isStaff = user?.role === 'admin' || user?.role === 'mod';
+
+  const primaryLinks = useMemo(() => {
+    return [
+      { name: 'Home', path: '/', icon: null },
+      { name: 'Resources', path: '/resources', icon: <BookOpen className="w-4 h-4 mr-2" /> },
+      { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
+      ...(isStaff ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
+    ];
+  }, [isStaff]);
+
+  const studyLinks = useMemo(() => {
+    return [
+      { name: 'Study Assistant', path: '/study-assistant', icon: <Brain className="w-4 h-4 mr-2" /> },
+      { name: 'Quiz', path: '/quiz', icon: <Brain className="w-4 h-4 mr-2" /> },
+      { name: 'Exam Prep', path: '/exam-prep', icon: <Brain className="w-4 h-4 mr-2" /> },
+      { name: 'Study Groups', path: '/study-groups', icon: <Users className="w-4 h-4 mr-2" /> },
+      { name: 'Calculator', path: '/calculator', icon: <Calculator className="w-4 h-4 mr-2" /> },
+      { name: 'Compiler', path: '/compiler', icon: <Terminal className="w-4 h-4 mr-2" /> },
+      { name: 'Events', path: '/events', icon: <Calendar className="w-4 h-4 mr-2" /> },
+      ...(user ? [{ name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
+    ];
+  }, [user]);
+
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      if (!isStudyOpen) return;
+      const el = studyMenuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setIsStudyOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [isStudyOpen]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 transition-colors duration-300">
@@ -45,7 +69,7 @@ const Navbar: React.FC = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-2">
-            {navLinks.map((link) => (
+            {primaryLinks.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}
@@ -62,6 +86,58 @@ const Navbar: React.FC = () => {
                 {link.name}
               </NavLink>
             ))}
+
+            {/* Study+ Dropdown */}
+            <div ref={studyMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsStudyOpen((v) => !v)}
+                className={cn(
+                  "flex items-center px-3 py-2 text-sm font-medium transition-all duration-200 rounded-lg",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                aria-haspopup="menu"
+                aria-expanded={isStudyOpen}
+              >
+                Study+
+                <ChevronDown className={cn("w-4 h-4 ml-1 transition-transform", isStudyOpen ? "rotate-180" : "rotate-0")} />
+              </button>
+
+              <AnimatePresence>
+                {isStudyOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-xl shadow-lg overflow-hidden"
+                    role="menu"
+                  >
+                    <div className="p-2 space-y-1">
+                      {studyLinks.map((link) => (
+                        <NavLink
+                          key={link.path}
+                          to={link.path}
+                          onClick={() => setIsStudyOpen(false)}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex items-center px-3 py-2 text-sm font-medium transition-colors rounded-lg",
+                              isActive
+                                ? "text-primary bg-primary/10"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                            )
+                          }
+                          role="menuitem"
+                        >
+                          {link.icon}
+                          {link.name}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <div className="flex items-center gap-3 ml-2 pl-2 border-l border-border">
               {/* Theme Toggle */}
@@ -122,7 +198,7 @@ const Navbar: React.FC = () => {
             className="md:hidden bg-background border-b border-border overflow-hidden"
           >
             <div className="px-4 pt-2 pb-4 space-y-2">
-              {navLinks.map((link) => (
+              {primaryLinks.map((link) => (
                 <NavLink
                   key={link.path}
                   to={link.path}
@@ -140,6 +216,31 @@ const Navbar: React.FC = () => {
                   {link.name}
                 </NavLink>
               ))}
+
+              <div className="pt-2 mt-2 border-t border-border">
+                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Study+
+                </div>
+                {studyLinks.map((link) => (
+                  <NavLink
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setIsOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center px-4 py-3 rounded-lg text-base font-medium transition-colors",
+                        isActive
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )
+                    }
+                  >
+                    {link.icon}
+                    {link.name}
+                  </NavLink>
+                ))}
+              </div>
+
               {user ? (
                  <NavLink
                   to="/profile"
