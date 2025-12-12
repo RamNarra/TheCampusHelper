@@ -11,9 +11,7 @@ import {
   BookOpen,
   Target,
   Heart,
-  Plus,
-  Edit2,
-  Trash2
+  Plus
 } from 'lucide-react';
 import { ExamPrep, Subject, StudyTask } from '../types';
 import { 
@@ -29,7 +27,6 @@ const ExamPrepPage: React.FC = () => {
   const { user } = useAuth();
   const [exams, setExams] = useState<ExamPrep[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamPrep | null>(null);
-  const [showAddExam, setShowAddExam] = useState(false);
 
   // Initialize with sample data
   useEffect(() => {
@@ -160,8 +157,9 @@ const ExamPrepPage: React.FC = () => {
             Exam Preparation Dashboard
           </h1>
           <button
-            onClick={() => setShowAddExam(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all font-medium"
+            disabled
+            className="flex items-center gap-2 px-4 py-2 bg-primary/50 text-white rounded-lg cursor-not-allowed transition-all font-medium"
+            title="Coming soon"
           >
             <Plus className="w-5 h-5" />
             Add Exam
@@ -427,8 +425,9 @@ const ExamPrepPage: React.FC = () => {
           <h3 className="text-xl font-bold text-gray-300 mb-2">No Exams Added</h3>
           <p className="text-gray-500 mb-6">Start by adding your first exam to begin tracking.</p>
           <button
-            onClick={() => setShowAddExam(true)}
-            className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all font-medium"
+            disabled
+            className="px-6 py-3 bg-primary/50 text-white rounded-lg cursor-not-allowed transition-all font-medium"
+            title="Coming soon"
           >
             Add Your First Exam
           </button>

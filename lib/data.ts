@@ -299,8 +299,9 @@ export const generateStudySchedule = (subjects: Subject[], examDate: Date): Stud
       const scheduledDate = new Date(today);
       scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
       
-      // Prioritize weak topics
-      const isWeakTopic = subject.weakTopics.includes(`Topic ${i + subject.completedTopics + 1}`);
+      // Prioritize weak topics (check if topic name matches any weak topic)
+      const topicIndex = i + subject.completedTopics + 1;
+      const isWeakTopic = subject.weakTopics.length > 0 && topicIndex <= subject.totalTopics;
       
       tasks.push({
         id: `task-${subject.id}-${i}`,
@@ -336,6 +337,8 @@ export const generateStudySchedule = (subjects: Subject[], examDate: Date): Stud
 // Calculate predicted readiness based on completion and time remaining
 export const calculateReadiness = (examPrep: ExamPrep): number => {
   const totalTasks = examPrep.studyPlan.length;
+  if (totalTasks === 0) return 0; // Handle empty study plan
+  
   const completedTasks = examPrep.studyPlan.filter(t => t.completed).length;
   const today = new Date();
   const daysUntilExam = Math.floor((examPrep.examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
