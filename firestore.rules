@@ -42,11 +42,20 @@ service cloud.firestore {
 
     // USERS COLLECTION
     match /users/{userId} {
+      // Allow only the owner or an admin to read full user profiles.
       allow read: if isOwner(userId) || isAdmin();
       
       allow create: if isOwner(userId) && isValidProfileUpdate(request.resource.data, null);
       allow update: if isOwner(userId) && isValidProfileUpdate(request.resource.data, resource.data);
       allow delete: if isAdmin();
+    }
+
+    // LEADERBOARD COLLECTION (Public subset of user data for leaderboard)
+    match /leaderboard/{userId} {
+      // Anyone authenticated can read leaderboard entries (contains only public data)
+      allow read: if isAuthenticated();
+      // Only the user can write their own leaderboard entry (via client SDK or Cloud Functions)
+      allow write: if isOwner(userId);
     }
 
     // RESOURCES COLLECTION

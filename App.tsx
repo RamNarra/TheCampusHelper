@@ -12,6 +12,7 @@ import CompilerPage from './pages/CompilerPage';
 import QuizPage from './pages/QuizPage';
 import StudyAssistantPage from './pages/StudyAssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import OnboardingTour from './components/OnboardingTour';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
@@ -147,6 +148,7 @@ const AppContent: React.FC = () => {
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/exam-prep" element={<ExamPrepPage />} />
               <Route path="/study-groups" element={<StudyGroupsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />

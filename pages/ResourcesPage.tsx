@@ -3,6 +3,7 @@ import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api, extractDriveId } from '../services/firebase';
+import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
 import { 
   Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
   FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
@@ -135,11 +136,25 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
-  const openResource = (res: Resource) => {
+  const openResource = async (res: Resource) => {
     if (res.driveFileId) {
       setSelectedResource(res);
     } else {
       window.open(res.downloadUrl, '_blank');
+    }
+    
+    // Award XP for viewing resource
+    if (user) {
+      await awardXP(user.uid, XP_REWARDS.RESOURCE_VIEW, 'Viewed a resource');
+      
+      // Only try to unlock 'first_resource' if not already unlocked
+      if (!user.achievementIds?.includes('first_resource')) {
+        await unlockAchievement(user.uid, 'first_resource');
+      }
+      
+      // Track total resources viewed for resource_master achievement
+      // Note: This requires a resourcesViewed counter field in the user profile
+      // TODO: Implement resource view counter and unlock resource_master at 50 views
     }
   };
 
@@ -180,7 +195,17 @@ const ResourcesPage: React.FC = () => {
         // 4. Send to Firebase (Protected by Timeout)
         await api.addResource(newResource);
 
-        // 5. Success State
+        // 5. Award XP for contribution
+        if (user) {
+          await awardXP(user.uid, XP_REWARDS.RESOURCE_UPLOAD, 'Uploaded a resource');
+          
+          // Only try to unlock 'contributor' if not already unlocked
+          if (!user.achievementIds?.includes('contributor')) {
+            await unlockAchievement(user.uid, 'contributor');
+          }
+        }
+
+        // 6. Success State
         setUploadName('');
         setUploadLink('');
         setShowUploadModal(false);
