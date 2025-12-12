@@ -4,6 +4,10 @@
   "requestFramePermissions": [
     "git-push",
     "git-commit",
-    "file-write"
+    "file-write",
+    "file-read",
+    "network-access",
+    "package-install",
+    "env-access"
   ]
 }
