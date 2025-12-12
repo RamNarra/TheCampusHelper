@@ -7,11 +7,14 @@
     "dev": "echo '⚠️ SECURITY WARNING: Use \"npm run dev:secure\" to run the backend proxy locally.' && vite",
     "dev:secure": "vercel dev",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
+    "@upstash/redis": "^1.28.4",
     "firebase": "^10.8.1",
+    "firebase-admin": "^12.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
