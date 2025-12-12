@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
+import QuizPage from './pages/QuizPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import OnboardingTour from './components/OnboardingTour';
@@ -132,6 +133,7 @@ const AppContent: React.FC = () => {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/resources" element={<ResourcesPage />} />
+              <Route path="/quiz" element={<QuizPage />} />
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />

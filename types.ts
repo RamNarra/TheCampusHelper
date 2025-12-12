@@ -31,3 +31,53 @@ export interface StatMetric {
   value: string;
   change?: string;
 }
+
+// Quiz Types
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: QuizOption[];
+  correctAnswer: string;
+  explanation: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+export interface Quiz {
+  id: string;
+  title: string;
+  subject: string;
+  topic: string;
+  difficulty: number; // 1-3 (easy, medium, hard)
+  questions: QuizQuestion[];
+  createdAt: any; // Firestore Timestamp
+  createdBy: string; // User UID
+}
+
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  userId: string;
+  answers: { [questionId: string]: string }; // questionId -> selectedOptionId
+  score: number;
+  totalQuestions: number;
+  completedAt: any; // Firestore Timestamp
+  timeSpent: number; // seconds
+}
+
+export interface QuizPerformance {
+  totalAttempts: number;
+  averageScore: number;
+  bestScore: number;
+  totalTimeSpent: number;
+  subjectStats: {
+    [subject: string]: {
+      attempts: number;
+      averageScore: number;
+    };
+  };
+}
