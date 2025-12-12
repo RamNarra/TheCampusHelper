@@ -15,6 +15,7 @@ const ALLOWED_ORIGINS = new Set(
   [
     'http://localhost:5173',
     'http://localhost:3000',
+    'https://thecampushelper.vercel.app', // Production domain
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
   ].filter(Boolean) as string[]
 );
@@ -86,6 +87,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1. ORIGIN VALIDATION
   const originHeader = req.headers.origin;
   const validatedOrigin = getValidatedOrigin(originHeader);
+
+  if (originHeader && !validatedOrigin) {
+     console.warn(`[${requestId}] Blocked request from unauthorized origin: ${originHeader}`);
+     return res.status(403).json({ error: "Forbidden Origin" });
+  }
+
 
   if (originHeader && !validatedOrigin) {
      console.warn(`[${requestId}] Blocked request from unauthorized origin: ${originHeader}`);
