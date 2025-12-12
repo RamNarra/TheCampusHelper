@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Calculator, Library, Brain } from 'lucide-react';
+import { ArrowRight, Calculator, Camera, Library, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdUnit from '../components/AdUnit';
 
@@ -56,7 +57,7 @@ const LandingPage: React.FC = () => {
       {/* Features Grid */}
       <section className="pb-24 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             
             {/* Feature 1 */}
             <motion.div 
@@ -70,7 +71,21 @@ const LandingPage: React.FC = () => {
               <p className="text-muted-foreground leading-relaxed">Access verified notes, lab manuals, and previous question papers sorted by branch and semester.</p>
             </motion.div>
 
-            {/* Feature 2: CGPA Calculator */}
+            {/* Feature 2: AI Quizzes */}
+            <Link to="/quiz" className="block h-full">
+              <motion.div 
+                whileHover={{ y: -8 }}
+                className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
+              >
+                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
+                  <Brain className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-3">AI Quizzes</h3>
+                <p className="text-muted-foreground leading-relaxed">Generate adaptive MCQ quizzes on any topic with instant feedback and detailed explanations.</p>
+              </motion.div>
+            </Link>
+
+            {/* Feature 3: CGPA Calculator */}
             <Link to="/calculator" className="block h-full">
               <motion.div 
                 whileHover={{ y: -8 }}
@@ -92,6 +107,14 @@ const LandingPage: React.FC = () => {
               >
                 <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
                   <Brain className="w-7 h-7" />
+            {/* Feature 4: SnapLearn */}
+            <motion.div 
+              whileHover={{ y: -8 }}
+              className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/5 text-primary">
+                  <Camera className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-3">Smart Exam Prep</h3>
                 <p className="text-muted-foreground leading-relaxed">AI-powered exam tracking with personalized study plans, progress analytics, and readiness predictions.</p>

@@ -1,6 +1,39 @@
 # TheCampusHelper
 
+A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, AI tools, and real-time collaboration features.
+
+## ✨ Features
+
+### 📚 Resource Management
+- Upload and access study materials (Notes, PYQs, Lab Records, PPTs)
+- Branch and semester-specific organization
+- Admin-controlled approval workflow
+
+### 🤝 Real-Time Collaboration (NEW)
+- **Study Groups**: Create and join study groups by subject/branch
+- **Live Chat**: Real-time messaging within study groups
+- **Video Sessions**: Schedule and manage video study sessions
+- **Collaborative Notes**: Shared notes that all group members can edit
+- Real-time updates powered by Firestore
+
+### 🧮 Academic Tools
+- CGPA Calculator with GPA computation
+- Online Code Compiler with multiple language support
+- AI-powered content generation
+
+### 🎉 Campus Events
+- Browse upcoming hackathons, workshops, and cultural events
+- Filter by category and search functionality
 A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, AI-powered study assistant, and AI tools.
+
+## ✨ Features
+
+- **📚 Curated Resources**: Access verified notes, lab manuals, and previous question papers organized by branch and semester
+- **🧠 AI-Generated Quizzes**: Create adaptive MCQ quizzes on any topic with instant feedback and detailed explanations
+- **🧮 CGPA Calculator**: Calculate SGPA & CGPA with automatic JNTUH grade mapping and credit weightage
+- **💻 Code Compiler**: In-browser code execution with support for multiple programming languages
+- **🔐 Role-Based Access Control**: Secure authentication with admin and user roles
+- **🎨 Dark/Light Mode**: Beautiful UI with theme switching support
 
 ## 🔒 Security Architecture
 This project uses a **Server-Side Proxy Architecture** to protect sensitive credentials (like the Gemini API Key).
@@ -38,6 +71,10 @@ GEMINI_API_KEY=REDACTED
 FIREBASE_PROJECT_ID=your_project_id
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="REDACTED_FIREBASE_PRIVATE_KEY"
+
+# Upstash Redis (Required for rate limiting on AI endpoints)
+UPSTASH_REDIS_REST_URL=your_upstash_redis_rest_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
 ```
 
 ### 2. Installation

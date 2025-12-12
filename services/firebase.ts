@@ -15,16 +15,22 @@ import {
   addDoc, 
   collection, 
   getDocs, 
+  getDoc,
   query, 
   where,
   orderBy, 
+  limit,
   onSnapshot, 
   serverTimestamp,
+  updateDoc,
+  deleteDoc,
+  arrayUnion,
+  arrayRemove,
   Firestore,
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, ResourceInteraction } from '../types';
+import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
@@ -244,6 +250,263 @@ export const api = {
 
        const data = await response.json();
        return data.text;
+    },
+
+    /**
+     * Generate quiz questions using AI
+     */
+    generateQuiz: async (subject: string, topic: string, difficulty: number, questionCount: number = 10): Promise<{ questions: QuizQuestion[], metadata: any }> => {
+       const token = await getAuthToken();
+       if (!token) throw new Error("User must be logged in to use AI features.");
+
+       const response = await fetch('/api/generateQuiz', {
+          method: 'POST',
+          headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ subject, topic, difficulty, questionCount })
+       });
+
+       if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || "Quiz generation failed");
+       }
+
+       return await response.json();
+    },
+
+    /**
+     * Save a quiz to Firestore
+     */
+    saveQuiz: async (quiz: Omit<Quiz, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await addDoc(collection(db, 'quizzes'), {
+            ...quiz,
+            createdAt: serverTimestamp()
+        });
+        return docRef.id;
+    },
+
+    /**
+     * Save a quiz attempt to Firestore
+     */
+    saveQuizAttempt: async (attempt: Omit<QuizAttempt, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await addDoc(collection(db, 'quizAttempts'), {
+            ...attempt,
+            completedAt: serverTimestamp()
+        });
+        return docRef.id;
+    },
+
+    /**
+     * Get user's quiz attempts
+     */
+    getUserQuizAttempts: async (userId: string): Promise<QuizAttempt[]> => {
+        if (!db) return [];
+        const q = query(
+            collection(db, 'quizAttempts'),
+            orderBy('completedAt', 'desc')
+        );
+        const snap = await getDocs(q);
+        return snap.docs
+            .map(d => ({ id: d.id, ...d.data() } as QuizAttempt))
+            .filter(attempt => attempt.userId === userId);
+    },
+
+    // STUDY GROUPS METHODS
+    
+    createStudyGroup: async (groupData: Omit<StudyGroup, 'id' | 'createdAt'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, 'studyGroups'), {
+                ...groupData,
+                createdAt: serverTimestamp()
+            }),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateStudyGroup: async (groupId: string, data: Partial<StudyGroup>) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(updateDoc(docRef, data), 5000);
+    },
+
+    deleteStudyGroup: async (groupId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    joinStudyGroup: async (groupId: string, userId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(updateDoc(docRef, {
+            members: arrayUnion(userId)
+        }), 5000);
+    },
+
+    leaveStudyGroup: async (groupId: string, userId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'studyGroups', groupId);
+        return withTimeout(updateDoc(docRef, {
+            members: arrayRemove(userId)
+        }), 5000);
+    },
+
+    getStudyGroup: async (groupId: string): Promise<StudyGroup | null> => {
+        if (!db) return null;
+        const docRef = doc(db, 'studyGroups', groupId);
+        const docSnap = await withTimeout(getDoc(docRef), 5000);
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as StudyGroup;
+        }
+        return null;
+    },
+
+    onStudyGroupsChanged: (cb: (groups: StudyGroup[]) => void, userId?: string) => {
+        if (!db) { cb([]); return () => {}; }
+        let q;
+        if (userId) {
+            // Filter groups where user is a member
+            q = query(
+                collection(db, 'studyGroups'),
+                where('members', 'array-contains', userId),
+                orderBy('createdAt', 'desc')
+            );
+        } else {
+            // Get all public groups
+            q = query(
+                collection(db, 'studyGroups'),
+                where('isPrivate', '==', false),
+                orderBy('createdAt', 'desc')
+            );
+        }
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyGroup));
+            cb(list);
+        });
+    },
+
+    // MESSAGES METHODS
+
+    sendMessage: async (groupId: string, messageData: Omit<Message, 'id' | 'timestamp'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, `studyGroups/${groupId}/messages`), {
+                ...messageData,
+                timestamp: serverTimestamp()
+            }),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateMessage: async (groupId: string, messageId: string, content: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/messages`, messageId);
+        return withTimeout(updateDoc(docRef, {
+            content,
+            edited: true,
+            editedAt: serverTimestamp()
+        }), 5000);
+    },
+
+    deleteMessage: async (groupId: string, messageId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/messages`, messageId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    onMessagesChanged: (groupId: string, cb: (messages: Message[]) => void, limitCount: number = 50) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, `studyGroups/${groupId}/messages`),
+            orderBy('timestamp', 'desc'),
+            limit(limitCount)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Message)).reverse();
+            cb(list);
+        });
+    },
+
+    // SESSIONS METHODS
+
+    createSession: async (groupId: string, sessionData: Omit<Session, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, `studyGroups/${groupId}/sessions`), sessionData),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateSession: async (groupId: string, sessionId: string, data: Partial<Session>) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
+        return withTimeout(updateDoc(docRef, data), 5000);
+    },
+
+    deleteSession: async (groupId: string, sessionId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    onSessionsChanged: (groupId: string, cb: (sessions: Session[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, `studyGroups/${groupId}/sessions`),
+            orderBy('scheduledAt', 'asc')
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Session));
+            cb(list);
+        });
+    },
+
+    // COLLABORATIVE NOTES METHODS
+
+    createNote: async (groupId: string, noteData: Omit<CollaborativeNote, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await withTimeout(
+            addDoc(collection(db, `studyGroups/${groupId}/notes`), noteData),
+            10000
+        );
+        return docRef.id;
+    },
+
+    updateNote: async (groupId: string, noteId: string, content: string, userId: string, userName: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/notes`, noteId);
+        return withTimeout(updateDoc(docRef, {
+            content,
+            lastEditedBy: userId,
+            lastEditedByName: userName,
+            lastEditedAt: serverTimestamp()
+        }), 5000);
+    },
+
+    deleteNote: async (groupId: string, noteId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, `studyGroups/${groupId}/notes`, noteId);
+        return withTimeout(deleteDoc(docRef), 5000);
+    },
+
+    onNotesChanged: (groupId: string, cb: (notes: CollaborativeNote[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, `studyGroups/${groupId}/notes`),
+            orderBy('lastEditedAt', 'desc')
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as CollaborativeNote));
+            cb(list);
+        });
     }
 };
 

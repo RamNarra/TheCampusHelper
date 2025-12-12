@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
+import QuizPage from './pages/QuizPage';
 import StudyAssistantPage from './pages/StudyAssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
@@ -20,6 +21,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 import EventsPage from './pages/EventsPage';
 import ExamPrepPage from './pages/ExamPrepPage';
+import StudyGroupsPage from './pages/StudyGroupsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
@@ -141,10 +143,12 @@ const AppContent: React.FC = () => {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/resources" element={<ResourcesPage />} />
+              <Route path="/quiz" element={<QuizPage />} />
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/exam-prep" element={<ExamPrepPage />} />
+              <Route path="/study-groups" element={<StudyGroupsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/study-assistant" element={<StudyAssistantPage />} />
               <Route path="*" element={<NotFoundPage />} />
