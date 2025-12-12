@@ -82,7 +82,8 @@ const ResourcesPage: React.FC = () => {
       const allResources = [...dynamicResources, ...staticResources];
       const userPrefs = buildUserPreferences(
         userInteractions, 
-        user.studyPattern || 'mixed'
+        user.studyPattern || 'mixed',
+        user.uid
       );
       
       const recs = getHybridRecommendations(

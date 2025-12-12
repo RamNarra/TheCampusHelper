@@ -367,13 +367,17 @@ export const getHybridRecommendations = (
  */
 export const buildUserPreferences = (
   interactions: ResourceInteraction[],
-  studyPattern: 'visual' | 'text' | 'mixed' = 'mixed'
+  studyPattern: 'visual' | 'text' | 'mixed' = 'mixed',
+  userId?: string
 ): UserPreferences => {
   const subjectsViewed = new Set<string>();
   const downloadHistory = new Set<string>();
   const searchQueries: string[] = [];
   const preferredResourceTypes: { [type: string]: number } = {};
   const activeSemesters = new Set<string>();
+  
+  // Extract userId from first interaction or use provided one
+  const extractedUserId = interactions.length > 0 ? interactions[0].userId : (userId || '');
   
   interactions.forEach(interaction => {
     if (interaction.subject) {
@@ -404,7 +408,7 @@ export const buildUserPreferences = (
     .map(([type]) => type as ResourceType);
   
   return {
-    userId: interactions[0]?.userId || '',
+    userId: extractedUserId,
     subjectsViewed: Array.from(subjectsViewed),
     downloadHistory: Array.from(downloadHistory),
     searchQueries: searchQueries.slice(-10), // Keep last 10 searches
