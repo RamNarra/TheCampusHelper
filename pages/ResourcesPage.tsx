@@ -47,6 +47,60 @@ const ResourcesPage: React.FC = () => {
   const [uploadLink, setUploadLink] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [lastSubmittedResource, setLastSubmittedResource] = useState<Resource | null>(null);
+
+  const [contextMenu, setContextMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    resource: Resource | null;
+  }>({ open: false, x: 0, y: 0, resource: null });
+
+  const isStaff = user?.role === 'admin' || user?.role === 'mod';
+
+  useEffect(() => {
+    if (!contextMenu.open) return;
+    const close = () => setContextMenu({ open: false, x: 0, y: 0, resource: null });
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    window.addEventListener('pointerdown', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('pointerdown', close);
+    };
+  }, [contextMenu.open]);
+
+  const openContextMenu = (e: React.MouseEvent, res: Resource) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const padding = 8;
+    const maxX = window.innerWidth - padding;
+    const maxY = window.innerHeight - padding;
+    const x = Math.min(e.clientX || padding, maxX);
+    const y = Math.min(e.clientY || padding, maxY);
+    setContextMenu({ open: true, x, y, resource: res });
+  };
+
+  const canDeleteResource = (res: Resource) => {
+    if (!user?.uid) return false;
+    if (isStaff) return true;
+    return res.ownerId === user.uid && (res.status || 'approved') === 'pending';
+  };
+
+  const deleteResourceFromMenu = async (res: Resource) => {
+    if (!canDeleteResource(res)) return;
+    const ok = window.confirm('Delete this resource?');
+    if (!ok) return;
+    try {
+      await api.deleteResource(res.id);
+      setContextMenu({ open: false, x: 0, y: 0, resource: null });
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
 
   useEffect(() => {
     if (user && user.branch) {
@@ -200,6 +254,7 @@ const ResourcesPage: React.FC = () => {
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError('');
+    setUploadSuccess(null);
     setIsUploading(true);
 
     try {
@@ -233,7 +288,17 @@ const ResourcesPage: React.FC = () => {
         };
 
         // 4. Send to Firebase (Protected by Timeout)
-        await api.addResource(newResource);
+        const createdId = await api.addResource(newResource);
+        const createdResource: Resource = { id: createdId, ...newResource };
+        setLastSubmittedResource(createdResource);
+
+        if (user.role === 'admin' || user.role === 'mod') {
+          setUploadSuccess('Resource added and published. It is now visible on the website.');
+          void api.notifyResourceReviewed(createdId, 'approved');
+        } else {
+          setUploadSuccess('Your resource has been submitted for approval. Once approved, it will be visible on the website.');
+          void api.notifyResourceSubmitted(createdId);
+        }
 
         // 5. Award XP for contribution
         if (user) {
@@ -248,7 +313,6 @@ const ResourcesPage: React.FC = () => {
         // 6. Success State
         setUploadName('');
         setUploadLink('');
-        setShowUploadModal(false);
 
     } catch (err: any) {
         console.error("Upload error:", err);
@@ -354,6 +418,7 @@ const ResourcesPage: React.FC = () => {
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: idx * 0.05 }}
                                         onClick={() => handleResourceClick(rec.resource)}
+                                      onContextMenu={(e) => openContextMenu(e, rec.resource)}
                                         className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer group relative overflow-hidden"
                                     >
                                         <div className="absolute top-2 right-2">
@@ -450,7 +515,15 @@ const ResourcesPage: React.FC = () => {
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold">Files</h2>
                       {user && (
-                            <button onClick={() => setShowUploadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90">
+                            <button
+                              onClick={() => {
+                                setUploadError('');
+                                setUploadSuccess(null);
+                                setLastSubmittedResource(null);
+                                setShowUploadModal(true);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
+                            >
                                 <Plus className="w-4 h-4" /> Add Resource
                             </button>
                         )}
@@ -461,7 +534,12 @@ const ResourcesPage: React.FC = () => {
                     ) : filteredResources.length > 0 ? (
                         <div className="grid gap-3">
                         {filteredResources.map(res => (
-                                <div key={res.id} onClick={() => handleResourceClick(res)} className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer flex items-center justify-between group">
+                                <div
+                                  key={res.id}
+                                  onClick={() => handleResourceClick(res)}
+                                  onContextMenu={(e) => openContextMenu(e, res)}
+                                  className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer flex items-center justify-between group"
+                                >
                                     <div className="flex items-center gap-4">
                                         <div className="p-2 bg-muted rounded-lg"><FileText className="w-5 h-5 text-foreground" /></div>
                                         <div>
@@ -469,7 +547,14 @@ const ResourcesPage: React.FC = () => {
                                             <p className="text-xs text-muted-foreground">{res.subject}</p>
                                         </div>
                                     </div>
-                                    {res.driveFileId ? <Eye className="w-5 h-5 text-muted-foreground" /> : <ExternalLink className="w-5 h-5 text-muted-foreground" />}
+                                    <div className="flex items-center gap-3">
+                                      {user?.uid && res.ownerId === user.uid && (res.status || 'approved') === 'pending' ? (
+                                        <span className="text-xs px-2 py-1 rounded-full border border-yellow-500/20 bg-yellow-500/10 text-yellow-300">
+                                          Pending
+                                        </span>
+                                      ) : null}
+                                      {res.driveFileId ? <Eye className="w-5 h-5 text-muted-foreground" /> : <ExternalLink className="w-5 h-5 text-muted-foreground" />}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -490,36 +575,100 @@ const ResourcesPage: React.FC = () => {
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isUploading && setShowUploadModal(false)} />
                     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-card w-full max-w-md p-6 rounded-2xl border border-border shadow-2xl">
                         <h2 className="text-xl font-bold mb-4">Upload Resource</h2>
-                        <form onSubmit={handleUploadSubmit} className="space-y-4">
-                            <input 
-                                type="text" 
-                                placeholder="Display Name (e.g. Unit 1 Notes)" 
-                                value={uploadName}
-                                onChange={e => setUploadName(e.target.value)}
-                                className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
-                            />
-                            <input 
-                                type="url" 
-                                placeholder="Drive Link or URL" 
-                                value={uploadLink}
-                                onChange={e => setUploadLink(e.target.value)}
-                                className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
-                            />
-                            
-                            <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                                Using context: {branch} &gt; {semester} &gt; {subject} <br/>
-                                Target: {selectedFolder} {selectedCategory ? `> ${selectedCategory}` : ''}
+                        {uploadSuccess ? (
+                          <div className="space-y-4">
+                            <div className="p-3 rounded-xl border border-border bg-muted/50 text-sm text-foreground">
+                              {uploadSuccess}
                             </div>
-
-                            {uploadError && <div className="text-red-500 text-sm">{uploadError}</div>}
-
-                            <button disabled={isUploading} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex justify-center">
-                                {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Upload"}
+                            {lastSubmittedResource ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowUploadModal(false);
+                                  handleResourceClick(lastSubmittedResource);
+                                }}
+                                className="w-full bg-muted text-foreground py-3 rounded-lg font-bold hover:bg-muted/80"
+                              >
+                                Preview my upload
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => setShowUploadModal(false)}
+                              className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90"
+                            >
+                              Done
                             </button>
-                        </form>
+                          </div>
+                        ) : (
+                          <form onSubmit={handleUploadSubmit} className="space-y-4">
+                              <input 
+                                  type="text" 
+                                  placeholder="Display Name (e.g. Unit 1 Notes)" 
+                                  value={uploadName}
+                                  onChange={e => setUploadName(e.target.value)}
+                                  className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
+                              />
+                              <input 
+                                  type="url" 
+                                  placeholder="Drive Link or URL" 
+                                  value={uploadLink}
+                                  onChange={e => setUploadLink(e.target.value)}
+                                  className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
+                              />
+                              
+                              <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                                  Using context: {branch} &gt; {semester} &gt; {subject} <br/>
+                                  Target: {selectedFolder} {selectedCategory ? `> ${selectedCategory}` : ''}
+                              </div>
+
+                              {uploadError && <div className="text-red-500 text-sm">{uploadError}</div>}
+
+                              <button disabled={isUploading} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex justify-center">
+                                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Upload"}
+                              </button>
+                          </form>
+                        )}
                     </motion.div>
                 </div>
             )}
+        </AnimatePresence>
+
+        {/* Right-click context menu */}
+        <AnimatePresence>
+          {contextMenu.open && contextMenu.resource && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.08 }}
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+              className="fixed z-[180] min-w-[200px] -translate-y-1 bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="w-full text-left px-4 py-3 text-sm hover:bg-muted/60 transition-colors"
+                onClick={() => {
+                  const r = contextMenu.resource;
+                  setContextMenu({ open: false, x: 0, y: 0, resource: null });
+                  if (r) handleResourceClick(r);
+                }}
+              >
+                Open / Preview
+              </button>
+              {canDeleteResource(contextMenu.resource) ? (
+                <button
+                  className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  onClick={() => {
+                    const r = contextMenu.resource;
+                    if (r) deleteResourceFromMenu(r);
+                  }}
+                >
+                  Delete
+                </button>
+              ) : null}
+            </motion.div>
+          )}
         </AnimatePresence>
 
         <AccessGate isOpen={showAccessGate} onClose={() => setShowAccessGate(false)} resourceTitle={pendingResource?.title} />
