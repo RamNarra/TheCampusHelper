@@ -1,6 +1,5 @@
 import { 
   doc, 
-  setDoc, 
   getDoc, 
   collection, 
   query, 
@@ -9,7 +8,8 @@ import {
   getDocs,
   updateDoc,
   increment,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Achievement, UserProgress, LeaderboardEntry, AchievementCategory } from '../types';
@@ -112,6 +112,7 @@ export function calculateLevel(xp: number): { level: number; tier: string; nextL
 
 /**
  * Award XP to a user and update their profile
+ * Uses a transaction to avoid race conditions
  */
 export async function awardXP(uid: string, amount: number, reason: string): Promise<void> {
   if (!db) {
@@ -122,25 +123,30 @@ export async function awardXP(uid: string, amount: number, reason: string): Prom
   try {
     const userRef = doc(db, 'users', uid);
     
-    // Update XP and level
-    await updateDoc(userRef, {
-      xp: increment(amount),
-      lastXpReason: reason,
-      lastXpDate: serverTimestamp(),
-    });
-
-    // Get updated user data to recalculate level
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists()) {
+    // Use transaction to atomically update XP and level
+    await runTransaction(db, async (transaction) => {
+      const userSnap = await transaction.get(userRef);
+      
+      if (!userSnap.exists()) {
+        throw new Error('User document not found');
+      }
+      
       const userData = userSnap.data();
-      const newXp = userData.xp || 0;
+      const currentXp = userData.xp || 0;
+      const newXp = currentXp + amount;
       const { level } = calculateLevel(newXp);
       
-      // Update level if it changed
-      if (level !== userData.level) {
-        await updateDoc(userRef, { level });
-      }
-    }
+      // Update XP, level, and metadata atomically
+      transaction.update(userRef, {
+        xp: newXp,
+        level: level,
+        lastXpReason: reason,
+        lastXpDate: serverTimestamp(),
+      });
+    });
+
+    // Sync to leaderboard after successful XP award
+    await syncLeaderboard(uid);
 
     console.log(`Awarded ${amount} XP to ${uid} for ${reason}`);
   } catch (error) {
@@ -188,6 +194,11 @@ export async function updateStreak(uid: string): Promise<number> {
     // Award streak bonus
     if (newStreak > 1) {
       await awardXP(uid, XP_REWARDS.DAILY_STREAK, `${newStreak}-day streak`);
+    }
+
+    // Unlock week_streak achievement if reached 7 days
+    if (newStreak === 7) {
+      await unlockAchievement(uid, 'week_streak');
     }
 
     return newStreak;
@@ -277,14 +288,25 @@ export async function unlockAchievement(uid: string, achievementId: string): Pro
 }
 
 /**
- * Get leaderboard entries
+ * Get leaderboard entries from the public leaderboard collection
+ * Note: Period filtering requires additional XP tracking fields (weeklyXp, monthlyXp) 
+ * which are not implemented yet. Currently returns all-time leaderboard for all periods.
+ * TODO: Implement Cloud Functions to reset weekly/monthly XP fields periodically.
+ * 
+ * The leaderboard collection should be populated via:
+ * 1. Cloud Functions triggered on user XP changes, OR
+ * 2. Manual sync when users update their profiles
+ * This ensures only public data (displayName, photoURL, xp, level) is exposed.
  */
 export async function getLeaderboard(period: 'weekly' | 'monthly' | 'alltime' = 'alltime', limitCount = 50): Promise<LeaderboardEntry[]> {
   if (!db) return [];
 
   try {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, orderBy('xp', 'desc'), limit(limitCount));
+    // Use leaderboard collection instead of users for security
+    // Note: This requires a Firestore composite index on the 'leaderboard' collection
+    // Create index via Firebase Console: Collection: leaderboard, Fields: xp (Descending)
+    const leaderboardRef = collection(db, 'leaderboard');
+    const q = query(leaderboardRef, orderBy('xp', 'desc'), limit(limitCount));
     const snapshot = await getDocs(q);
 
     const entries: LeaderboardEntry[] = [];
@@ -310,6 +332,43 @@ export async function getLeaderboard(period: 'weekly' | 'monthly' | 'alltime' = 
 }
 
 /**
+ * Sync user's public data to the leaderboard collection
+ */
+export async function syncLeaderboard(uid: string): Promise<void> {
+  if (!db) return;
+
+  try {
+    const userRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) return;
+
+    const userData = userSnap.data();
+    
+    // Update leaderboard with public data only
+    const leaderboardRef = doc(db, 'leaderboard', uid);
+    await updateDoc(leaderboardRef, {
+      displayName: userData.displayName || 'Anonymous',
+      photoURL: userData.photoURL || null,
+      xp: userData.xp || 0,
+      level: userData.level || 1,
+      lastUpdated: serverTimestamp(),
+    }).catch(async () => {
+      // If document doesn't exist, create it
+      await updateDoc(leaderboardRef, {
+        displayName: userData.displayName || 'Anonymous',
+        photoURL: userData.photoURL || null,
+        xp: userData.xp || 0,
+        level: userData.level || 1,
+        lastUpdated: serverTimestamp(),
+      });
+    });
+  } catch (error) {
+    console.error('Failed to sync leaderboard:', error);
+  }
+}
+
+/**
  * Initialize gamification for a new user
  */
 export async function initializeGamification(uid: string): Promise<void> {
@@ -326,14 +385,22 @@ export async function initializeGamification(uid: string): Promise<void> {
     // Only initialize if not already done
     if (userData.xp !== undefined) return;
 
+    // Initialize with first login achievement and XP atomically
+    const achievementDates: Record<string, string> = {
+      first_login: new Date().toISOString(),
+    };
+
     await updateDoc(userRef, {
       xp: XP_REWARDS.LOGIN,
       level: 1,
       streak: 0,
       achievementIds: ['first_login'],
+      achievementDates,
       lastLoginDate: new Date().toISOString().split('T')[0],
     });
-    // First login achievement and XP awarded atomically above.
+
+    // Sync to leaderboard
+    await syncLeaderboard(uid);
   } catch (error) {
     console.error('Failed to initialize gamification:', error);
   }

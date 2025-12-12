@@ -146,10 +146,15 @@ const ResourcesPage: React.FC = () => {
     // Award XP for viewing resource
     if (user) {
       await awardXP(user.uid, XP_REWARDS.RESOURCE_VIEW, 'Viewed a resource');
-      // Only unlock 'first_resource' if not already unlocked
-      if (!user.achievements || !user.achievements.includes('first_resource')) {
+      
+      // Only try to unlock 'first_resource' if not already unlocked
+      if (!user.achievementIds?.includes('first_resource')) {
         await unlockAchievement(user.uid, 'first_resource');
       }
+      
+      // Track total resources viewed for resource_master achievement
+      // Note: This requires a resourcesViewed counter field in the user profile
+      // TODO: Implement resource view counter and unlock resource_master at 50 views
     }
   };
 
@@ -193,7 +198,11 @@ const ResourcesPage: React.FC = () => {
         // 5. Award XP for contribution
         if (user) {
           await awardXP(user.uid, XP_REWARDS.RESOURCE_UPLOAD, 'Uploaded a resource');
-          await unlockAchievement(user.uid, 'contributor');
+          
+          // Only try to unlock 'contributor' if not already unlocked
+          if (!user.achievementIds?.includes('contributor')) {
+            await unlockAchievement(user.uid, 'contributor');
+          }
         }
 
         // 6. Success State

@@ -50,6 +50,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // LEADERBOARD COLLECTION (Public subset of user data for leaderboard)
+    match /leaderboard/{userId} {
+      // Anyone authenticated can read leaderboard entries (contains only public data)
+      allow read: if isAuthenticated();
+      // Only the user can write their own leaderboard entry (via client SDK or Cloud Functions)
+      allow write: if isOwner(userId);
+    }
+
     // RESOURCES COLLECTION
     match /resources/{resourceId} {
       allow read: if isAuthenticated();

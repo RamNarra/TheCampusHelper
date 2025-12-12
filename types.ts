@@ -79,6 +79,8 @@ export interface DailyChallenge {
   xpReward: number;
   completed?: boolean;
   expiresAt: string; // ISO timestamp
+}
+
 // Quiz Types
 export interface QuizOption {
   id: string;

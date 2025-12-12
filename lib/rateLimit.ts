@@ -1,12 +1,9 @@
 import { Redis } from '@upstash/redis';
 
-// Initialize Upstash Redis client for rate limiting
 /**
  * Rate Limiting Implementation using Upstash Redis
  * Limits AI generation requests per user+IP combination
  */
-
-import { Redis } from '@upstash/redis';
 
 // Initialize Upstash Redis client
 const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
@@ -39,25 +36,6 @@ export async function rateLimitExceeded(key: string): Promise<boolean> {
     // Set expiry on first request
     if (current === 1) {
       await redis.expire(limiterKey, RATE_LIMIT_WINDOW);
-const MAX_REQUESTS = 10; // 10 requests per minute
-
-/**
- * Check if a rate limit has been exceeded for a given key
- * @param key - Unique identifier (e.g., "uid:ip")
- * @returns true if rate limit exceeded, false otherwise
- */
-export async function rateLimitExceeded(key: string): Promise<boolean> {
-  if (!redis) {
-    console.warn('Rate limiting disabled: Redis not configured');
-    return false; // Allow request if Redis is not configured
-  }
-
-  try {
-    const current = await redis.incr(key);
-    
-    if (current === 1) {
-      // First request, set expiration
-      await redis.expire(key, RATE_LIMIT_WINDOW);
     }
     
     return current > MAX_REQUESTS;
