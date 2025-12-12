@@ -1,6 +1,6 @@
 # TheCampusHelper
 
-A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, and AI tools.
+A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, AI-powered study assistant, and AI tools.
 
 ## 🔒 Security Architecture
 This project uses a **Server-Side Proxy Architecture** to protect sensitive credentials (like the Gemini API Key).
@@ -94,6 +94,28 @@ Users can install TheCampusHelper on:
 The app will automatically prompt eligible users to install after a few seconds of use. The prompt can be dismissed and will reappear after 7 days.
 
 > **Note**: The current icon files are placeholder SVGs. For production deployment, replace these with proper PNG files generated at the required sizes (72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512). You can use tools like [Favicon Generator](https://realfavicongenerator.net/) or [PWA Asset Generator](https://github.com/onderceylan/pwa-asset-generator) to create proper PWA icons from your logo.
+## 🎓 Features
+
+### AI-Powered Study Assistant
+An intelligent, context-aware tutoring system that helps students learn effectively:
+
+- **Personalized Learning**: Adapts responses based on difficulty level (beginner, intermediate, advanced)
+- **Conversation Memory**: Remembers the last 5 messages to provide contextual help
+- **JNTUH-Specific**: Tailored for JNTUH curriculum with relevant examples and syllabus topics
+- **Rich Content**: Supports LaTeX formulas and detailed visual descriptions
+- **Subject & Topic Context**: Set your study context for focused, relevant explanations
+
+#### Using the Study Assistant
+1. Navigate to the Study Assistant page
+2. Set your study context (subject, topic, difficulty level)
+3. Ask questions and receive step-by-step explanations
+4. The assistant remembers your conversation for better context
+5. Change context anytime to study a different topic
+
+**API Endpoint**: `/api/study-assistant`
+- Secured with Firebase Authentication
+- Rate-limited (10 requests/minute per user+IP)
+- Uses Gemini AI for intelligent responses
 
 ## 🛠️ Deployment
 Connect this repository to Vercel. The `api/` directory will automatically be deployed as Serverless Functions. The PWA service worker is automatically generated during the build process.

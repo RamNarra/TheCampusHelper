@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
+import StudyAssistantPage from './pages/StudyAssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import OnboardingTour from './components/OnboardingTour';
@@ -18,6 +19,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 import EventsPage from './pages/EventsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
 
@@ -141,6 +143,8 @@ const AppContent: React.FC = () => {
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/study-assistant" element={<StudyAssistantPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>
