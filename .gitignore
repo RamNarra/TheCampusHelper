@@ -42,6 +42,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Lock files (use package.json for dependency management)
+package-lock.json
+
 # TypeScript v1 declaration files
 typings/
 
