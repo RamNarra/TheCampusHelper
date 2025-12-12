@@ -11,6 +11,7 @@ export interface UserProfile {
   year?: string;
   dateOfBirth?: string; // Format: YYYY-MM-DD
   profileCompleted?: boolean; // New flag to prevent infinite onboarding loops
+  studyPattern?: 'visual' | 'text' | 'mixed'; // Learning preference
 }
 
 export interface Resource {
@@ -65,4 +66,99 @@ export interface ExamPrep {
   };
   stressLevel?: 'low' | 'medium' | 'high';
   wellnessReminders?: boolean;
+// Resource Recommendation System Types
+export interface ResourceInteraction {
+  id?: string;
+  userId: string;
+  resourceId: string;
+  interactionType: 'view' | 'download' | 'search';
+  timestamp: number; // Stored as number in Firestore after serverTimestamp conversion
+  subject?: string;
+  resourceType?: ResourceType;
+  semester?: string;
+  branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
+  searchQuery?: string; // Only for search interactions
+}
+
+export interface UserPreferences {
+  userId: string;
+  subjectsViewed: string[];
+  downloadHistory: string[];
+  searchQueries: string[];
+  studyPattern: 'visual' | 'text' | 'mixed';
+  preferredResourceTypes: ResourceType[];
+  activeSemesters: string[];
+}
+
+export interface RecommendationResult {
+  resource: Resource;
+  score: number;
+  reason: 'collaborative' | 'content-based' | 'time-based' | 'popular';
+  metadata?: {
+    similarUsers?: number;
+    matchScore?: number;
+    trendingScore?: number;
+  };
+// Learning Analytics Types
+export interface StudyTime {
+  daily: number[];
+  weekly: number[];
+  bySubject: Map<string, number>;
+}
+
+export interface Performance {
+  quizScores: number[];
+  improvementRate: number;
+  strongTopics: string[];
+  weakTopics: string[];
+}
+
+export interface Habits {
+  mostActiveTime: string;
+  preferredResourceTypes: ResourceType[];
+  averageSessionLength: number;
+}
+
+export interface Predictions {
+  examReadiness: number;
+  recommendedFocusAreas: string[];
+}
+
+export interface LearningAnalytics {
+  studyTime: StudyTime;
+  performance: Performance;
+  habits: Habits;
+  predictions: Predictions;
+}
+
+export interface StudySession {
+  id: string;
+  userId: string;
+  subject: string;
+  resourceType: ResourceType;
+  duration: number; // in minutes
+  timestamp: Date;
+  completed: boolean;
+}
+
+export interface QuizResult {
+  id: string;
+  userId: string;
+  topic: string;
+  score: number; // percentage
+  timestamp: Date;
+  totalQuestions: number;
+  correctAnswers: number;
+export interface StudyContext {
+  subject: string;
+  topic: string;
+  difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
+  previousInteractions: string[];
+}
+
+export interface StudyMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
 }
