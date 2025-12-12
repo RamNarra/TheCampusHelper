@@ -162,7 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 
-    const difficultyLabel = ['easy', 'medium', 'hard'][difficultyNum - 1];
+    const difficultyLabel: 'easy' | 'medium' | 'hard' = ['easy', 'medium', 'hard'][difficultyNum - 1] as 'easy' | 'medium' | 'hard';
 
     const prompt = `Generate ${count} multiple-choice questions about "${topic}" in the subject "${subject}" at ${difficultyLabel} difficulty level.
 
@@ -233,7 +233,7 @@ Return ONLY the JSON array, no additional text or markdown formatting.`;
         metadata: {
             subject,
             topic,
-            difficulty: difficultyNum,
+            difficulty: difficultyLabel,
             questionCount: questions.length
         }
     });

@@ -52,7 +52,7 @@ export interface Quiz {
   title: string;
   subject: string;
   topic: string;
-  difficulty: number; // 1-3 (easy, medium, hard)
+  difficulty: 'easy' | 'medium' | 'hard';
   questions: QuizQuestion[];
   createdAt: any; // Firestore Timestamp
   createdBy: string; // User UID

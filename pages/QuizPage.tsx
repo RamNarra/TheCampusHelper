@@ -121,8 +121,11 @@ const QuizPage: React.FC = () => {
     // Save attempt to Firebase if user is logged in
     if (user) {
       try {
+        // Generate a unique quiz ID using crypto
+        const quizId = crypto.randomUUID();
+        
         await api.saveQuizAttempt({
-          quizId: `${subject}-${topic}-${Date.now()}`,
+          quizId,
           userId: user.uid,
           answers: selectedAnswers,
           score,
