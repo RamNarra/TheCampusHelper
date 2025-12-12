@@ -41,10 +41,7 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ uid }) => {
     return null;
   }
 
-  const { level, tier } = calculateLevel(progress.xp);
-  const progressPercent = progress.nextLevelXp === Infinity 
-    ? 100 
-    : ((progress.xp % (progress.nextLevelXp - Math.floor(progress.xp / progress.nextLevelXp) * progress.nextLevelXp)) / (progress.nextLevelXp - Math.floor(progress.xp / progress.nextLevelXp) * progress.nextLevelXp)) * 100;
+  const { level, tier, progress: progressPercent } = calculateLevel(progress.xp);
 
   const tierColors = {
     Bronze: 'from-orange-600 to-orange-800',

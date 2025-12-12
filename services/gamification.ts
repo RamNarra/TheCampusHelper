@@ -215,8 +215,9 @@ export async function getUserProgress(uid: string): Promise<UserProgress | null>
     
     // Get unlocked achievements
     const achievementIds = userData.achievementIds || [];
+    const achievementDates = userData.achievementDates || {};
     const achievements = ACHIEVEMENTS.filter(a => achievementIds.includes(a.id))
-      .map(a => ({ ...a, unlockedAt: userData[`achievement_${a.id}_date`] }));
+      .map(a => ({ ...a, unlockedAt: achievementDates[a.id] || undefined }));
 
     return {
       level,
@@ -254,10 +255,15 @@ export async function unlockAchievement(uid: string, achievementId: string): Pro
     const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
     if (!achievement) return false;
 
+    const achievementDates = userData.achievementDates || {};
+    
     // Unlock achievement
     await updateDoc(userRef, {
       achievementIds: [...achievementIds, achievementId],
-      [`achievement_${achievementId}_date`]: new Date().toISOString(),
+      achievementDates: {
+        ...achievementDates,
+        [achievementId]: new Date().toISOString(),
+      },
     });
 
     // Award XP
