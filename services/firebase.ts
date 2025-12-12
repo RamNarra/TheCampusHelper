@@ -16,6 +16,7 @@ import {
   collection, 
   getDocs, 
   query, 
+  where,
   orderBy, 
   onSnapshot, 
   serverTimestamp,
@@ -161,12 +162,12 @@ export const api = {
     },
 
     // INTERACTION TRACKING METHODS
-    trackInteraction: async (interaction: Omit<ResourceInteraction, 'id'>) => {
+    trackInteraction: async (interaction: Omit<ResourceInteraction, 'id' | 'timestamp'>) => {
         if (!db) return;
         return withTimeout(
             addDoc(collection(db, 'interactions'), {
                 ...interaction,
-                timestamp: Date.now()
+                timestamp: serverTimestamp()
             }),
             5000
         );
@@ -177,23 +178,26 @@ export const api = {
         try {
             const q = query(
                 collection(db, 'interactions'),
+                where('userId', '==', userId),
                 orderBy('timestamp', 'desc')
             );
             const snap = await getDocs(q);
-            return snap.docs
-                .map(d => ({ id: d.id, ...d.data() } as ResourceInteraction))
-                .filter(i => i.userId === userId);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() } as ResourceInteraction));
         } catch (error) {
             console.error('Error fetching user interactions:', error);
             return [];
         }
     },
 
-    getAllInteractions: async (): Promise<ResourceInteraction[]> => {
+    getAllInteractions: async (options?: { sinceDate?: Date }): Promise<ResourceInteraction[]> => {
         if (!db) return [];
         try {
+            // Limit to last 30 days by default for privacy and performance
+            const sinceDate = options?.sinceDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            
             const q = query(
                 collection(db, 'interactions'),
+                where('timestamp', '>=', sinceDate),
                 orderBy('timestamp', 'desc')
             );
             const snap = await getDocs(q);

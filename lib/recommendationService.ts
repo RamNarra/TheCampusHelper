@@ -5,6 +5,16 @@ import { Resource, ResourceInteraction, UserPreferences, RecommendationResult, R
  * Implements collaborative filtering, content-based filtering, and time-based recommendations
  */
 
+// Configuration constants
+const EXAM_SEASON_MONTHS = [11, 0, 4, 5]; // November-December (11, 0) and April-May (4, 5)
+const DEFAULT_TRENDING_WINDOW_HOURS = 168; // One week
+const RECOMMENDATION_WEIGHTS = {
+  collaborative: 0.35,
+  'content-based': 0.35,
+  'time-based': 0.20,
+  popular: 0.10
+};
+
 // Calculate cosine similarity between two vectors
 const cosineSimilarity = (vec1: number[], vec2: number[]): number => {
   if (vec1.length !== vec2.length || vec1.length === 0) return 0;
@@ -52,6 +62,11 @@ export const getCollaborativeRecommendations = (
 ): RecommendationResult[] => {
   // Get unique subjects from all interactions
   const allSubjects = Array.from(new Set(allInteractions.map(i => i.subject).filter(Boolean) as string[]));
+  
+  // If there are no subjects, we cannot build meaningful vectors; return empty recommendations
+  if (allSubjects.length === 0) {
+    return [];
+  }
   
   // Build current user's preference vector
   const userVector = buildUserVector(userInteractions, allSubjects);
@@ -191,8 +206,7 @@ export const getTimeBasedRecommendations = (
   currentMonth: number, // 0-11
   limit: number = 5
 ): RecommendationResult[] => {
-  // Exam months (approximate): November-December (11, 0) and April-May (4, 5)
-  const isExamSeason = [11, 0, 4, 5].includes(currentMonth);
+  const isExamSeason = EXAM_SEASON_MONTHS.includes(currentMonth);
   
   const recommendations: RecommendationResult[] = [];
   
@@ -250,7 +264,7 @@ export const getPopularRecommendations = (
   allResources: Resource[],
   viewedResourceIds: Set<string>,
   limit: number = 5,
-  timeWindowHours: number = 168 // Last week by default
+  timeWindowHours: number = DEFAULT_TRENDING_WINDOW_HOURS
 ): RecommendationResult[] => {
   const now = Date.now();
   const timeWindow = timeWindowHours * 60 * 60 * 1000;
@@ -332,18 +346,11 @@ export const getHybridRecommendations = (
   );
   
   // Combine with weights
-  const weights = {
-    collaborative: 0.35,
-    'content-based': 0.35,
-    'time-based': 0.20,
-    popular: 0.10
-  };
-  
   const combinedScores: { [resourceId: string]: RecommendationResult } = {};
   
   [collaborative, contentBased, timeBased, popular].forEach(recommendations => {
     recommendations.forEach(rec => {
-      const weight = weights[rec.reason];
+      const weight = RECOMMENDATION_WEIGHTS[rec.reason];
       const weightedScore = rec.score * weight;
       
       if (!combinedScores[rec.resource.id]) {

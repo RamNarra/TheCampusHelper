@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -62,14 +62,7 @@ const ResourcesPage: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Load recommendations when user is logged in
-  useEffect(() => {
-    if (user?.uid && !semester) {
-      loadRecommendations();
-    }
-  }, [user, semester]);
-
-  const loadRecommendations = async () => {
+  const loadRecommendations = useCallback(async () => {
     if (!user?.uid) return;
     
     setIsLoadingRecommendations(true);
@@ -101,7 +94,14 @@ const ResourcesPage: React.FC = () => {
     } finally {
       setIsLoadingRecommendations(false);
     }
-  };
+  }, [user, dynamicResources]);
+
+  // Load recommendations when user is logged in and resources are loaded
+  useEffect(() => {
+    if (user?.uid && !semester && dynamicResources.length >= 0) {
+      loadRecommendations();
+    }
+  }, [user, semester, loadRecommendations]);
 
   const trackInteraction = async (
     resourceId: string, 
@@ -115,7 +115,6 @@ const ResourcesPage: React.FC = () => {
         userId: user.uid,
         resourceId,
         interactionType: type,
-        timestamp: Date.now(),
         subject: resource.subject,
         resourceType: resource.type,
         semester: resource.semester,
@@ -469,7 +468,11 @@ const ResourcesPage: React.FC = () => {
                         href={selectedResource.downloadUrl || `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`} 
                         target="_blank" 
                         rel="noreferrer" 
-                        onClick={() => trackInteraction(selectedResource.id, 'download', selectedResource)}
+                        onClick={async (e) => {
+                            e.preventDefault();
+                            await trackInteraction(selectedResource.id, 'download', selectedResource);
+                            window.open(selectedResource.downloadUrl || `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`, '_blank');
+                        }}
                         className="bg-primary px-4 py-2 rounded-lg text-sm hover:bg-primary/90"
                     >
                         Download
