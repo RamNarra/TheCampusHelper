@@ -42,8 +42,8 @@ service cloud.firestore {
 
     // USERS COLLECTION
     match /users/{userId} {
-      // Allow authenticated users to read their own profile or leaderboard data
-      allow read: if isAuthenticated();
+      // Allow only the owner or an admin to read full user profiles.
+      allow read: if isOwner(userId) || isAdmin();
       
       allow create: if isOwner(userId) && isValidProfileUpdate(request.resource.data, null);
       allow update: if isOwner(userId) && isValidProfileUpdate(request.resource.data, resource.data);
