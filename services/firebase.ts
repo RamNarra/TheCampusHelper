@@ -17,6 +17,7 @@ import {
   getDocs, 
   getDoc,
   query, 
+  where,
   orderBy, 
   where,
   limit,
@@ -30,8 +31,14 @@ import {
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource, StudyGroup, Message, Session, CollaborativeNote } from '../types';
+  Firestore,
+  FieldValue
+} from 'firebase/firestore';
+import type { DocumentData } from 'firebase/firestore';
+import { UserProfile, Resource, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
+const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
@@ -165,6 +172,60 @@ export const api = {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
             cb(list);
         });
+    },
+
+    // INTERACTION TRACKING METHODS
+    trackInteraction: async (interaction: Omit<ResourceInteraction, 'id' | 'timestamp'>) => {
+        if (!db) return;
+        return withTimeout(
+            addDoc(collection(db, 'interactions'), {
+                ...interaction,
+                timestamp: serverTimestamp()
+            }),
+            5000
+        );
+    },
+
+    getUserInteractions: async (userId: string): Promise<ResourceInteraction[]> => {
+        if (!db) return [];
+        try {
+            const q = query(
+                collection(db, 'interactions'),
+                where('userId', '==', userId),
+                orderBy('timestamp', 'desc')
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() } as ResourceInteraction));
+        } catch (error) {
+            console.error('Error fetching user interactions:', error);
+            return [];
+        }
+    },
+
+    getAllInteractions: async (options?: { sinceDate?: Date }): Promise<ResourceInteraction[]> => {
+        if (!db) return [];
+        try {
+            // Note: We fetch all recent interactions but filter by a reasonable window
+            // The timestamp field uses serverTimestamp() which converts to milliseconds in the stored document
+            const q = query(
+                collection(db, 'interactions'),
+                orderBy('timestamp', 'desc')
+            );
+            const snap = await getDocs(q);
+            const cutoffTime = (options?.sinceDate || new Date(Date.now() - DEFAULT_INTERACTION_DAYS * 24 * 60 * 60 * 1000)).getTime();
+            
+            return snap.docs
+                .map(d => ({ id: d.id, ...d.data() } as ResourceInteraction))
+                .filter(interaction => {
+                    const timestamp = typeof interaction.timestamp === 'number' 
+                        ? interaction.timestamp 
+                        : (interaction.timestamp as any)?.toMillis?.() || 0;
+                    return timestamp >= cutoffTime;
+                });
+        } catch (error) {
+            console.error('Error fetching all interactions:', error);
+            return [];
+        }
     },
     
     /**
