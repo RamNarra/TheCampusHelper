@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Calculator, Camera, Library, Brain } from 'lucide-react';
+import { ArrowRight, Calculator, Library, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdUnit from '../components/AdUnit';
 
@@ -98,20 +98,19 @@ const LandingPage: React.FC = () => {
               </motion.div>
             </Link>
 
-            {/* Feature 4: SnapLearn */}
-            <motion.div 
-              whileHover={{ y: -8 }}
-              className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/5 text-primary">
-                  <Camera className="w-7 h-7" />
+            {/* Feature 4: Exam Prep Dashboard */}
+            <Link to="/exam-prep" className="block h-full">
+              <motion.div 
+                whileHover={{ y: -8 }}
+                className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
+              >
+                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
+                  <Brain className="w-7 h-7" />
                 </div>
-                <span className="px-3 py-1 text-xs font-bold text-secondary bg-secondary/10 rounded-full border border-secondary/20 uppercase tracking-wide">Coming Soon</span>
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">SnapLearn</h3>
-              <p className="text-muted-foreground leading-relaxed">Take a photo of any complex diagram or equation and get an instant AI-powered explanation.</p>
-            </motion.div>
+                <h3 className="text-xl font-bold text-foreground mb-3">Smart Exam Prep</h3>
+                <p className="text-muted-foreground leading-relaxed">AI-powered exam tracking with personalized study plans, progress analytics, and readiness predictions.</p>
+              </motion.div>
+            </Link>
 
           </div>
         </div>

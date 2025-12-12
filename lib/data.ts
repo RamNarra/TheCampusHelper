@@ -1,5 +1,5 @@
 
-import { Resource } from '../types';
+import { Resource, ExamPrep, Subject, StudyTask } from '../types';
 
 // --- Types ---
 export interface EventItem {
@@ -279,3 +279,132 @@ export const upcomingEvents: EventItem[] = [
     status: 'completed'
   }
 ];
+
+// Generate study schedule with spaced repetition
+export const generateStudySchedule = (subjects: Subject[], examDate: Date): StudyTask[] => {
+  const tasks: StudyTask[] = [];
+  const today = new Date();
+  const daysUntilExam = Math.floor((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  subjects.forEach((subject) => {
+    const remainingTopics = subject.totalTopics - subject.completedTopics;
+    const topicsPerDay = Math.ceil(remainingTopics / Math.max(daysUntilExam, 1));
+    
+    // Generate tasks with spaced repetition
+    for (let i = 0; i < remainingTopics; i++) {
+      const dayOffset = Math.floor(i / topicsPerDay);
+      const scheduledDate = new Date(today);
+      scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
+      
+      // Prioritize weak topics (check if topic name matches any weak topic)
+      const topicName = `Topic ${i + subject.completedTopics + 1}`;
+      const isWeakTopic = subject.weakTopics.includes(topicName);
+      
+      tasks.push({
+        id: `task-${subject.id}-${i}`,
+        subjectId: subject.id,
+        topic: topicName,
+        scheduledDate: scheduledDate.toISOString(),
+        completed: false,
+        duration: 60,
+        priority: isWeakTopic ? 'high' : dayOffset < daysUntilExam / 3 ? 'medium' : 'low'
+      });
+    }
+    
+    // Add revision tasks for weak topics (spaced repetition)
+    // Only schedule revisions if there's enough time (at least 3 days before exam)
+    if (daysUntilExam > 3) {
+      subject.weakTopics.forEach((weakTopic, idx) => {
+        const revisionDate = new Date(today);
+        const revisionOffset = Math.floor(daysUntilExam * 0.7) + idx;
+        // Ensure revision is scheduled at least 1 day before exam
+        if (revisionOffset < daysUntilExam - 1) {
+          revisionDate.setDate(revisionDate.getDate() + revisionOffset);
+          
+          tasks.push({
+            id: `revision-${subject.id}-${idx}`,
+            subjectId: subject.id,
+            topic: `Revision: ${weakTopic}`,
+            scheduledDate: revisionDate.toISOString(),
+            completed: false,
+            duration: 45,
+            priority: 'high'
+          });
+        }
+      });
+    }
+  });
+  
+  return tasks.sort((a, b) => {
+    const dateA = typeof a.scheduledDate === 'string' ? new Date(a.scheduledDate) : a.scheduledDate;
+    const dateB = typeof b.scheduledDate === 'string' ? new Date(b.scheduledDate) : b.scheduledDate;
+    return dateA.getTime() - dateB.getTime();
+  });
+};
+
+// Calculate predicted readiness based on completion and time remaining
+export const calculateReadiness = (examPrep: ExamPrep): number => {
+  const totalTasks = examPrep.studyPlan.length;
+  if (totalTasks === 0) return 0; // Handle empty study plan
+  
+  const completedTasks = examPrep.studyPlan.filter(t => t.completed).length;
+  const today = new Date();
+  const daysUntilExam = Math.floor((examPrep.examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Base readiness on completion percentage
+  const completionScore = (completedTasks / totalTasks) * 100;
+  
+  // Adjust based on time remaining
+  const timeScore = daysUntilExam > 0 ? Math.min(100, (daysUntilExam / 30) * 20) : 0;
+  
+  // Penalize if there are many weak topics
+  const weakTopicCount = examPrep.subjects.reduce((sum, s) => sum + s.weakTopics.length, 0);
+  const weakTopicPenalty = Math.min(weakTopicCount * 5, 30);
+  
+  return Math.max(0, Math.min(100, completionScore + timeScore - weakTopicPenalty));
+};
+
+// Mock test recommendations based on weak topics
+export const getMockTestRecommendations = (subjects: Subject[]): string[] => {
+  const recommendations: string[] = [];
+  
+  subjects.forEach((subject) => {
+    // Skip subjects with no topics
+    if (subject.totalTopics === 0) {
+      return;
+    }
+    
+    if (subject.weakTopics.length > 0) {
+      recommendations.push(`Practice test for ${subject.name}: Focus on ${subject.weakTopics.slice(0, 2).join(', ')}`);
+    }
+    
+    const completionPercentage = (subject.completedTopics / subject.totalTopics) * 100;
+    if (completionPercentage >= 80) {
+      recommendations.push(`Full mock test for ${subject.name}`);
+    }
+  });
+  
+  return recommendations;
+};
+
+// Calculate stress level based on workload and time
+export const calculateStressLevel = (examPrep: ExamPrep): 'low' | 'medium' | 'high' => {
+  const today = new Date();
+  const examDate = examPrep.examDate instanceof Date ? examPrep.examDate : new Date(examPrep.examDate);
+  const daysUntilExam = Math.floor((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // For past exams, return low stress
+  if (daysUntilExam < 0) {
+    return 'low';
+  }
+  
+  const remainingTasks = examPrep.studyPlan.filter(t => !t.completed).length;
+  const tasksPerDay = remainingTasks / Math.max(daysUntilExam, 1);
+  
+  if (tasksPerDay > 8 || (daysUntilExam >= 0 && daysUntilExam < 3)) {
+    return 'high';
+  } else if (tasksPerDay > 4 || (daysUntilExam >= 0 && daysUntilExam < 7)) {
+    return 'medium';
+  }
+  return 'low';
+};
