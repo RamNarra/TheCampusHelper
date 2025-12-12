@@ -1,5 +1,9 @@
 {
   "name": "TheCampusHelper",
   "description": "A student resource platform featuring resources, academic tools, and a community platform.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "git-push",
+    "git-commit",
+    "file-write"
+  ]
 }
