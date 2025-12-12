@@ -113,3 +113,9 @@ dist
 
 # Stores VSCode settings outside the .vscode folder
 .settings/
+
+# PWA auto-generated files
+dev-dist
+dist/sw.js
+dist/workbox-*.js
+dist/registerSW.js

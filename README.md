@@ -1,6 +1,6 @@
 # TheCampusHelper
 
-A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, and AI tools.
+A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, AI-powered study assistant, and AI tools.
 
 ## 🔒 Security Architecture
 This project uses a **Server-Side Proxy Architecture** to protect sensitive credentials (like the Gemini API Key).
@@ -67,5 +67,55 @@ The app will start at `http://localhost:3000`.
 3.  **Proxy Usage**: Verify `services/firebase.ts` calls `fetch('/api/generate')`, not `google.generativeai`.
 4.  **Database Rules**: Ensure `firestore.rules` does not contain `allow write: if true`.
 
+## 📱 PWA Features
+
+TheCampusHelper is a **Progressive Web App (PWA)** with the following features:
+
+### Key Capabilities
+- **Offline Support**: Access basic pages and cached resources without internet
+- **App Installation**: Install the app on your device for a native app-like experience
+- **Fast Loading**: Smart caching strategies for improved performance
+- **Push Notifications**: Ready for future notification features
+- **Mobile-First**: Optimized responsive design for all devices
+
+### Caching Strategy
+The PWA implements intelligent caching for:
+- **Google Fonts**: Cached for 1 year (CacheFirst)
+- **Tailwind CDN**: Cached with automatic updates (StaleWhileRevalidate)
+- **AI Studio CDN**: Cached for 1 week with updates (StaleWhileRevalidate)
+- **API Calls**: Network-first with 5-minute fallback cache
+
+### Installation
+Users can install TheCampusHelper on:
+- **Desktop**: Chrome, Edge, Opera (via browser install prompt)
+- **Android**: Chrome, Edge, Samsung Internet (Add to Home Screen)
+- **iOS**: Safari (Add to Home Screen via share menu)
+
+The app will automatically prompt eligible users to install after a few seconds of use. The prompt can be dismissed and will reappear after 7 days.
+
+> **Note**: The current icon files are placeholder SVGs. For production deployment, replace these with proper PNG files generated at the required sizes (72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512). You can use tools like [Favicon Generator](https://realfavicongenerator.net/) or [PWA Asset Generator](https://github.com/onderceylan/pwa-asset-generator) to create proper PWA icons from your logo.
+## 🎓 Features
+
+### AI-Powered Study Assistant
+An intelligent, context-aware tutoring system that helps students learn effectively:
+
+- **Personalized Learning**: Adapts responses based on difficulty level (beginner, intermediate, advanced)
+- **Conversation Memory**: Remembers the last 5 messages to provide contextual help
+- **JNTUH-Specific**: Tailored for JNTUH curriculum with relevant examples and syllabus topics
+- **Rich Content**: Supports LaTeX formulas and detailed visual descriptions
+- **Subject & Topic Context**: Set your study context for focused, relevant explanations
+
+#### Using the Study Assistant
+1. Navigate to the Study Assistant page
+2. Set your study context (subject, topic, difficulty level)
+3. Ask questions and receive step-by-step explanations
+4. The assistant remembers your conversation for better context
+5. Change context anytime to study a different topic
+
+**API Endpoint**: `/api/study-assistant`
+- Secured with Firebase Authentication
+- Rate-limited (10 requests/minute per user+IP)
+- Uses Gemini AI for intelligent responses
+
 ## 🛠️ Deployment
-Connect this repository to Vercel. The `api/` directory will automatically be deployed as Serverless Functions.
+Connect this repository to Vercel. The `api/` directory will automatically be deployed as Serverless Functions. The PWA service worker is automatically generated during the build process.
