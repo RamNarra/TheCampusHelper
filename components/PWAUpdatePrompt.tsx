@@ -8,10 +8,10 @@ const PWAUpdatePrompt: React.FC = () => {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(registration) {
+    onRegistered(registration: ServiceWorkerRegistration | undefined) {
       console.log('SW Registered:', registration);
     },
-    onRegisterError(error) {
+    onRegisterError(error: Error) {
       console.error('SW registration error', error);
     },
   });

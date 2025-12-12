@@ -67,5 +67,31 @@ The app will start at `http://localhost:3000`.
 3.  **Proxy Usage**: Verify `services/firebase.ts` calls `fetch('/api/generate')`, not `google.generativeai`.
 4.  **Database Rules**: Ensure `firestore.rules` does not contain `allow write: if true`.
 
+## 📱 PWA Features
+
+TheCampusHelper is a **Progressive Web App (PWA)** with the following features:
+
+### Key Capabilities
+- **Offline Support**: Access basic pages and cached resources without internet
+- **App Installation**: Install the app on your device for a native app-like experience
+- **Fast Loading**: Smart caching strategies for improved performance
+- **Push Notifications**: Ready for future notification features
+- **Mobile-First**: Optimized responsive design for all devices
+
+### Caching Strategy
+The PWA implements intelligent caching for:
+- **Google Fonts**: Cached for 1 year (CacheFirst)
+- **Tailwind CDN**: Cached with automatic updates (StaleWhileRevalidate)
+- **AI Studio CDN**: Cached for 1 week with updates (StaleWhileRevalidate)
+- **API Calls**: Network-first with 5-minute fallback cache
+
+### Installation
+Users can install TheCampusHelper on:
+- **Desktop**: Chrome, Edge, Opera (via browser install prompt)
+- **Android**: Chrome, Edge, Samsung Internet (Add to Home Screen)
+- **iOS**: Safari (Add to Home Screen via share menu)
+
+The app will automatically prompt eligible users to install after a few seconds of use. The prompt can be dismissed and will reappear after 7 days.
+
 ## 🛠️ Deployment
-Connect this repository to Vercel. The `api/` directory will automatically be deployed as Serverless Functions.
+Connect this repository to Vercel. The `api/` directory will automatically be deployed as Serverless Functions. The PWA service worker is automatically generated during the build process.
