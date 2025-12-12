@@ -39,7 +39,7 @@ export interface ResourceInteraction {
   userId: string;
   resourceId: string;
   interactionType: 'view' | 'download' | 'search';
-  timestamp: number | any; // number for client-side, serverTimestamp for Firestore
+  timestamp: number; // Stored as number in Firestore after serverTimestamp conversion
   subject?: string;
   resourceType?: ResourceType;
   semester?: string;

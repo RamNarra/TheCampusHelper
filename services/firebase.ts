@@ -20,12 +20,14 @@ import {
   orderBy, 
   onSnapshot, 
   serverTimestamp,
-  Firestore
+  Firestore,
+  FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
+const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
@@ -192,8 +194,8 @@ export const api = {
     getAllInteractions: async (options?: { sinceDate?: Date }): Promise<ResourceInteraction[]> => {
         if (!db) return [];
         try {
-            // Limit to last 30 days by default for privacy and performance
-            const sinceDate = options?.sinceDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            // Limit to last DEFAULT_INTERACTION_DAYS by default for privacy and performance
+            const sinceDate = options?.sinceDate || new Date(Date.now() - DEFAULT_INTERACTION_DAYS * 24 * 60 * 60 * 1000);
             
             const q = query(
                 collection(db, 'interactions'),

@@ -96,9 +96,9 @@ const ResourcesPage: React.FC = () => {
     }
   }, [user, dynamicResources]);
 
-  // Load recommendations when user is logged in and resources are loaded
+  // Load recommendations when user is logged in and not browsing a specific semester
   useEffect(() => {
-    if (user?.uid && !semester && dynamicResources.length >= 0) {
+    if (user?.uid && !semester) {
       loadRecommendations();
     }
   }, [user, semester, loadRecommendations]);
