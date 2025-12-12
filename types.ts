@@ -33,6 +33,39 @@ export interface StatMetric {
   change?: string;
 }
 
+// Exam Preparation Dashboard Types
+export interface Subject {
+  id: string;
+  name: string;
+  totalTopics: number;
+  completedTopics: number;
+  weakTopics: string[];
+  lastStudied?: Date;
+}
+
+export interface StudyTask {
+  id: string;
+  subjectId: string;
+  topic: string;
+  scheduledDate: string; // ISO 8601 format, e.g. "2024-06-01T12:00:00Z"
+  completed: boolean;
+  duration: number; // in minutes
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface ExamPrep {
+  id: string;
+  examName: string;
+  examDate: Date;
+  subjects: Subject[];
+  studyPlan: StudyTask[];
+  progress: {
+    completed: number;
+    remaining: number;
+    predictedReadiness: number; // 0-100%
+  };
+  stressLevel?: 'low' | 'medium' | 'high';
+  wellnessReminders?: boolean;
 // Quiz Types
 export interface QuizOption {
   id: string;
