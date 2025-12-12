@@ -19,7 +19,6 @@ import {
   query, 
   where,
   orderBy, 
-  where,
   limit,
   onSnapshot, 
   serverTimestamp,
@@ -27,15 +26,11 @@ import {
   deleteDoc,
   arrayUnion,
   arrayRemove,
-  Firestore
-} from 'firebase/firestore';
-import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, StudyGroup, Message, Session, CollaborativeNote } from '../types';
   Firestore,
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, ResourceInteraction } from '../types';
+import { UserProfile, Resource, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
