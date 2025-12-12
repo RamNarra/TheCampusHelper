@@ -81,6 +81,8 @@ export interface QuizPerformance {
       averageScore: number;
     };
   };
+}
+
 // Real-Time Collaboration Types
 
 export interface Message {
@@ -135,6 +137,8 @@ export interface StudyGroup {
   createdAt: any; // Firestore Timestamp
   isPrivate: boolean; // Private groups require approval to join
   maxMembers?: number;
+}
+
 // Resource Recommendation System Types
 export interface ResourceInteraction {
   id?: string;
@@ -168,6 +172,8 @@ export interface RecommendationResult {
     matchScore?: number;
     trendingScore?: number;
   };
+}
+
 // Learning Analytics Types
 export interface StudyTime {
   daily: number[];
@@ -218,6 +224,8 @@ export interface QuizResult {
   timestamp: Date;
   totalQuestions: number;
   correctAnswers: number;
+}
+
 export interface StudyContext {
   subject: string;
   topic: string;

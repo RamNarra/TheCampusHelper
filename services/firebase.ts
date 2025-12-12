@@ -30,8 +30,7 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion } from '../types';
-import { UserProfile, Resource, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
+import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
@@ -314,6 +313,8 @@ export const api = {
         return snap.docs
             .map(d => ({ id: d.id, ...d.data() } as QuizAttempt))
             .filter(attempt => attempt.userId === userId);
+    },
+
     // STUDY GROUPS METHODS
     
     createStudyGroup: async (groupData: Omit<StudyGroup, 'id' | 'createdAt'>): Promise<string> => {
