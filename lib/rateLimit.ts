@@ -65,6 +65,5 @@ export async function rateLimitExceeded(key: string): Promise<boolean> {
     console.error('Rate limit check failed:', error);
     // Fail open - don't block requests if rate limiting fails
     return false;
-    return false; // Fail open - allow request if Redis errors
   }
 }
