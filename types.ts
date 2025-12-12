@@ -11,6 +11,7 @@ export interface UserProfile {
   year?: string;
   dateOfBirth?: string; // Format: YYYY-MM-DD
   profileCompleted?: boolean; // New flag to prevent infinite onboarding loops
+  studyPattern?: 'visual' | 'text' | 'mixed'; // Learning preference
 }
 
 export interface Resource {
@@ -30,4 +31,39 @@ export interface StatMetric {
   label: string;
   value: string;
   change?: string;
+}
+
+// Resource Recommendation System Types
+export interface ResourceInteraction {
+  id?: string;
+  userId: string;
+  resourceId: string;
+  interactionType: 'view' | 'download' | 'search';
+  timestamp: number;
+  subject?: string;
+  resourceType?: ResourceType;
+  semester?: string;
+  branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
+  searchQuery?: string; // Only for search interactions
+}
+
+export interface UserPreferences {
+  userId: string;
+  subjectsViewed: string[];
+  downloadHistory: string[];
+  searchQueries: string[];
+  studyPattern: 'visual' | 'text' | 'mixed';
+  preferredResourceTypes: ResourceType[];
+  activeSemesters: string[];
+}
+
+export interface RecommendationResult {
+  resource: Resource;
+  score: number;
+  reason: 'collaborative' | 'content-based' | 'time-based' | 'popular';
+  metadata?: {
+    similarUsers?: number;
+    matchScore?: number;
+    trendingScore?: number;
+  };
 }
