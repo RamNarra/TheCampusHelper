@@ -274,11 +274,6 @@ export const api = {
             5000
         );
 
-                if (status === 'approved' || status === 'rejected') {
-                    // Fire-and-forget: do not block moderation on email send.
-                    void api.notifyResourceReviewed(resourceId, status);
-                }
-
         return result;
     },
 
@@ -288,50 +283,6 @@ export const api = {
         if (!uid) throw new Error('You must be signed in.');
         const docRef = doc(db, 'resources', resourceId);
         return withTimeout(deleteDoc(docRef), 5000);
-    },
-
-    // --- EMAIL NOTIFICATIONS (best-effort) ---
-    notifyResourceSubmitted: async (resourceId: string) => {
-        try {
-            const token = await getAuthToken();
-            if (!token) return;
-            const response = await fetch('/api/resource-email-submitted', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ resourceId })
-            });
-            // Do not throw — email is best-effort.
-            if (!response.ok) {
-                const text = await response.text().catch(() => '');
-                console.warn('notifyResourceSubmitted failed:', response.status, text);
-            }
-        } catch (e) {
-            console.warn('notifyResourceSubmitted error:', e);
-        }
-    },
-
-    notifyResourceReviewed: async (resourceId: string, status: 'approved' | 'rejected') => {
-        try {
-            const token = await getAuthToken();
-            if (!token) return;
-            const response = await fetch('/api/resource-email-reviewed', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ resourceId, status })
-            });
-            if (!response.ok) {
-                const text = await response.text().catch(() => '');
-                console.warn('notifyResourceReviewed failed:', response.status, text);
-            }
-        } catch (e) {
-            console.warn('notifyResourceReviewed error:', e);
-        }
     },
 
     // INTERACTION TRACKING METHODS

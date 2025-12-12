@@ -29,6 +29,7 @@ const Navbar: React.FC = () => {
 
   const studyLinks = useMemo(() => {
     return [
+      { name: 'Helper Study Plus', path: '/study-plus', icon: <Sparkles className="w-4 h-4 mr-2" /> },
       { name: 'Study Assistant', path: '/study-assistant', icon: <Brain className="w-4 h-4 mr-2" /> },
       { name: 'Quiz', path: '/quiz', icon: <Brain className="w-4 h-4 mr-2" /> },
       { name: 'Exam Prep', path: '/exam-prep', icon: <Brain className="w-4 h-4 mr-2" /> },

@@ -294,10 +294,8 @@ const ResourcesPage: React.FC = () => {
 
         if (user.role === 'admin' || user.role === 'mod') {
           setUploadSuccess('Resource added and published. It is now visible on the website.');
-          void api.notifyResourceReviewed(createdId, 'approved');
         } else {
           setUploadSuccess('Your resource has been submitted for approval. Once approved, it will be visible on the website.');
-          void api.notifyResourceSubmitted(createdId);
         }
 
         // 5. Award XP for contribution
