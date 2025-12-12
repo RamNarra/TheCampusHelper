@@ -9,44 +9,99 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function isBootstrapAdmin() {
+      // Bootstrap path for the very first admin: either a custom claim, or a strict allowlist.
+      // NOTE: Update this allowlist for your project.
       return isAuthenticated() && (
-        // Preferred: Custom Claims
         request.auth.token.admin == true ||
-        // Legacy: Strict whitelist (No Regex)
         request.auth.token.email in ["admin@thecampushelper.com"]
       );
+    }
+
+    function myUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myRole() {
+      return (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && ('role' in myUserDoc()))
+        ? myUserDoc().role
+        : 'user';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (isBootstrapAdmin() || myRole() == 'admin');
+    }
+
+    function isMod() {
+      return isAuthenticated() && (isAdmin() || myRole() == 'mod');
     }
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Validates resource structure and ownership
+    // Validates resource structure (allows extra keys)
     function isValidResource(data) {
-      return data.keys().hasAll(['title', 'subject', 'type', 'downloadUrl', 'ownerId'])
+      return data.keys().hasAll(['title', 'subject', 'type', 'downloadUrl', 'ownerId', 'status', 'createdAt', 'updatedAt'])
              && data.title is string && data.title.size() > 3 && data.title.size() < 200
-             && data.subject is string && data.subject.size() > 0
-             && data.downloadUrl is string && data.downloadUrl.size() < 2000
-             && data.ownerId is string;
+             && data.subject is string && data.subject.size() > 0 && data.subject.size() < 200
+             && data.type is string && data.type.size() > 0 && data.type.size() < 50
+             && data.downloadUrl is string && data.downloadUrl.size() > 5 && data.downloadUrl.size() < 2000
+             && data.ownerId is string
+             && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
     }
 
-    // Prevents privilege escalation
-    function isValidProfileUpdate(newData, currentData) {
-      let isRoleUnchanged = !("role" in newData) || (currentData != null && "role" in currentData && newData.role == currentData.role);
-      let isAdminUnchanged = !("isAdmin" in newData) || (currentData != null && "isAdmin" in currentData && newData.isAdmin == currentData.isAdmin);
-      return isRoleUnchanged && isAdminUnchanged;
+    function canSetModeratedStatus(data) {
+      // Users can only submit pending resources.
+      // Mods/Admins can approve/reject.
+      return data.status == 'pending' || ((data.status == 'approved' || data.status == 'rejected') && isMod());
+    }
+
+    // Prevents privilege escalation on user profiles
+    function roleIsAllowedOnCreate(data) {
+      // Normal users may only create with role 'user' (or omit role).
+      // Bootstrap admin may create their own profile with role 'admin'.
+      return !("role" in data)
+        || data.role == 'user'
+        || (data.role == 'admin' && isBootstrapAdmin());
+    }
+
+    function roleIsSafeOnOwnerUpdate(newData, currentData) {
+      // Owners cannot change role/disabled.
+      // Back-compat: if role is missing, owner may set role='user' only.
+      let roleOk = !("role" in newData)
+        || ("role" in currentData && newData.role == currentData.role)
+        || (!("role" in currentData) && newData.role == 'user');
+
+      let disabledOk = !("disabled" in newData)
+        || ("disabled" in currentData && newData.disabled == currentData.disabled);
+
+      return roleOk && disabledOk;
     }
 
     // --- COLLECTION RULES ---
 
     // USERS COLLECTION
     match /users/{userId} {
-      // Allow only the owner or an admin to read full user profiles.
-      allow read: if isOwner(userId) || isAdmin();
-      
-      allow create: if isOwner(userId) && isValidProfileUpdate(request.resource.data, null);
-      allow update: if isOwner(userId) && isValidProfileUpdate(request.resource.data, resource.data);
+      // Owner can read their profile; staff can read for moderation/admin.
+      allow read: if isOwner(userId) || isMod();
+
+      allow create: if isOwner(userId)
+                    && roleIsAllowedOnCreate(request.resource.data);
+
+      // Owner can update their own profile (no privilege escalation).
+      allow update: if (
+                      isOwner(userId)
+                      && roleIsSafeOnOwnerUpdate(request.resource.data, resource.data)
+                    )
+                    || (
+                      // Admin can manage roles/disable for any user.
+                      isAdmin()
+                      && (
+                        !("role" in request.resource.data) || (request.resource.data.role in ['user','mod','admin'])
+                      )
+                    );
+
       allow delete: if isAdmin();
     }
 
@@ -60,20 +115,91 @@ service cloud.firestore {
 
     // RESOURCES COLLECTION
     match /resources/{resourceId} {
-      allow read: if isAuthenticated();
+      // Only show pending resources to admins or the owner.
+      // Back-compat: if status doesn't exist, treat as approved.
+      allow read: if isAuthenticated() && (
+        !('status' in resource.data) ||
+        resource.data.status == 'approved' ||
+        isMod() ||
+        (('ownerId' in resource.data) && resource.data.ownerId == request.auth.uid)
+      );
       
-      // CREATE: Admin Only + Validation + No Client Timestamp/Role tampering
-      allow create: if isAdmin() 
+      // CREATE: Any authenticated user can submit a pending resource.
+      // Admins may create approved resources.
+      allow create: if isAuthenticated()
+                    && request.resource.data.ownerId == request.auth.uid
                     && isValidResource(request.resource.data)
+                    && canSetModeratedStatus(request.resource.data)
                     && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time
                     && !('isAdmin' in request.resource.data || 'role' in request.resource.data);
-                    
-      // UPDATE: Admin Only + Validation
-      allow update: if isAdmin() 
+
+      // UPDATE: Admins can update anything (within validation). Owners can update their own pending resources.
+      allow update: if (
+                      isMod() ||
+                      (isAuthenticated()
+                        && ('ownerId' in resource.data)
+                        && resource.data.ownerId == request.auth.uid
+                        && resource.data.status == 'pending'
+                        && request.resource.data.status == 'pending'
+                      )
+                    )
                     && isValidResource(request.resource.data)
+                    && canSetModeratedStatus(request.resource.data)
+                    && request.resource.data.ownerId == resource.data.ownerId
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time
                     && !('isAdmin' in request.resource.data || 'role' in request.resource.data);
-                    
-      allow delete: if isAdmin();
+
+      // DELETE: Admins can delete any resource. Owners can delete their pending resources.
+      allow delete: if isMod() || (
+                      isAuthenticated()
+                      && ('ownerId' in resource.data)
+                      && resource.data.ownerId == request.auth.uid
+                      && resource.data.status == 'pending'
+                    );
+    }
+
+    // INTERACTIONS COLLECTION (private per-user analytics)
+    match /interactions/{interactionId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.timestamp == request.time;
+
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // QUIZZES COLLECTION
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdAt == request.time;
+
+      // Allow owner or admin to update/delete quizzes
+      allow update, delete: if isAdmin() || (
+        isAuthenticated()
+        && resource.data.createdBy == request.auth.uid
+      );
+    }
+
+    // QUIZ ATTEMPTS COLLECTION
+    match /quizAttempts/{attemptId} {
+      allow read: if isAdmin() || (
+        isAuthenticated()
+        && resource.data.userId == request.auth.uid
+      );
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.completedAt == request.time;
+
+      allow update, delete: if isAdmin() || (
+        isAuthenticated()
+        && resource.data.userId == request.auth.uid
+      );
     }
 
     // STUDY GROUPS COLLECTION

@@ -105,17 +105,9 @@ export default defineConfig({
           },
           {
             urlPattern: /\/api\/.*/i,
-            handler: 'NetworkFirst',
+            handler: 'NetworkOnly',
             options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5 // 5 minutes
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+              cacheName: 'api-cache'
             }
           }
         ]
@@ -129,5 +121,20 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          if (id.includes('firebase')) return 'firebase';
+          if (id.includes('react-router')) return 'router';
+          if (id.includes('react')) return 'react';
+          if (id.includes('framer-motion')) return 'motion';
+          if (id.includes('lucide-react')) return 'icons';
+
+          return 'vendor';
+        }
+      }
+    }
   },
 });

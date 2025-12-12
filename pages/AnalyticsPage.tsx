@@ -243,7 +243,7 @@ const AnalyticsPage: React.FC = () => {
           <h2 className="text-xl font-bold text-foreground">Study Time by Subject</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from(analytics.studyTime.bySubject.entries())
+          {(Object.entries(analytics.studyTime.bySubject) as Array<[string, number]>)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 6)
             .map(([subject, minutes]) => (

@@ -25,8 +25,6 @@ import ExamPrepPage from './pages/ExamPrepPage';
 import StudyGroupsPage from './pages/StudyGroupsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 
-const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
-
 interface ErrorBoundaryProps {
   children?: ReactNode;
 }
@@ -96,7 +94,12 @@ const AppContent: React.FC = () => {
     
     if (!loading && user && profileLoaded) {
       const isProfileIncomplete = (!user.branch || !user.year);
-      const isLocallyCompleted = localStorage.getItem('thc_profile_completed') === '1';
+      let isLocallyCompleted = false;
+      try {
+        isLocallyCompleted = localStorage.getItem('thc_profile_completed') === '1';
+      } catch {
+        isLocallyCompleted = false;
+      }
 
       if (isProfileIncomplete && !isLocallyCompleted) {
         setShowProfileModal(true);
@@ -110,7 +113,11 @@ const AppContent: React.FC = () => {
 
   const handleProfileComplete = () => {
     // Mark locally to prevent immediate re-pop if DB write is slow
-    localStorage.setItem('thc_profile_completed', '1');
+    try {
+      localStorage.setItem('thc_profile_completed', '1');
+    } catch {
+      // Ignore storage failures
+    }
     setShowProfileModal(false);
     navigate('/');
     setShowTour(true);

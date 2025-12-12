@@ -1,12 +1,15 @@
 
 export type ResourceType = 'Note' | 'PYQ' | 'Lab Record' | 'PPT' | 'MidPaper' | 'ImpQ';
 
+export type UserRole = 'user' | 'mod' | 'admin';
+
 export interface UserProfile {
   uid: string;
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
-  role: 'user' | 'admin';
+  role: UserRole;
+  disabled?: boolean;
   branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
   year?: string;
   dateOfBirth?: string; // Format: YYYY-MM-DD
@@ -30,7 +33,13 @@ export interface Resource {
   type: ResourceType;
   downloadUrl: string;
   driveFileId?: string; // New field for the Google Drive ID
-  status?: 'approved' | 'pending';
+  status?: 'approved' | 'pending' | 'rejected';
+  ownerId?: string;
+  reviewedBy?: string;
+  reviewedAt?: any;
+  rejectionReason?: string;
+  createdAt?: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
 }
 
 export interface StatMetric {
@@ -114,6 +123,8 @@ export interface ExamPrep {
   };
   stressLevel?: 'low' | 'medium' | 'high';
   wellnessReminders?: boolean;
+}
+
 // Quiz Types
 export interface QuizOption {
   id: string;
@@ -259,7 +270,7 @@ export interface RecommendationResult {
 export interface StudyTime {
   daily: number[];
   weekly: number[];
-  bySubject: Map<string, number>;
+  bySubject: Record<string, number>;
 }
 
 export interface Performance {

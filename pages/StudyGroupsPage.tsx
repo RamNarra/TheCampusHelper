@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Search, X, MessageSquare, Video, FileText, Calendar, UserPlus, Settings, Trash2, Send, Edit2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -45,28 +45,36 @@ const StudyGroupsPage: React.FC = () => {
     };
   }, [user]);
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = useCallback(() => {
     setShowCreateModal(true);
-  };
+  }, []);
 
-  const handleJoinGroup = async (groupId: string) => {
+  const handleJoinGroup = useCallback(async (groupId: string) => {
     if (!user) return;
     try {
       await api.joinStudyGroup(groupId, user.uid);
     } catch (error) {
       console.error('Error joining group:', error);
     }
-  };
+  }, [user]);
 
-  const filteredMyGroups = myGroups.filter(group =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const normalizedSearch = useMemo(() => searchTerm.trim().toLowerCase(), [searchTerm]);
 
-  const filteredPublicGroups = publicGroups.filter(group =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMyGroups = useMemo(() => {
+    if (!normalizedSearch) return myGroups;
+    return myGroups.filter(group =>
+      group.name.toLowerCase().includes(normalizedSearch) ||
+      group.subject.toLowerCase().includes(normalizedSearch)
+    );
+  }, [myGroups, normalizedSearch]);
+
+  const filteredPublicGroups = useMemo(() => {
+    if (!normalizedSearch) return publicGroups;
+    return publicGroups.filter(group =>
+      group.name.toLowerCase().includes(normalizedSearch) ||
+      group.subject.toLowerCase().includes(normalizedSearch)
+    );
+  }, [publicGroups, normalizedSearch]);
 
   if (!user) {
     return (

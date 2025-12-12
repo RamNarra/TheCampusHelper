@@ -19,7 +19,12 @@ const PWAInstallPrompt: React.FC = () => {
     }
 
     // Check if user has previously dismissed the prompt
-    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    let dismissed: string | null = null;
+    try {
+      dismissed = localStorage.getItem('pwa-install-dismissed');
+    } catch {
+      dismissed = null;
+    }
     if (dismissed) {
       const dismissedTime = parseInt(dismissed, 10);
       const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
@@ -30,24 +35,30 @@ const PWAInstallPrompt: React.FC = () => {
       }
     }
 
+    let showTimer: number | null = null;
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Show prompt after a short delay to avoid overwhelming users
-      setTimeout(() => setShowPrompt(true), 3000);
+      showTimer = window.setTimeout(() => setShowPrompt(true), 3000);
+    };
+
+    const onInstalled = () => {
+      setIsInstalled(true);
+      setShowPrompt(false);
+      setDeferredPrompt(null);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
     // Listen for app installed event
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setShowPrompt(false);
-      setDeferredPrompt(null);
-    });
+    window.addEventListener('appinstalled', onInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onInstalled);
+      if (showTimer) window.clearTimeout(showTimer);
     };
   }, []);
 
@@ -59,9 +70,9 @@ const PWAInstallPrompt: React.FC = () => {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
+        if ((import.meta as any).env?.DEV) console.log('User accepted the install prompt');
       } else {
-        console.log('User dismissed the install prompt');
+        if ((import.meta as any).env?.DEV) console.log('User dismissed the install prompt');
       }
     } catch (error) {
       console.error('Error showing install prompt:', error);
@@ -72,7 +83,11 @@ const PWAInstallPrompt: React.FC = () => {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    try {
+      localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    } catch {
+      // Ignore storage failures
+    }
     setShowPrompt(false);
   };
 

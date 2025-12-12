@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import crypto from 'crypto';
 import * as admin from 'firebase-admin';
+import { Buffer } from 'buffer';
 import { rateLimitExceeded } from '../lib/rateLimit';
 
 export const config = {
@@ -29,19 +30,25 @@ const MAX_BODY_SIZE = 200 * 1024; // 200KB
 
 // --- FIREBASE ADMIN INIT ---
 if (!admin.apps.length) {
-    if (process.env.FIREBASE_PRIVATE_KEY) {
-        try {
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
-                    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-                }),
-            });
-        } catch (e) {
-            console.error('Firebase Admin Init Error:', e);
-        }
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (projectId && clientEmail && privateKey) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey: privateKey.replace(/\\n/g, '\n'),
+        }),
+      });
+    } catch (e) {
+      console.error('Firebase Admin Init Error:', e);
     }
+  } else {
+    console.error('Firebase Admin Init Error: Missing FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY');
+  }
 }
 
 // --- HANDLER ---
@@ -61,6 +68,9 @@ interface VercelResponse {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = crypto.randomUUID();
+
+  // Prevent caching of authenticated AI responses
+  res.setHeader('Cache-Control', 'no-store');
   
   // 1. ORIGIN VALIDATION
   const originHeader = req.headers.origin;

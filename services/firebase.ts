@@ -30,7 +30,7 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
+import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole } from '../types';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
@@ -135,14 +135,45 @@ export const api = {
         return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
     },
 
+    updateUserRole: async (targetUid: string, role: UserRole) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'users', targetUid);
+        return withTimeout(updateDoc(docRef, { role, updatedAt: serverTimestamp() }), 5000);
+    },
+
+    setUserDisabled: async (targetUid: string, disabled: boolean) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'users', targetUid);
+        return withTimeout(updateDoc(docRef, { disabled, updatedAt: serverTimestamp() }), 5000);
+    },
+
     // RESOURCE METHODS
     addResource: async (resource: Omit<Resource, 'id'>) => {
         if (!db) throw new Error("Database not configured");
+
+        const fallbackOwnerId = auth?.currentUser?.uid;
+        const ownerId = resource.ownerId || fallbackOwnerId;
+        if (!ownerId) throw new Error('You must be signed in to upload a resource.');
+
+        const isAdminEmail = (() => {
+          const email = auth?.currentUser?.email?.toLowerCase() || '';
+          const adminEmails = (env.VITE_ADMIN_EMAILS || "")
+            .split(',')
+            .map((e: string) => e.trim().toLowerCase())
+            .filter(Boolean);
+          return !!email && adminEmails.includes(email);
+        })();
+
+        const status = resource.status || (isAdminEmail ? 'approved' : 'pending');
+
         return withTimeout(
             addDoc(collection(db, 'resources'), {
                 ...resource,
-                createdAt: serverTimestamp()
-            }), 
+                ownerId,
+                status,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }),
             15000
         );
     },
@@ -160,13 +191,82 @@ export const api = {
         });
     },
 
-    onResourcesChanged: (cb: (resources: Resource[]) => void) => {
+    // --- RESOURCES (safe queries) ---
+    onApprovedResourcesChanged: (cb: (resources: Resource[]) => void) => {
         if (!db) { cb([]); return () => {}; }
-        const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
+        const q = query(
+            collection(db, 'resources'),
+            where('status', '==', 'approved'),
+            limit(500)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const toMillis = (t: any): number => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
+            list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+            cb(list);
+        });
+    },
+
+    onMyPendingResourcesChanged: (uid: string, cb: (resources: Resource[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, 'resources'),
+            where('ownerId', '==', uid),
+            where('status', '==', 'pending'),
+            limit(200)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const toMillis = (t: any): number => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
+            list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+            cb(list);
+        });
+    },
+
+    onAllResourcesChanged: (cb: (resources: Resource[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'), limit(1000));
         return onSnapshot(q, (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
             cb(list);
         });
+    },
+
+    onPendingResourcesChanged: (cb: (resources: Resource[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, 'resources'),
+            where('status', '==', 'pending'),
+            limit(500)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const toMillis = (t: any): number => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
+            list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+            cb(list);
+        });
+    },
+
+    updateResourceStatus: async (resourceId: string, status: 'approved' | 'rejected') => {
+        if (!db) throw new Error("Database not configured");
+        const uid = auth?.currentUser?.uid;
+        if (!uid) throw new Error('You must be signed in.');
+        const docRef = doc(db, 'resources', resourceId);
+        return withTimeout(
+            updateDoc(docRef, {
+                status,
+                reviewedBy: uid,
+                reviewedAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            }),
+            5000
+        );
+    },
+
+    deleteResource: async (resourceId: string) => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = doc(db, 'resources', resourceId);
+        return withTimeout(deleteDoc(docRef), 5000);
     },
 
     // INTERACTION TRACKING METHODS
@@ -184,13 +284,19 @@ export const api = {
     getUserInteractions: async (userId: string): Promise<ResourceInteraction[]> => {
         if (!db) return [];
         try {
+            // Avoid composite-index requirements by not ordering server-side.
             const q = query(
                 collection(db, 'interactions'),
                 where('userId', '==', userId),
-                orderBy('timestamp', 'desc')
+                limit(200)
             );
             const snap = await getDocs(q);
-            return snap.docs.map(d => ({ id: d.id, ...d.data() } as ResourceInteraction));
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as ResourceInteraction));
+            const toMillis = (t: any): number => {
+                if (typeof t === 'number') return t;
+                return t?.toMillis?.() ?? 0;
+            };
+            return list.sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp));
         } catch (error) {
             console.error('Error fetching user interactions:', error);
             return [];
@@ -200,11 +306,21 @@ export const api = {
     getAllInteractions: async (options?: { sinceDate?: Date }): Promise<ResourceInteraction[]> => {
         if (!db) return [];
         try {
+            // Client-side code should not be pulling other users' interactions.
+            // Keep this as a safe no-op unless an admin is signed in.
+            const email = auth?.currentUser?.email?.toLowerCase() || '';
+            const adminEmails = (env.VITE_ADMIN_EMAILS || '')
+                .split(',')
+                .map((e: string) => e.trim().toLowerCase())
+                .filter(Boolean);
+            if (!email || !adminEmails.includes(email)) return [];
+
             // Note: We fetch all recent interactions but filter by a reasonable window
             // The timestamp field uses serverTimestamp() which converts to milliseconds in the stored document
             const q = query(
                 collection(db, 'interactions'),
-                orderBy('timestamp', 'desc')
+                orderBy('timestamp', 'desc'),
+                limit(2000)
             );
             const snap = await getDocs(q);
             const cutoffTime = (options?.sinceDate || new Date(Date.now() - DEFAULT_INTERACTION_DAYS * 24 * 60 * 60 * 1000)).getTime();
@@ -305,14 +421,20 @@ export const api = {
      */
     getUserQuizAttempts: async (userId: string): Promise<QuizAttempt[]> => {
         if (!db) return [];
+        // Avoid scanning the entire collection (perf + privacy).
+        // We also avoid composite-index requirements by sorting client-side.
         const q = query(
             collection(db, 'quizAttempts'),
-            orderBy('completedAt', 'desc')
+            where('userId', '==', userId),
+            limit(200)
         );
         const snap = await getDocs(q);
-        return snap.docs
-            .map(d => ({ id: d.id, ...d.data() } as QuizAttempt))
-            .filter(attempt => attempt.userId === userId);
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as QuizAttempt));
+        const toMillis = (t: any): number => {
+            if (typeof t === 'number') return t;
+            return t?.toMillis?.() ?? 0;
+        };
+        return list.sort((a, b) => toMillis(b.completedAt) - toMillis(a.completedAt));
     },
 
     // STUDY GROUPS METHODS

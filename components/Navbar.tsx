@@ -3,11 +3,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Trophy, Users, BarChart3, Brain } from 'lucide-react';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Brain, Calendar } from 'lucide-react';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Users } from 'lucide-react';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, BarChart3 } from 'lucide-react';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Brain } from 'lucide-react';
+import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Trophy, Users, BarChart3, Brain, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 

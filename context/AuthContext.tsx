@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { api, mapAuthToProfile } from '../services/firebase';
 import { initializeGamification, updateStreak, awardXP, XP_REWARDS } from '../services/gamification';
@@ -19,11 +19,19 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const [gamificationInitialized, setGamificationInitialized] = useState(false);
+  const gamificationInitializedRef = useRef(false);
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | null = null;
+
     // LAYER 1: Firebase Auth Listener
     const unsubscribeAuth = api.onAuthStateChanged((firebaseUser) => {
+      // Clean up any previous profile listener before switching users.
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (firebaseUser) {
         // 1. Immediate: Map basic data from Google Token
         const basicProfile = mapAuthToProfile(firebaseUser);
@@ -34,14 +42,41 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
         // LAYER 2: Firestore Profile Listener
         // Subscribe to real-time updates for this user's profile
-        const unsubscribeProfile = api.onProfileChanged(firebaseUser.uid, async (data) => {
+        unsubscribeProfile = api.onProfileChanged(firebaseUser.uid, async (data) => {
+            if (!data) {
+                // Ensure a baseline profile exists (roles/disabled rely on this doc).
+                // Rules prevent self-escalation: normal users can only create role='user'.
+                try {
+                  await api.updateProfile(firebaseUser.uid, {
+                    displayName: basicProfile.displayName,
+                    email: basicProfile.email,
+                    photoURL: basicProfile.photoURL,
+                    role: basicProfile.role,
+                    disabled: false
+                  } as any);
+                } catch (e) {
+                  // If this fails (offline/rules), we still allow UI to proceed.
+                }
+            }
+
             if (data) {
+                // If disabled, force logout.
+                if ((data as any).disabled === true) {
+                  try {
+                    await api.signOut();
+                  } finally {
+                    setUser(null);
+                    setProfileLoaded(true);
+                  }
+                  return;
+                }
+
                 // Merge DB data with existing state
                 setUser(prev => prev ? ({ ...prev, ...data }) : null);
                 
                 // Only run gamification logic once per session to prevent infinite loops
-                if (!gamificationInitialized) {
-                  setGamificationInitialized(true);
+                if (!gamificationInitializedRef.current) {
+                  gamificationInitializedRef.current = true;
                   
                   // Initialize gamification for new users
                   if (data.xp === undefined) {
@@ -59,19 +94,19 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
             // Mark profile as "Loaded" (success or empty)
             setProfileLoaded(true);
         });
-
-        return () => unsubscribeProfile();
-
       } else {
         // User Logged Out
         setUser(null);
         setLoading(false);
         setProfileLoaded(false);
-        setGamificationInitialized(false);
+        gamificationInitializedRef.current = false;
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   // --- ACTIONS ---

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -56,22 +56,59 @@ const ResourcesPage: React.FC = () => {
 
   // Real-time Fetch
   useEffect(() => {
-    const unsubscribe = api.onResourcesChanged((fetched) => {
-      setDynamicResources(fetched);
+    // Important: Firestore rules require auth for reads.
+    // Also, queries must be constrained so they cannot include unreadable docs (e.g. pending resources).
+
+    if (!user?.uid) {
+      setDynamicResources([]);
       setIsResourcesLoading(false);
+      return;
+    }
+
+    setIsResourcesLoading(true);
+
+    // Staff can see everything (including pending).
+    if (user.role === 'admin' || user.role === 'mod') {
+      const unsub = api.onAllResourcesChanged((fetched) => {
+        setDynamicResources(fetched);
+        setIsResourcesLoading(false);
+      });
+      return () => unsub();
+    }
+
+    // Regular users: show approved resources + their own pending submissions.
+    let approved: Resource[] = [];
+    let mine: Resource[] = [];
+
+    const commit = () => {
+      const map = new Map<string, Resource>();
+      for (const r of approved) map.set(r.id, r);
+      for (const r of mine) map.set(r.id, r);
+      setDynamicResources(Array.from(map.values()));
+      setIsResourcesLoading(false);
+    };
+
+    const unsubApproved = api.onApprovedResourcesChanged((list) => {
+      approved = list;
+      commit();
     });
-    return () => unsubscribe();
-  }, []);
+    const unsubMine = api.onMyPendingResourcesChanged(user.uid, (list) => {
+      mine = list;
+      commit();
+    });
+
+    return () => {
+      unsubApproved();
+      unsubMine();
+    };
+  }, [user?.uid, user?.role]);
 
   const loadRecommendations = useCallback(async () => {
     if (!user?.uid) return;
     
     setIsLoadingRecommendations(true);
     try {
-      const [userInteractions, allInteractions] = await Promise.all([
-        api.getUserInteractions(user.uid),
-        api.getAllInteractions()
-      ]);
+      const userInteractions = await api.getUserInteractions(user.uid);
       
       const allResources = [...dynamicResources, ...staticResources];
       const userPrefs = buildUserPreferences(
@@ -84,7 +121,7 @@ const ResourcesPage: React.FC = () => {
         user.uid,
         userPrefs,
         userInteractions,
-        allInteractions,
+        [],
         allResources,
         6
       );
@@ -166,6 +203,7 @@ const ResourcesPage: React.FC = () => {
 
     try {
         // 1. Validate Context
+        if (!user?.uid) throw new Error('Please sign in to upload a resource.');
         if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
         if (!uploadName.trim()) throw new Error("Resource name is required.");
         if (!uploadLink.trim()) throw new Error("Link is required.");
@@ -189,7 +227,8 @@ const ResourcesPage: React.FC = () => {
             type: finalType,
             downloadUrl: uploadLink,
             driveFileId: driveId || undefined,
-            status: 'approved' // Auto-approve for admins
+          ownerId: user.uid,
+          status: (user.role === 'admin' || user.role === 'mod') ? 'approved' : 'pending'
         };
 
         // 4. Send to Firebase (Protected by Timeout)
@@ -230,16 +269,16 @@ const ResourcesPage: React.FC = () => {
 
   const currentView = getCurrentView();
 
-  const getFilteredResources = () => {
+  const filteredResources = useMemo(() => {
     return [...dynamicResources, ...staticResources].filter(r => {
       if (r.branch !== branch || r.semester !== semester || r.subject !== subject) return false;
-      
+
       if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
-         return r.unit === selectedFolder || r.type === selectedFolder;
+        return r.unit === selectedFolder || r.type === selectedFolder;
       }
       return r.unit === selectedFolder && r.type === selectedCategory;
     });
-  };
+  }, [dynamicResources, branch, semester, subject, selectedFolder, selectedCategory]);
 
   // --- UI CONSTANTS ---
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -409,7 +448,7 @@ const ResourcesPage: React.FC = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold">Files</h2>
-                        {user?.role === 'admin' && (
+                      {user && (
                             <button onClick={() => setShowUploadModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90">
                                 <Plus className="w-4 h-4" /> Add Resource
                             </button>
@@ -418,9 +457,9 @@ const ResourcesPage: React.FC = () => {
 
                     {isResourcesLoading ? (
                         <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-                    ) : getFilteredResources().length > 0 ? (
+                    ) : filteredResources.length > 0 ? (
                         <div className="grid gap-3">
-                            {getFilteredResources().map(res => (
+                        {filteredResources.map(res => (
                                 <div key={res.id} onClick={() => handleResourceClick(res)} className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer flex items-center justify-between group">
                                     <div className="flex items-center gap-4">
                                         <div className="p-2 bg-muted rounded-lg"><FileText className="w-5 h-5 text-foreground" /></div>

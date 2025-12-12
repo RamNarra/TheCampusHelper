@@ -2,19 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Brain, Send, Loader2, BookOpen, GraduationCap } from 'lucide-react';
 import { StudyContext, StudyMessage } from '../types';
+import { getAuthToken } from '../services/firebase';
 
 // Constants
 const CONTEXT_TRUNCATE_LENGTH = 200;
 
 // Helper function to generate unique message ID
 const generateMessageId = () => crypto.randomUUID();
-
-// Helper function to get auth token
-const getAuthToken = async () => {
-  const auth = (await import('../services/firebase')).auth;
-  if (!auth || !auth.currentUser) return null;
-  return auth.currentUser.getIdToken(false);
-};
 
 const StudyAssistantPage: React.FC = () => {
   const { user } = useAuth();

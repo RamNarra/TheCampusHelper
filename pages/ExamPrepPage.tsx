@@ -356,7 +356,7 @@ const ExamPrepPage: React.FC = () => {
                 {selectedExam.studyPlan
                   .filter(task => {
                     const daysFromNow = Math.floor(
-                      (task.scheduledDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                      (new Date(task.scheduledDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                     );
                     return daysFromNow >= 0 && daysFromNow <= 7;
                   })

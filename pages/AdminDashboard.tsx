@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
 import { UserProfile } from '../types';
-import { pendingUploads } from '../lib/data';
+import { Resource, UserRole } from '../types';
 import { motion } from 'framer-motion';
-import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar } from 'lucide-react';
+import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
@@ -14,8 +14,10 @@ const AdminDashboard: React.FC = () => {
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingResources, setPendingResources] = useState<Resource[]>([]);
+  const [isLoadingApprovals, setIsLoadingApprovals] = useState(true);
 
-  // Fetch users when tab changes to 'users'
+  // Fetch users when tab changes to 'users' (admin only)
   useEffect(() => {
     if (activeTab === 'users' && user?.role === 'admin') {
       const fetchUsers = async () => {
@@ -28,18 +30,63 @@ const AdminDashboard: React.FC = () => {
     }
   }, [activeTab, user]);
 
-  if (!user || user.role !== 'admin') {
+  // Mods/admins: subscribe to pending resource approvals
+  useEffect(() => {
+    if (!user || (user.role !== 'admin' && user.role !== 'mod')) return;
+    setIsLoadingApprovals(true);
+    const unsub = api.onPendingResourcesChanged((list) => {
+      setPendingResources(list);
+      setIsLoadingApprovals(false);
+    });
+    return () => unsub();
+  }, [user?.role]);
+
+  if (!user || (user.role !== 'admin' && user.role !== 'mod')) {
     return <Navigate to="/" replace />;
   }
 
-  const handleApprove = (id: string) => {
-    console.log(`Approving resource: ${id}`);
-    // In real app, this would call Firebase function
+  const handleApprove = async (id: string) => {
+    try {
+      await api.updateResourceStatus(id, 'approved');
+    } catch (e) {
+      console.error('Approve failed:', e);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    console.log(`Deleting resource: ${id}`);
-    // In real app, this would delete from Firestore
+  const handleReject = async (id: string) => {
+    try {
+      await api.updateResourceStatus(id, 'rejected');
+    } catch (e) {
+      console.error('Reject failed:', e);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.deleteResource(id);
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
+  };
+
+  const handleRoleChange = async (targetUid: string, role: UserRole) => {
+    if (user.role !== 'admin') return;
+    try {
+      await api.updateUserRole(targetUid, role);
+      setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, role } : u)));
+    } catch (e) {
+      console.error('Role update failed:', e);
+    }
+  };
+
+  const handleDisableToggle = async (targetUid: string, disabled: boolean) => {
+    if (user.role !== 'admin') return;
+    try {
+      await api.setUserDisabled(targetUid, disabled);
+      setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, disabled } : u)));
+    } catch (e) {
+      console.error('Disable update failed:', e);
+    }
   };
 
   const filteredUsers = usersList.filter(u => 
@@ -90,11 +137,12 @@ const AdminDashboard: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('users')}
+          disabled={user.role !== 'admin'}
           className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
             activeTab === 'users' 
               ? 'text-primary' 
               : 'text-gray-400 hover:text-white'
-          }`}
+          } ${user.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           User Database
           {activeTab === 'users' && (
@@ -115,7 +163,7 @@ const AdminDashboard: React.FC = () => {
             <div className="p-6 border-b border-white/10 flex justify-between items-center">
               <h2 className="text-lg font-bold text-white">Pending Resource Approvals</h2>
               <span className="px-2 py-1 bg-yellow-500/10 text-yellow-500 text-xs rounded-full border border-yellow-500/20">
-                {pendingUploads.length} Pending
+                {pendingResources.length} Pending
               </span>
             </div>
             
@@ -130,8 +178,15 @@ const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {pendingUploads.map((item) => (
-                    <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                  {isLoadingApprovals ? (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                        Loading pending resources...
+                      </td>
+                    </tr>
+                  ) : pendingResources.length > 0 ? (
+                    pendingResources.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-primary/10 rounded-lg text-primary">
@@ -161,16 +216,30 @@ const AdminDashboard: React.FC = () => {
                             <Check className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => handleReject(item.id)}
                             className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
                             title="Reject"
                           >
                             <X className="w-4 h-4" />
                           </button>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="p-2 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                        No pending resources.
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -232,15 +301,22 @@ const AdminDashboard: React.FC = () => {
                           </div>
                         </td>
                         <td className="p-4">
-                          {u.role === 'admin' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                              <Shield className="w-3 h-3" /> Admin
-                            </span>
-                          ) : (
-                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-white/5 text-gray-400 border border-white/10">
-                              Student
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={u.role || 'user'}
+                              onChange={(e) => handleRoleChange(u.uid, e.target.value as UserRole)}
+                              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200"
+                            >
+                              <option value="user">User</option>
+                              <option value="mod">Mod</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            {u.disabled ? (
+                              <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                Disabled
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="p-4">
                           <div className="flex flex-col gap-1">
@@ -266,9 +342,22 @@ const AdminDashboard: React.FC = () => {
                           ) : '-'}
                         </td>
                         <td className="p-4 text-right">
-                          <code className="text-xs text-gray-600 bg-black/20 px-1.5 py-0.5 rounded font-mono">
-                            {u.uid.substring(0, 8)}...
-                          </code>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleDisableToggle(u.uid, !u.disabled)}
+                              className={`px-2 py-1 rounded text-xs border transition-colors ${
+                                u.disabled
+                                  ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
+                                  : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                              }`}
+                              title={u.disabled ? 'Enable user' : 'Disable user'}
+                            >
+                              {u.disabled ? 'Enable' : 'Disable'}
+                            </button>
+                            <code className="text-xs text-gray-600 bg-black/20 px-1.5 py-0.5 rounded font-mono">
+                              {u.uid.substring(0, 8)}...
+                            </code>
+                          </div>
                         </td>
                       </tr>
                     ))

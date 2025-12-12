@@ -22,6 +22,14 @@ const CompilerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const runAbortRef = useRef<AbortController | null>(null);
+  const runSeqRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      runAbortRef.current?.abort();
+    };
+  }, []);
 
   // Handle Tab Indentation in Textarea
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -45,7 +53,9 @@ const CompilerPage: React.FC = () => {
   };
 
   const copyCode = () => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(code).catch(() => {
+      // Ignore clipboard failures (permission/browser restrictions)
+    });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -59,6 +69,11 @@ const CompilerPage: React.FC = () => {
   };
 
   const runCode = async () => {
+    runAbortRef.current?.abort();
+    const controller = new AbortController();
+    runAbortRef.current = controller;
+    const seq = ++runSeqRef.current;
+
     setIsLoading(true);
     setOutput('Compiling and running...');
     
@@ -69,6 +84,7 @@ const CompilerPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           language: 'c',
           version: '10.2.0', // gcc version
@@ -80,6 +96,13 @@ const CompilerPage: React.FC = () => {
           stdin: input
         })
       });
+
+      if (seq !== runSeqRef.current) return;
+
+      if (!response.ok) {
+        setOutput(`Error: Compiler service returned ${response.status}. Please try again.`);
+        return;
+      }
 
       const data = await response.json();
 
@@ -93,11 +116,11 @@ const CompilerPage: React.FC = () => {
       } else {
         setOutput('Error: Failed to execute code.');
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       setOutput('Error: Could not connect to compiler service. Please try again.');
-      console.error(error);
     } finally {
-      setIsLoading(false);
+      if (seq === runSeqRef.current) setIsLoading(false);
     }
   };
 

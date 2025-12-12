@@ -51,14 +51,25 @@ const CalculatorPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('campus_helper_calc_data', JSON.stringify({ 
-      savedSubjects: subjects, 
-      savedSemesters: semesters,
-      savedTarget: { currentCGPA, completedCredits, targetCGPA }
-    }));
-
     setSgpa(calculateSGPA(subjects));
     setCgpa(calculateCGPA(semesters));
+  }, [subjects, semesters, currentCGPA, completedCredits, targetCGPA]);
+
+  // Persist with a small debounce to avoid hammering localStorage on every keystroke.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem('campus_helper_calc_data', JSON.stringify({
+          savedSubjects: subjects,
+          savedSemesters: semesters,
+          savedTarget: { currentCGPA, completedCredits, targetCGPA }
+        }));
+      } catch {
+        // Ignore storage failures (private mode / quota / blocked)
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timer);
   }, [subjects, semesters, currentCGPA, completedCredits, targetCGPA]);
 
   useEffect(() => {
