@@ -194,16 +194,23 @@ export const api = {
     getAllInteractions: async (options?: { sinceDate?: Date }): Promise<ResourceInteraction[]> => {
         if (!db) return [];
         try {
-            // Limit to last DEFAULT_INTERACTION_DAYS by default for privacy and performance
-            const sinceDate = options?.sinceDate || new Date(Date.now() - DEFAULT_INTERACTION_DAYS * 24 * 60 * 60 * 1000);
-            
+            // Note: We fetch all recent interactions but filter by a reasonable window
+            // The timestamp field uses serverTimestamp() which converts to milliseconds in the stored document
             const q = query(
                 collection(db, 'interactions'),
-                where('timestamp', '>=', sinceDate),
                 orderBy('timestamp', 'desc')
             );
             const snap = await getDocs(q);
-            return snap.docs.map(d => ({ id: d.id, ...d.data() } as ResourceInteraction));
+            const cutoffTime = (options?.sinceDate || new Date(Date.now() - DEFAULT_INTERACTION_DAYS * 24 * 60 * 60 * 1000)).getTime();
+            
+            return snap.docs
+                .map(d => ({ id: d.id, ...d.data() } as ResourceInteraction))
+                .filter(interaction => {
+                    const timestamp = typeof interaction.timestamp === 'number' 
+                        ? interaction.timestamp 
+                        : (interaction.timestamp as any)?.toMillis?.() || 0;
+                    return timestamp >= cutoffTime;
+                });
         } catch (error) {
             console.error('Error fetching all interactions:', error);
             return [];
