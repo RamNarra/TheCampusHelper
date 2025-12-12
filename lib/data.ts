@@ -365,6 +365,10 @@ export const getMockTestRecommendations = (subjects: Subject[]): string[] => {
       recommendations.push(`Practice test for ${subject.name}: Focus on ${subject.weakTopics.slice(0, 2).join(', ')}`);
     }
     
+    if (subject.totalTopics === 0) {
+      // Skip completion percentage calculation if there are no topics
+      return;
+    }
     const completionPercentage = (subject.completedTopics / subject.totalTopics) * 100;
     if (completionPercentage >= 80) {
       recommendations.push(`Full mock test for ${subject.name}`);
