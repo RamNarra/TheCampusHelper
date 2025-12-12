@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { User, Calendar, BookOpen, GraduationCap, ArrowRight, Loader2 } from 'lucide-react';
+import { awardXP, XP_REWARDS } from '../services/gamification';
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
@@ -54,6 +55,11 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         year: formData.year,
         profileCompleted: true
       });
+      
+      // Award XP for completing profile
+      if (user) {
+        await awardXP(user.uid, XP_REWARDS.PROFILE_COMPLETE, 'Completed profile');
+      }
       
       if (onComplete) onComplete();
 

@@ -3,6 +3,7 @@ import { resources as staticResources, getSubjects } from '../lib/data';
 import { Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api, extractDriveId } from '../services/firebase';
+import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
 import { 
   Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
   FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
@@ -63,11 +64,17 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
-  const openResource = (res: Resource) => {
+  const openResource = async (res: Resource) => {
     if (res.driveFileId) {
       setSelectedResource(res);
     } else {
       window.open(res.downloadUrl, '_blank');
+    }
+    
+    // Award XP for viewing resource
+    if (user) {
+      await awardXP(user.uid, XP_REWARDS.RESOURCE_VIEW, 'Viewed a resource');
+      await unlockAchievement(user.uid, 'first_resource');
     }
   };
 
@@ -108,7 +115,13 @@ const ResourcesPage: React.FC = () => {
         // 4. Send to Firebase (Protected by Timeout)
         await api.addResource(newResource);
 
-        // 5. Success State
+        // 5. Award XP for contribution
+        if (user) {
+          await awardXP(user.uid, XP_REWARDS.RESOURCE_UPLOAD, 'Uploaded a resource');
+          await unlockAchievement(user.uid, 'contributor');
+        }
+
+        // 6. Success State
         setUploadName('');
         setUploadLink('');
         setShowUploadModal(false);
