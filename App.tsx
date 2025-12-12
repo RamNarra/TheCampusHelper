@@ -25,6 +25,7 @@ import ExamPrepPage from './pages/ExamPrepPage';
 import StudyGroupsPage from './pages/StudyGroupsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import StudyPlusPage from './pages/StudyPlusPage';
+import DeveloperPage from './pages/DeveloperPage';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -164,6 +165,7 @@ const AppContent: React.FC = () => {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/study-assistant" element={<StudyAssistantPage />} />
               <Route path="/study-plus" element={<StudyPlusPage />} />
+              <Route path="/developer" element={<DeveloperPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>

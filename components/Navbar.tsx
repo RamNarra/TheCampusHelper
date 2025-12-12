@@ -23,6 +23,7 @@ const Navbar: React.FC = () => {
       { name: 'Home', path: '/', icon: null },
       { name: 'Resources', path: '/resources', icon: <BookOpen className="w-4 h-4 mr-2" /> },
       { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
+      { name: 'Developer', path: '/developer', icon: <User className="w-4 h-4 mr-2" /> },
       ...(isStaff ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
     ];
   }, [isStaff]);
@@ -87,19 +88,6 @@ const Navbar: React.FC = () => {
                 {link.name}
               </NavLink>
             ))}
-
-            <a
-              href="https://linkedin.com/in/ram-charan-narra"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "flex items-center px-3 py-2 text-sm font-medium transition-all duration-200 rounded-lg",
-                "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              <User className="w-4 h-4 mr-2" />
-              Developer
-            </a>
 
             {/* Study+ Dropdown */}
             <div ref={studyMenuRef} className="relative">
@@ -230,20 +218,6 @@ const Navbar: React.FC = () => {
                   {link.name}
                 </NavLink>
               ))}
-
-              <a
-                href="https://linkedin.com/in/ram-charan-narra"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setIsOpen(false)}
-                className={cn(
-                  "flex items-center px-4 py-3 rounded-lg text-base font-medium transition-colors",
-                  "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                <User className="w-4 h-4 mr-2" />
-                Developer
-              </a>
 
               <div className="pt-2 mt-2 border-t border-border">
                 <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

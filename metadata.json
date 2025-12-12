@@ -1,5 +1,15 @@
 {
   "name": "TheCampusHelper",
   "description": "A student resource platform featuring resources, academic tools, and a community platform.",
+  "developer": {
+    "name": "Ram Charan Narra",
+    "headline": "Full-stack builder — TheCampusHelper",
+    "highlights": [
+      "Built a secure resource platform with Firebase Auth + Firestore",
+      "Added RBAC + moderation workflow for uploads",
+      "Implemented Study+ tools hub (timer, converters, simulators)"
+    ],
+    "linkedin": "https://linkedin.com/in/ram-charan-narra"
+  },
   "requestFramePermissions": []
 }
