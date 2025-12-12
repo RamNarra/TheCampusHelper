@@ -19,6 +19,7 @@ const Navbar: React.FC = () => {
   const navLinks = [
     { name: 'Home', path: '/', icon: null },
     { name: 'Resources', path: '/resources', icon: <BookOpen className="w-4 h-4 mr-2" /> },
+    { name: 'Quiz', path: '/quiz', icon: <Brain className="w-4 h-4 mr-2" /> },
     { name: 'Study Groups', path: '/study-groups', icon: <Users className="w-4 h-4 mr-2" /> },
     ...(user ? [{ name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
     { name: 'Study Assistant', path: '/study-assistant', icon: <Brain className="w-4 h-4 mr-2" /> },

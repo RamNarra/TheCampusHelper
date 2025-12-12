@@ -33,6 +33,56 @@ export interface StatMetric {
   change?: string;
 }
 
+// Quiz Types
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: QuizOption[];
+  correctAnswer: string;
+  explanation: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+export interface Quiz {
+  id: string;
+  title: string;
+  subject: string;
+  topic: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  questions: QuizQuestion[];
+  createdAt: any; // Firestore Timestamp
+  createdBy: string; // User UID
+}
+
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  userId: string;
+  answers: { [questionId: string]: string }; // questionId -> selectedOptionId
+  score: number;
+  totalQuestions: number;
+  completedAt: any; // Firestore Timestamp
+  timeSpent: number; // seconds
+}
+
+export interface QuizPerformance {
+  totalAttempts: number;
+  averageScore: number;
+  bestScore: number;
+  totalTimeSpent: number;
+  subjectStats: {
+    [subject: string]: {
+      attempts: number;
+      averageScore: number;
+    };
+  };
+}
+
 // Real-Time Collaboration Types
 
 export interface Message {
@@ -87,6 +137,8 @@ export interface StudyGroup {
   createdAt: any; // Firestore Timestamp
   isPrivate: boolean; // Private groups require approval to join
   maxMembers?: number;
+}
+
 // Resource Recommendation System Types
 export interface ResourceInteraction {
   id?: string;
@@ -120,6 +172,8 @@ export interface RecommendationResult {
     matchScore?: number;
     trendingScore?: number;
   };
+}
+
 // Learning Analytics Types
 export interface StudyTime {
   daily: number[];
@@ -170,6 +224,8 @@ export interface QuizResult {
   timestamp: Date;
   totalQuestions: number;
   correctAnswers: number;
+}
+
 export interface StudyContext {
   subject: string;
   topic: string;

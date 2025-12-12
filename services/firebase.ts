@@ -30,7 +30,7 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
+import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction } from '../types';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
@@ -250,6 +250,69 @@ export const api = {
 
        const data = await response.json();
        return data.text;
+    },
+
+    /**
+     * Generate quiz questions using AI
+     */
+    generateQuiz: async (subject: string, topic: string, difficulty: number, questionCount: number = 10): Promise<{ questions: QuizQuestion[], metadata: any }> => {
+       const token = await getAuthToken();
+       if (!token) throw new Error("User must be logged in to use AI features.");
+
+       const response = await fetch('/api/generateQuiz', {
+          method: 'POST',
+          headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ subject, topic, difficulty, questionCount })
+       });
+
+       if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || "Quiz generation failed");
+       }
+
+       return await response.json();
+    },
+
+    /**
+     * Save a quiz to Firestore
+     */
+    saveQuiz: async (quiz: Omit<Quiz, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await addDoc(collection(db, 'quizzes'), {
+            ...quiz,
+            createdAt: serverTimestamp()
+        });
+        return docRef.id;
+    },
+
+    /**
+     * Save a quiz attempt to Firestore
+     */
+    saveQuizAttempt: async (attempt: Omit<QuizAttempt, 'id'>): Promise<string> => {
+        if (!db) throw new Error("Database not configured");
+        const docRef = await addDoc(collection(db, 'quizAttempts'), {
+            ...attempt,
+            completedAt: serverTimestamp()
+        });
+        return docRef.id;
+    },
+
+    /**
+     * Get user's quiz attempts
+     */
+    getUserQuizAttempts: async (userId: string): Promise<QuizAttempt[]> => {
+        if (!db) return [];
+        const q = query(
+            collection(db, 'quizAttempts'),
+            orderBy('completedAt', 'desc')
+        );
+        const snap = await getDocs(q);
+        return snap.docs
+            .map(d => ({ id: d.id, ...d.data() } as QuizAttempt))
+            .filter(attempt => attempt.userId === userId);
     },
 
     // STUDY GROUPS METHODS
