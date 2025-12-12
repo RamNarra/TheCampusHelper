@@ -42,6 +42,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Lock files (use package.json for dependency management)
+package-lock.json
+
 # TypeScript v1 declaration files
 typings/
 
@@ -110,3 +113,9 @@ dist
 
 # Stores VSCode settings outside the .vscode folder
 .settings/
+
+# PWA auto-generated files
+dev-dist
+dist/sw.js
+dist/workbox-*.js
+dist/registerSW.js

@@ -10,13 +10,18 @@ import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
 import QuizPage from './pages/QuizPage';
+import StudyAssistantPage from './pages/StudyAssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import OnboardingTour from './components/OnboardingTour';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 import EventsPage from './pages/EventsPage';
+import StudyGroupsPage from './pages/StudyGroupsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
 
@@ -125,6 +130,10 @@ const AppContent: React.FC = () => {
       <CompleteProfileModal isOpen={showProfileModal} onComplete={handleProfileComplete} />
       <OnboardingTour isOpen={showTour} onClose={() => setShowTour(false)} />
       
+      {/* PWA Features */}
+      <PWAInstallPrompt />
+      <PWAUpdatePrompt />
+      
       <main className="flex-grow relative">
         <ErrorBoundary>
             <Routes>
@@ -137,6 +146,9 @@ const AppContent: React.FC = () => {
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
+              <Route path="/study-groups" element={<StudyGroupsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/study-assistant" element={<StudyAssistantPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>

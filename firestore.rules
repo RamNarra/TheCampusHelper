@@ -67,6 +67,95 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // STUDY GROUPS COLLECTION
+    match /studyGroups/{groupId} {
+      // Anyone authenticated can read public groups, members can read their private groups
+      allow read: if isAuthenticated() && (
+        !resource.data.isPrivate || 
+        request.auth.uid in resource.data.members
+      );
+      
+      // Any authenticated user can create a group
+      allow create: if isAuthenticated()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.auth.uid in request.resource.data.members
+                    && request.auth.uid in request.resource.data.admins;
+      
+      // Only group admins can update
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.admins;
+      
+      // Only group admins can delete
+      allow delete: if isAuthenticated() && request.auth.uid in resource.data.admins;
+    }
+
+    // MESSAGES COLLECTION (subcollection of study groups)
+    match /studyGroups/{groupId}/messages/{messageId} {
+      // Members can read messages in their groups
+      allow read: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members;
+      
+      // Members can create messages in their groups
+      allow create: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members &&
+                    request.resource.data.senderId == request.auth.uid;
+      
+      // Only message sender can update their own messages
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.senderId;
+      
+      // Message sender or group admin can delete
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.senderId ||
+        request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins
+      );
+    }
+
+    // SESSIONS COLLECTION (subcollection of study groups)
+    match /studyGroups/{groupId}/sessions/{sessionId} {
+      // Members can read sessions in their groups
+      allow read: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members;
+      
+      // Group admins can create sessions
+      allow create: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins &&
+                    request.resource.data.createdBy == request.auth.uid;
+      
+      // Group admins or session creator can update
+      allow update: if isAuthenticated() && (
+        request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins ||
+        request.auth.uid == resource.data.createdBy
+      );
+      
+      // Group admins or session creator can delete
+      allow delete: if isAuthenticated() && (
+        request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins ||
+        request.auth.uid == resource.data.createdBy
+      );
+    }
+
+    // COLLABORATIVE NOTES COLLECTION (subcollection of study groups)
+    match /studyGroups/{groupId}/notes/{noteId} {
+      // Members can read notes in their groups
+      allow read: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members;
+      
+      // Members can create notes in their groups
+      allow create: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members &&
+                    request.resource.data.createdBy == request.auth.uid;
+      
+      // Members can update notes (collaborative editing)
+      allow update: if isAuthenticated() && 
+                    request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members &&
+                    request.resource.data.lastEditedBy == request.auth.uid;
+      
+      // Note creator or group admin can delete
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.createdBy ||
+        request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins
+      );
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
