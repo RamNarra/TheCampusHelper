@@ -247,17 +247,27 @@ export const api = {
         });
     },
 
-    updateResourceStatus: async (resourceId: string, status: 'approved' | 'rejected') => {
+    updateResourceStatus: async (
+        resourceId: string,
+        status: 'approved' | 'rejected' | 'pending',
+        options?: { rejectionReason?: string | null }
+    ) => {
         if (!db) throw new Error("Database not configured");
         const uid = auth?.currentUser?.uid;
         if (!uid) throw new Error('You must be signed in.');
         const docRef = doc(db, 'resources', resourceId);
+
+        const isModerated = status === 'approved' || status === 'rejected';
+        const rejectionReason = status === 'rejected' ? (options?.rejectionReason ?? '') : null;
+
         return withTimeout(
             updateDoc(docRef, {
                 status,
-                reviewedBy: uid,
-                reviewedAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
+                ...(isModerated
+                    ? { reviewedBy: uid, reviewedAt: serverTimestamp() }
+                    : { reviewedBy: null, reviewedAt: null }),
+                rejectionReason,
+                updatedAt: serverTimestamp(),
             }),
             5000
         );
@@ -265,6 +275,8 @@ export const api = {
 
     deleteResource: async (resourceId: string) => {
         if (!db) throw new Error("Database not configured");
+        const uid = auth?.currentUser?.uid;
+        if (!uid) throw new Error('You must be signed in.');
         const docRef = doc(db, 'resources', resourceId);
         return withTimeout(deleteDoc(docRef), 5000);
     },

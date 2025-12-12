@@ -1,21 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
 import { UserProfile } from '../types';
 import { Resource, UserRole } from '../types';
 import { motion } from 'framer-motion';
-import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2 } from 'lucide-react';
+import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2, ExternalLink } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'approvals' | 'users'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'resources' | 'users'>('approvals');
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [pendingResources, setPendingResources] = useState<Resource[]>([]);
   const [isLoadingApprovals, setIsLoadingApprovals] = useState(true);
+  const [allResources, setAllResources] = useState<Resource[]>([]);
+  const [isLoadingResources, setIsLoadingResources] = useState(false);
+  const [resourceSearchTerm, setResourceSearchTerm] = useState('');
 
   // Fetch users when tab changes to 'users' (admin only)
   useEffect(() => {
@@ -29,6 +32,18 @@ const AdminDashboard: React.FC = () => {
       fetchUsers();
     }
   }, [activeTab, user]);
+
+  // Staff: subscribe to all resources for management
+  useEffect(() => {
+    if (activeTab !== 'resources') return;
+    if (!user || (user.role !== 'admin' && user.role !== 'mod')) return;
+    setIsLoadingResources(true);
+    const unsub = api.onAllResourcesChanged((list) => {
+      setAllResources(list);
+      setIsLoadingResources(false);
+    });
+    return () => unsub();
+  }, [activeTab, user?.role]);
 
   // Mods/admins: subscribe to pending resource approvals
   useEffect(() => {
@@ -53,11 +68,20 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = async (id: string, reason?: string | null) => {
     try {
-      await api.updateResourceStatus(id, 'rejected');
+      await api.updateResourceStatus(id, 'rejected', { rejectionReason: reason ?? '' });
     } catch (e) {
       console.error('Reject failed:', e);
+    }
+  };
+
+  const handleResetToPending = async (id: string) => {
+    if (user.role !== 'admin') return;
+    try {
+      await api.updateResourceStatus(id, 'pending');
+    } catch (e) {
+      console.error('Reset to pending failed:', e);
     }
   };
 
@@ -89,10 +113,37 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const filteredUsers = usersList.filter(u => 
-    (u.displayName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    const q = userSearchTerm.trim().toLowerCase();
+    if (!q) return usersList;
+    return usersList.filter(u =>
+      (u.displayName?.toLowerCase() || '').includes(q) ||
+      (u.email?.toLowerCase() || '').includes(q)
+    );
+  }, [usersList, userSearchTerm]);
+
+  const filteredResources = useMemo(() => {
+    const q = resourceSearchTerm.trim().toLowerCase();
+    if (!q) return allResources;
+    return allResources.filter(r => {
+      return (
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.subject || '').toLowerCase().includes(q) ||
+        (r.type || '').toLowerCase().includes(q) ||
+        (r.branch || '').toLowerCase().includes(q) ||
+        (r.semester || '').toLowerCase().includes(q) ||
+        (r.status || 'approved').toLowerCase().includes(q) ||
+        (r.ownerId || '').toLowerCase().includes(q)
+      );
+    });
+  }, [allResources, resourceSearchTerm]);
+
+  const statusBadge = (status?: Resource['status']) => {
+    const s = status || 'approved';
+    if (s === 'approved') return 'bg-green-500/10 text-green-400 border-green-500/20';
+    if (s === 'rejected') return 'bg-red-500/10 text-red-400 border-red-500/20';
+    return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+  };
 
   const StatCard = ({ title, value, icon: Icon, color }: any) => (
     <div className="bg-card border border-white/10 p-6 rounded-xl relative overflow-hidden group">
@@ -135,6 +186,20 @@ const AdminDashboard: React.FC = () => {
             <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('resources')}
+          className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
+            activeTab === 'resources'
+              ? 'text-primary'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          Manage Resources
+          {activeTab === 'resources' && (
+            <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
+        </button>
+
         <button
           onClick={() => setActiveTab('users')}
           disabled={user.role !== 'admin'}
@@ -223,7 +288,9 @@ const AdminDashboard: React.FC = () => {
                             <X className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => {
+                              if (window.confirm('Delete this resource?')) handleDelete(item.id);
+                            }}
                             className="p-2 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
                             title="Delete"
                           >
@@ -237,6 +304,148 @@ const AdminDashboard: React.FC = () => {
                     <tr>
                       <td colSpan={4} className="p-8 text-center text-gray-500">
                         No pending resources.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : activeTab === 'resources' ? (
+          <>
+            <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-white">All Resources</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Showing {filteredResources.length} resources
+                </p>
+              </div>
+
+              <div className="relative w-full sm:w-auto">
+                <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search resources..."
+                  value={resourceSearchTerm}
+                  onChange={(e) => setResourceSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 w-full sm:w-80"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/5 bg-white/5">
+                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Title</th>
+                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Details</th>
+                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {isLoadingResources ? (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                        Loading resources...
+                      </td>
+                    </tr>
+                  ) : filteredResources.length > 0 ? (
+                    filteredResources.map((item) => (
+                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-white font-medium">{item.title}</p>
+                              <p className="text-xs text-gray-500">{item.subject}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs border ${statusBadge(item.status)}`}>
+                            {(item.status || 'approved').toUpperCase()}
+                          </span>
+                          {item.status === 'rejected' && item.rejectionReason ? (
+                            <div className="text-xs text-gray-500 mt-1 line-clamp-1" title={item.rejectionReason}>
+                              {item.rejectionReason}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.branch}</span>
+                            <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">Sem {item.semester}</span>
+                            <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.type}</span>
+                            {item.ownerId ? (
+                              <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-500" title={item.ownerId}>
+                                Owner: {item.ownerId.substring(0, 8)}...
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => window.open(item.downloadUrl, '_blank', 'noopener,noreferrer')}
+                              className="p-2 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                              title="Open link"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </button>
+
+                            {(item.status || 'approved') !== 'approved' && (
+                              <button
+                                onClick={() => handleApprove(item.id)}
+                                className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors"
+                                title="Approve"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {(item.status || 'approved') !== 'rejected' && (
+                              <button
+                                onClick={() => {
+                                  const reason = window.prompt('Rejection reason (optional):', item.rejectionReason || '') ?? '';
+                                  handleReject(item.id, reason);
+                                }}
+                                className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
+                                title="Reject"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {user.role === 'admin' && (item.status || 'approved') !== 'pending' && (
+                              <button
+                                onClick={() => handleResetToPending(item.id)}
+                                className="px-2 py-2 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-colors text-xs font-medium"
+                                title="Reset to pending"
+                              >
+                                Pending
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Delete this resource?')) handleDelete(item.id);
+                              }}
+                              className="p-2 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                        No resources found.
                       </td>
                     </tr>
                   )}
@@ -259,8 +468,8 @@ const AdminDashboard: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Search users..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
                   className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 w-full sm:w-64"
                 />
               </div>
