@@ -1,5 +1,29 @@
 # TheCampusHelper
 
+A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, AI tools, and real-time collaboration features.
+
+## ✨ Features
+
+### 📚 Resource Management
+- Upload and access study materials (Notes, PYQs, Lab Records, PPTs)
+- Branch and semester-specific organization
+- Admin-controlled approval workflow
+
+### 🤝 Real-Time Collaboration (NEW)
+- **Study Groups**: Create and join study groups by subject/branch
+- **Live Chat**: Real-time messaging within study groups
+- **Video Sessions**: Schedule and manage video study sessions
+- **Collaborative Notes**: Shared notes that all group members can edit
+- Real-time updates powered by Firestore
+
+### 🧮 Academic Tools
+- CGPA Calculator with GPA computation
+- Online Code Compiler with multiple language support
+- AI-powered content generation
+
+### 🎉 Campus Events
+- Browse upcoming hackathons, workshops, and cultural events
+- Filter by category and search functionality
 A secure, full-stack student resource platform featuring RBAC-protected resources, an academic calculator, AI-powered study assistant, and AI tools.
 
 ## 🔒 Security Architecture
