@@ -31,3 +31,59 @@ export interface StatMetric {
   value: string;
   change?: string;
 }
+
+// Real-Time Collaboration Types
+
+export interface Message {
+  id: string;
+  studyGroupId: string;
+  senderId: string;
+  senderName: string;
+  senderPhotoURL?: string;
+  content: string;
+  timestamp: any; // Firestore Timestamp
+  edited?: boolean;
+  editedAt?: any;
+}
+
+export interface Session {
+  id: string;
+  studyGroupId: string;
+  title: string;
+  description?: string;
+  scheduledAt: any; // Firestore Timestamp
+  duration: number; // in minutes
+  videoUrl?: string; // Jitsi/Daily.co meeting URL
+  createdBy: string;
+  createdByName: string;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+}
+
+export interface CollaborativeNote {
+  id: string;
+  studyGroupId: string;
+  title: string;
+  content: string;
+  lastEditedBy: string;
+  lastEditedByName: string;
+  lastEditedAt: any; // Firestore Timestamp
+  createdBy: string;
+  createdAt: any;
+}
+
+export interface StudyGroup {
+  id: string;
+  name: string;
+  subject: string;
+  description?: string;
+  branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
+  semester?: string;
+  members: string[]; // Array of user IDs
+  memberProfiles?: UserProfile[]; // Populated client-side for display
+  admins: string[]; // Array of user IDs who can manage the group
+  createdBy: string;
+  createdByName: string;
+  createdAt: any; // Firestore Timestamp
+  isPrivate: boolean; // Private groups require approval to join
+  maxMembers?: number;
+}
