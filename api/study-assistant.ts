@@ -184,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 8. BUILD ENHANCED PROMPT
     const previousContext = context.previousInteractions && context.previousInteractions.length > 0
-      ? context.previousInteractions.slice(-3).join('\n')
+      ? context.previousInteractions.slice(-5).join('\n')
       : 'No previous interactions';
 
     const enhancedPrompt = `
