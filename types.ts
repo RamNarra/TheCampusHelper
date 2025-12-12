@@ -46,7 +46,7 @@ export interface StudyTask {
   id: string;
   subjectId: string;
   topic: string;
-  scheduledDate: Date;
+  scheduledDate: string; // ISO 8601 format, e.g. "2024-06-01T12:00:00Z"
   completed: boolean;
   duration: number; // in minutes
   priority: 'high' | 'medium' | 'low';
