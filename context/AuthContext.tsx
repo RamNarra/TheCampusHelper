@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '../types';
 import { api, mapAuthToProfile } from '../services/firebase';
+import { initializeGamification, updateStreak, awardXP, XP_REWARDS } from '../services/gamification';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -32,10 +33,22 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
         // LAYER 2: Firestore Profile Listener
         // Subscribe to real-time updates for this user's profile
-        const unsubscribeProfile = api.onProfileChanged(firebaseUser.uid, (data) => {
+        const unsubscribeProfile = api.onProfileChanged(firebaseUser.uid, async (data) => {
             if (data) {
                 // Merge DB data with existing state
                 setUser(prev => prev ? ({ ...prev, ...data }) : null);
+                
+                // Initialize gamification for new users
+                if (data.xp === undefined) {
+                  await initializeGamification(firebaseUser.uid);
+                } else {
+                  // Update streak and award login XP for existing users
+                  await updateStreak(firebaseUser.uid);
+                  const today = new Date().toISOString().split('T')[0];
+                  if (data.lastLoginDate !== today) {
+                    await awardXP(firebaseUser.uid, XP_REWARDS.LOGIN, 'Daily login');
+                  }
+                }
             }
             // Mark profile as "Loaded" (success or empty)
             setProfileLoaded(true);

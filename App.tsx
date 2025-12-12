@@ -10,6 +10,7 @@ import ResourcesPage from './pages/ResourcesPage';
 import CalculatorPage from './pages/CalculatorPage';
 import CompilerPage from './pages/CompilerPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import OnboardingTour from './components/OnboardingTour';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -135,6 +136,7 @@ const AppContent: React.FC = () => {
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>

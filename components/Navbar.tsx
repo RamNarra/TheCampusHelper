@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon } from 'lucide-react';
+import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Trophy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -19,6 +19,7 @@ const Navbar: React.FC = () => {
     { name: 'Resources', path: '/resources', icon: <BookOpen className="w-4 h-4 mr-2" /> },
     { name: 'Calculator', path: '/calculator', icon: <Calculator className="w-4 h-4 mr-2" /> },
     { name: 'Compiler', path: '/compiler', icon: <Terminal className="w-4 h-4 mr-2" /> },
+    { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
     ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
   ];
 
