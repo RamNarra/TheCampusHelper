@@ -122,7 +122,7 @@ export const calculateAnalytics = (
   sessions.forEach(s => {
     bySubjectObj[s.subject] = (bySubjectObj[s.subject] || 0) + s.duration;
   });
-  const bySubject = new Map(Object.entries(bySubjectObj));
+  const bySubject = bySubjectObj;
   
   // Calculate quiz scores
   const quizScores = quizResults.map(q => q.score);
