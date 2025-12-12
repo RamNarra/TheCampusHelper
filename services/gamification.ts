@@ -327,15 +327,13 @@ export async function initializeGamification(uid: string): Promise<void> {
     if (userData.xp !== undefined) return;
 
     await updateDoc(userRef, {
-      xp: 0,
+      xp: XP_REWARDS.LOGIN,
       level: 1,
       streak: 0,
-      achievementIds: [],
+      achievementIds: ['first_login'],
       lastLoginDate: new Date().toISOString().split('T')[0],
     });
-
-    // Award first login achievement
-    await unlockAchievement(uid, 'first_login');
+    // First login achievement and XP awarded atomically above.
   } catch (error) {
     console.error('Failed to initialize gamification:', error);
   }
