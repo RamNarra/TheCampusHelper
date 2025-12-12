@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 import EventsPage from './pages/EventsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 const GA_MEASUREMENT_ID = 'G-K94JQ2GV7G'; 
 
@@ -136,6 +137,7 @@ const AppContent: React.FC = () => {
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/study-assistant" element={<StudyAssistantPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
