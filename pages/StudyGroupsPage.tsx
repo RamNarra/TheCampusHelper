@@ -6,6 +6,15 @@ import { api } from '../services/firebase';
 import { StudyGroup, Message, Session, CollaborativeNote } from '../types';
 import AdUnit from '../components/AdUnit';
 
+// Helper function to format Firestore timestamps
+const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 'datetime'): string => {
+  if (!timestamp?.toDate) return '';
+  const date = timestamp.toDate();
+  if (format === 'time') return date.toLocaleTimeString();
+  if (format === 'date') return date.toLocaleDateString();
+  return date.toLocaleString();
+};
+
 const StudyGroupsPage: React.FC = () => {
   const { user } = useAuth();
   const [myGroups, setMyGroups] = useState<StudyGroup[]>([]);
@@ -607,7 +616,7 @@ const ChatView: React.FC<{
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium text-gray-300">{message.senderName}</span>
                   <span className="text-xs text-gray-500">
-                    {message.timestamp?.toDate?.()?.toLocaleTimeString() || ''}
+                    {formatTimestamp(message.timestamp, 'time')}
                   </span>
                 </div>
                 <div
@@ -691,7 +700,7 @@ const SessionsView: React.FC<{
               <div className="flex items-center gap-4 text-sm text-gray-400">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {session.scheduledAt?.toDate?.()?.toLocaleDateString() || 'TBD'}
+                  {formatTimestamp(session.scheduledAt, 'date') || 'TBD'}
                 </div>
                 <div>Duration: {session.duration}min</div>
               </div>
@@ -737,7 +746,7 @@ const NotesView: React.FC<{
               <p className="text-gray-400 text-sm mb-3 line-clamp-3">{note.content}</p>
               <div className="text-xs text-gray-500">
                 Last edited by {note.lastEditedByName} •{' '}
-                {note.lastEditedAt?.toDate?.()?.toLocaleString() || ''}
+                {formatTimestamp(note.lastEditedAt)}
               </div>
             </div>
           ))}

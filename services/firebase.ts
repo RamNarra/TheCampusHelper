@@ -241,7 +241,7 @@ export const api = {
     getStudyGroup: async (groupId: string): Promise<StudyGroup | null> => {
         if (!db) return null;
         const docRef = doc(db, 'studyGroups', groupId);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await withTimeout(getDoc(docRef), 5000);
         if (docSnap.exists()) {
             return { id: docSnap.id, ...docSnap.data() } as StudyGroup;
         }
