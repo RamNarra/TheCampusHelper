@@ -13,7 +13,7 @@ import {
   Heart,
   Plus
 } from 'lucide-react';
-import { ExamPrep, Subject, StudyTask } from '../types';
+import { ExamPrep } from '../types';
 import { 
   generateStudySchedule, 
   calculateReadiness, 
