@@ -118,4 +118,7 @@ dist
 dev-dist
 dist/sw.js
 dist/workbox-*.js
+
+# Local resumes/docs (keep out of repo)
+Ram_CV_IITMBS_2025.pdf
 dist/registerSW.js
