@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const gamificationInitializedRef = useRef(false);
+  const attemptedAdminRecoveryRef = useRef(false);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
@@ -73,6 +74,25 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
                 // Merge DB data with existing state
                 setUser(prev => prev ? ({ ...prev, ...data }) : null);
+
+                // Admin self-recovery: if this email is configured as admin in env,
+                // but Firestore role got downgraded, restore via server bootstrap.
+                const wantsAdmin = basicProfile.role === 'admin';
+                const hasAdminInDb = (data as any).role === 'admin';
+                if (wantsAdmin && !hasAdminInDb && !attemptedAdminRecoveryRef.current) {
+                  attemptedAdminRecoveryRef.current = true;
+                  try {
+                    const ok = await api.bootstrapAdminAccess();
+                    if (ok) {
+                      // Force refresh so custom claims are picked up.
+                      await firebaseUser.getIdToken(true);
+                      // Optimistically reflect admin while Firestore catches up.
+                      setUser(prev => prev ? ({ ...prev, role: 'admin' as any }) : prev);
+                    }
+                  } catch {
+                    // Ignore recovery failures; user will remain non-admin.
+                  }
+                }
                 
                 // Only run gamification logic once per session to prevent infinite loops
                 if (!gamificationInitializedRef.current) {
@@ -100,6 +120,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         setLoading(false);
         setProfileLoaded(false);
         gamificationInitializedRef.current = false;
+        attemptedAdminRecoveryRef.current = false;
       }
     });
 

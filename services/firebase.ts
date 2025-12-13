@@ -139,6 +139,25 @@ export const api = {
         return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
     },
 
+    bootstrapAdminAccess: async (): Promise<boolean> => {
+        try {
+            const token = await getAuthToken();
+            if (!token) return false;
+            const res = await fetch('/api/bootstrapAdmin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({})
+            });
+            if (!res.ok) return false;
+            return true;
+        } catch {
+            return false;
+        }
+    },
+
     updateUserRole: async (targetUid: string, role: UserRole) => {
         if (!db) throw new Error("Database not configured");
         const docRef = doc(db, 'users', targetUid);
