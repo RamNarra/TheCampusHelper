@@ -57,9 +57,9 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
 
   const isValidCollegeEmail = (value: string): boolean => {
     const v = value.trim().toLowerCase();
-    // Example format: 21/22/23/24/25xxxxx@<branch>.sreenidhi.edu.in
-    // We enforce year prefix 21-25 + 4-8 digits to avoid blocking edge cases.
-    return /^(21|22|23|24|25)\d{4,8}@[a-z0-9-]+\.sreenidhi\.edu\.in$/.test(v);
+    // Accept SNIST-style alphanumeric IDs (e.g. 25311A05MV@cse.sreenidhi.edu.in)
+    // while enforcing the official domain.
+    return /^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\.sreenidhi\.edu\.in$/.test(v);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,7 +81,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     }
 
     if (!isValidCollegeEmail(collegeEmail)) {
-      setError('Please enter a valid college email (e.g., 23xxxxx@cse.sreenidhi.edu.in).');
+      setError('Please enter a valid college email (must end with @<dept>.sreenidhi.edu.in).');
       return;
     }
 
@@ -180,7 +180,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                     value={formData.collegeEmail}
                     onChange={(e) => setFormData({...formData, collegeEmail: e.target.value})}
                     className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                    placeholder="23xxxxx@cse.sreenidhi.edu.in"
+                    placeholder="25311A05MV@cse.sreenidhi.edu.in"
                   />
                 </div>
 
