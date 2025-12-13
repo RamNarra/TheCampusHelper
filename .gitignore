@@ -121,4 +121,7 @@ dist/workbox-*.js
 
 # Local resumes/docs (keep out of repo)
 Ram_CV_IITMBS_2025.pdf
+
+# Local-only personal files
+private/
 dist/registerSW.js
