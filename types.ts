@@ -12,7 +12,9 @@ export interface UserProfile {
   disabled?: boolean;
   branch?: 'CS_IT_DS' | 'AIML_ECE_CYS';
   year?: string;
+  section?: string;
   dateOfBirth?: string; // Format: YYYY-MM-DD
+  collegeEmail?: string;
   profileCompleted?: boolean; // New flag to prevent infinite onboarding loops
   // Gamification fields
   xp?: number;

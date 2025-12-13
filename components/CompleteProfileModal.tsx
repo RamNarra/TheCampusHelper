@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { User, Calendar, BookOpen, GraduationCap, ArrowRight, Loader2 } from 'lucide-react';
+import { User, Calendar, BookOpen, GraduationCap, ArrowRight, Loader2, Mail, Users } from 'lucide-react';
 import { awardXP, XP_REWARDS } from '../services/gamification';
 
 interface CompleteProfileModalProps {
@@ -14,9 +14,11 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
   
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
-    dateOfBirth: '',
+    dateOfBirth: user?.dateOfBirth || '',
     branch: user?.branch || '',
     year: user?.year || '',
+    section: user?.section || '',
+    collegeEmail: user?.collegeEmail || '',
   });
   
   const [loading, setLoading] = useState(false);
@@ -29,17 +31,57 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
             ...prev,
             displayName: prev.displayName || user.displayName || '',
             branch: prev.branch || user.branch || '',
-            year: prev.year || user.year || ''
+            year: prev.year || user.year || '',
+            section: prev.section || user.section || '',
+            collegeEmail: prev.collegeEmail || user.collegeEmail || ''
         }));
     }
   }, [user]);
+
+  const isValidDob = (value: string): boolean => {
+    // Expected format: DD-MM-YYYY
+    const m = value.trim().match(/^(0[1-9]|[12]\d|3[01])-(0[1-9]|1[0-2])-(19\d{2}|20\d{2})$/);
+    if (!m) return false;
+    const [dd, mm, yyyy] = value.split('-').map((x) => parseInt(x, 10));
+    const d = new Date(yyyy, mm - 1, dd);
+    if (Number.isNaN(d.getTime())) return false;
+    // Validate that JS didn't auto-roll (e.g. 31-02-2004)
+    if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return false;
+    // Not in the future
+    const now = new Date();
+    if (d.getTime() > now.getTime()) return false;
+    return true;
+  };
+
+  const normalizeSection = (value: string): string => value.trim().toUpperCase();
+
+  const isValidCollegeEmail = (value: string): boolean => {
+    const v = value.trim().toLowerCase();
+    // Example format: 21/22/23/24/25xxxxx@<branch>.sreenidhi.edu.in
+    // We enforce year prefix 21-25 + 4-8 digits to avoid blocking edge cases.
+    return /^(21|22|23|24|25)\d{4,8}@[a-z0-9-]+\.sreenidhi\.edu\.in$/.test(v);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.displayName || !formData.dateOfBirth || !formData.branch || !formData.year) {
+    const dob = formData.dateOfBirth.trim();
+    const collegeEmail = formData.collegeEmail.trim();
+    const section = normalizeSection(formData.section);
+
+    if (!formData.displayName.trim() || !dob || !collegeEmail || !formData.branch || !formData.year || !section) {
       setError('Please fill in all fields to continue.');
+      return;
+    }
+
+    if (!isValidDob(dob)) {
+      setError('Please enter DOB in DD-MM-YYYY format (valid date).');
+      return;
+    }
+
+    if (!isValidCollegeEmail(collegeEmail)) {
+      setError('Please enter a valid college email (e.g., 23xxxxx@cse.sreenidhi.edu.in).');
       return;
     }
 
@@ -49,10 +91,12 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
       // We wrap this in a try/catch, but we allow the UI to proceed 
       // even if the backend write is slow or fails (Optimistic UI)
       await updateProfile({
-        displayName: formData.displayName,
-        dateOfBirth: formData.dateOfBirth,
+        displayName: formData.displayName.trim(),
+        dateOfBirth: dob,
+        collegeEmail: collegeEmail,
         branch: formData.branch as any,
         year: formData.year,
+        section,
         profileCompleted: true
       });
       
@@ -117,12 +161,27 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                         <Calendar className="w-3 h-3" /> Date of Birth
                     </label>
                     <input
-                        type="date"
-                        value={formData.dateOfBirth}
-                        onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                        className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
-                        style={{ colorScheme: 'dark' }} 
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
+                    className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    placeholder="DD-MM-YYYY"
                     />
+                </div>
+
+                {/* College Email */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Mail className="w-3 h-3" /> College Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.collegeEmail}
+                    onChange={(e) => setFormData({...formData, collegeEmail: e.target.value})}
+                    className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    placeholder="23xxxxx@cse.sreenidhi.edu.in"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -170,6 +229,20 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                         </div>
                     </div>
                 </div>
+
+                  {/* Section */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Users className="w-3 h-3" /> Section
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.section}
+                      onChange={(e) => setFormData({...formData, section: e.target.value})}
+                      className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      placeholder="A"
+                    />
+                  </div>
 
                 {error && (
                     <p className="text-red-500 text-sm text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">{error}</p>

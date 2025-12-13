@@ -95,15 +95,30 @@ const AppContent: React.FC = () => {
     // 4. Profile data is actually incomplete
     
     if (!loading && user && profileLoaded) {
-      const isProfileIncomplete = (!user.branch || !user.year);
-      let isLocallyCompleted = false;
+      const isProfileIncomplete = (
+        !user.displayName ||
+        !user.dateOfBirth ||
+        !user.collegeEmail ||
+        !user.branch ||
+        !user.year ||
+        !user.section
+      );
+
+      let suppressModal = false;
       try {
-        isLocallyCompleted = localStorage.getItem('thc_profile_completed') === '1';
+        const completedAtRaw = localStorage.getItem('thc_profile_completed_at');
+        const completedAt = completedAtRaw ? Number(completedAtRaw) : 0;
+        // Suppress immediate re-open while profile write propagates
+        suppressModal = completedAt > 0 && Date.now() - completedAt < 15000;
+        if (!isProfileIncomplete) {
+          localStorage.removeItem('thc_profile_completed_at');
+          localStorage.removeItem('thc_profile_completed');
+        }
       } catch {
-        isLocallyCompleted = false;
+        suppressModal = false;
       }
 
-      if (isProfileIncomplete && !isLocallyCompleted) {
+      if (isProfileIncomplete && !suppressModal) {
         setShowProfileModal(true);
       } else {
         setShowProfileModal(false);
@@ -116,6 +131,8 @@ const AppContent: React.FC = () => {
   const handleProfileComplete = () => {
     // Mark locally to prevent immediate re-pop if DB write is slow
     try {
+      localStorage.setItem('thc_profile_completed_at', String(Date.now()));
+      // Backward-compat for older builds
       localStorage.setItem('thc_profile_completed', '1');
     } catch {
       // Ignore storage failures

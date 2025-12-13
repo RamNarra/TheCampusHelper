@@ -104,7 +104,11 @@ export const mapAuthToProfile = (user: User): UserProfile => {
     photoURL: user.photoURL,
     role: isAdmin ? 'admin' : 'user',
     branch: undefined,
-    year: undefined
+        year: undefined,
+        section: undefined,
+        dateOfBirth: undefined,
+        collegeEmail: undefined,
+        profileCompleted: undefined
   };
 };
 

@@ -5,7 +5,7 @@ import { api } from '../services/firebase';
 import { UserProfile } from '../types';
 import { Resource, UserRole } from '../types';
 import { motion } from 'framer-motion';
-import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2, ExternalLink } from 'lucide-react';
+import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2, ExternalLink, Mail } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
@@ -14,6 +14,7 @@ const AdminDashboard: React.FC = () => {
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [pendingResources, setPendingResources] = useState<Resource[]>([]);
   const [isLoadingApprovals, setIsLoadingApprovals] = useState(true);
   const [allResources, setAllResources] = useState<Resource[]>([]);
@@ -118,9 +119,33 @@ const AdminDashboard: React.FC = () => {
     if (!q) return usersList;
     return usersList.filter(u =>
       (u.displayName?.toLowerCase() || '').includes(q) ||
-      (u.email?.toLowerCase() || '').includes(q)
+      (u.email?.toLowerCase() || '').includes(q) ||
+      (u.collegeEmail?.toLowerCase() || '').includes(q) ||
+      (u.branch?.toLowerCase() || '').includes(q) ||
+      (u.year?.toLowerCase() || '').includes(q) ||
+      (u.section?.toLowerCase() || '').includes(q) ||
+      (u.dateOfBirth?.toLowerCase() || '').includes(q) ||
+      (u.uid?.toLowerCase() || '').includes(q)
     );
   }, [usersList, userSearchTerm]);
+
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    if (isLoadingUsers) return;
+    if (!filteredUsers.length) {
+      setSelectedUserId(null);
+      return;
+    }
+
+    // Keep selection stable if still present; else select first result.
+    if (selectedUserId && filteredUsers.some(u => u.uid === selectedUserId)) return;
+    setSelectedUserId(filteredUsers[0].uid);
+  }, [activeTab, isLoadingUsers, filteredUsers, selectedUserId]);
+
+  const selectedUser = useMemo(() => {
+    if (!selectedUserId) return null;
+    return usersList.find(u => u.uid === selectedUserId) || null;
+  }, [usersList, selectedUserId]);
 
   const filteredResources = useMemo(() => {
     const q = resourceSearchTerm.trim().toLowerCase();
@@ -476,111 +501,151 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
             </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/5 bg-white/5">
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Role</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Details</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Date of Birth</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider text-right">UID</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {isLoadingUsers ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500">
-                        Loading users...
-                      </td>
-                    </tr>
-                  ) : filteredUsers.length > 0 ? (
-                    filteredUsers.map((u) => (
-                      <tr key={u.uid} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <img 
-                              src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName}`} 
-                              alt={u.displayName || 'User'} 
-                              className="w-8 h-8 rounded-full bg-white/10"
-                            />
-                            <div>
-                              <p className="text-white font-medium text-sm">{u.displayName || 'No Name'}</p>
-                              <p className="text-xs text-gray-500">{u.email}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 md:gap-6">
+              {/* User list */}
+              <div className="border-b border-white/10 md:border-b-0 md:border-r md:border-white/10">
+                {isLoadingUsers ? (
+                  <div className="p-8 text-center text-gray-500">Loading users...</div>
+                ) : filteredUsers.length > 0 ? (
+                  <div className="max-h-[70vh] overflow-auto divide-y divide-white/5">
+                    {filteredUsers.map((u) => {
+                      const isActive = u.uid === selectedUserId;
+                      const subtitleParts = [u.branch, u.year, u.section].filter(Boolean);
+                      return (
+                        <button
+                          key={u.uid}
+                          onClick={() => setSelectedUserId(u.uid)}
+                          className={`w-full text-left p-4 flex items-center gap-3 transition-colors ${
+                            isActive ? 'bg-white/10' : 'hover:bg-white/5'
+                          }`}
+                        >
+                          <img
+                            src={u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName || 'User')}`}
+                            alt={u.displayName || 'User'}
+                            className="w-10 h-10 rounded-full bg-white/10"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-medium text-sm truncate">{u.displayName || 'No Name'}</p>
+                              {u.disabled ? (
+                                <span className="shrink-0 inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                  Disabled
+                                </span>
+                              ) : null}
                             </div>
+                            <p className="text-xs text-gray-500 truncate">{u.email || u.collegeEmail || u.uid}</p>
+                            {subtitleParts.length ? (
+                              <p className="text-[11px] text-gray-400 truncate">{subtitleParts.join(' • ')}</p>
+                            ) : (
+                              <p className="text-[11px] text-gray-600 italic">Incomplete profile</p>
+                            )}
                           </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-500">No users found matching search.</div>
+                )}
+              </div>
+
+              {/* Detail panel */}
+              <div className="md:col-span-2 p-6">
+                {!selectedUser ? (
+                  <div className="text-gray-500 text-sm">Select a user to view details.</div>
+                ) : (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                      <img
+                        src={selectedUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.displayName || 'User')}`}
+                        alt={selectedUser.displayName || 'User'}
+                        className="w-16 h-16 rounded-full bg-white/10"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div>
+                            <h3 className="text-white font-bold text-lg truncate">{selectedUser.displayName || 'No Name'}</h3>
+                            <p className="text-sm text-gray-400 truncate">{selectedUser.email || '-'}</p>
+                            {selectedUser.collegeEmail ? (
+                              <div className="mt-1 flex items-center gap-2 text-sm text-gray-300">
+                                <Mail className="w-4 h-4 text-gray-500" />
+                                <span className="truncate">{selectedUser.collegeEmail}</span>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
                             <select
-                              value={u.role || 'user'}
-                              onChange={(e) => handleRoleChange(u.uid, e.target.value as UserRole)}
-                              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200"
+                              value={selectedUser.role || 'user'}
+                              onChange={(e) => handleRoleChange(selectedUser.uid, e.target.value as UserRole)}
+                              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200"
                             >
                               <option value="user">User</option>
                               <option value="mod">Mod</option>
                               <option value="admin">Admin</option>
                             </select>
-                            {u.disabled ? (
-                              <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                                Disabled
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex flex-col gap-1">
-                            {u.branch && (
-                              <span className="text-xs text-gray-300">
-                                <span className="text-gray-500">Branch:</span> {u.branch}
-                              </span>
-                            )}
-                            {u.year && (
-                              <span className="text-xs text-gray-300">
-                                <span className="text-gray-500">Year:</span> {u.year}
-                              </span>
-                            )}
-                            {!u.branch && !u.year && <span className="text-xs text-gray-600 italic">Incomplete Profile</span>}
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm text-gray-400">
-                          {u.dateOfBirth ? (
-                             <div className="flex items-center gap-1.5">
-                               <Calendar className="w-3.5 h-3.5 opacity-70" />
-                               {u.dateOfBirth}
-                             </div>
-                          ) : '-'}
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => handleDisableToggle(u.uid, !u.disabled)}
-                              className={`px-2 py-1 rounded text-xs border transition-colors ${
-                                u.disabled
+                              onClick={() => handleDisableToggle(selectedUser.uid, !selectedUser.disabled)}
+                              className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                                selectedUser.disabled
                                   ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
                                   : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
                               }`}
-                              title={u.disabled ? 'Enable user' : 'Disable user'}
+                              title={selectedUser.disabled ? 'Enable user' : 'Disable user'}
                             >
-                              {u.disabled ? 'Enable' : 'Disable'}
+                              {selectedUser.disabled ? 'Enable' : 'Disable'}
                             </button>
-                            <code className="text-xs text-gray-600 bg-black/20 px-1.5 py-0.5 rounded font-mono">
-                              {u.uid.substring(0, 8)}...
-                            </code>
                           </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500">
-                        No users found matching search.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-black/20 border border-white/10 rounded-lg p-4">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Academic</p>
+                            <p className="text-sm text-gray-200">
+                              <span className="text-gray-500">Branch:</span> {selectedUser.branch || '-'}
+                            </p>
+                            <p className="text-sm text-gray-200">
+                              <span className="text-gray-500">Year:</span> {selectedUser.year || '-'}
+                            </p>
+                            <p className="text-sm text-gray-200">
+                              <span className="text-gray-500">Section:</span> {selectedUser.section || '-'}
+                            </p>
+                          </div>
+
+                          <div className="bg-black/20 border border-white/10 rounded-lg p-4">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Verification</p>
+                            <p className="text-sm text-gray-200">
+                              <span className="text-gray-500">DOB:</span>{' '}
+                              {selectedUser.dateOfBirth ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Calendar className="w-4 h-4 text-gray-500" />
+                                  {selectedUser.dateOfBirth}
+                                </span>
+                              ) : (
+                                '-'
+                              )}
+                            </p>
+                            <p className="text-sm text-gray-200">
+                              <span className="text-gray-500">Profile:</span>{' '}
+                              {selectedUser.displayName && selectedUser.dateOfBirth && selectedUser.collegeEmail && selectedUser.branch && selectedUser.year && selectedUser.section
+                                ? 'Complete'
+                                : 'Incomplete'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5">
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">User ID</p>
+                          <code className="text-xs text-gray-300 bg-black/30 border border-white/10 px-2 py-1 rounded font-mono break-all inline-block">
+                            {selectedUser.uid}
+                          </code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
