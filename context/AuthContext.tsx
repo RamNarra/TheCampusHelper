@@ -77,9 +77,9 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
                 // Admin self-recovery: if this email is configured as admin in env,
                 // but Firestore role got downgraded, restore via server bootstrap.
-                const wantsAdmin = basicProfile.role === 'admin';
+                // Note: We attempt once for any non-admin; the server allowlist is the real gate.
                 const hasAdminInDb = (data as any).role === 'admin';
-                if (wantsAdmin && !hasAdminInDb && !attemptedAdminRecoveryRef.current) {
+                if (!hasAdminInDb && !attemptedAdminRecoveryRef.current) {
                   attemptedAdminRecoveryRef.current = true;
                   try {
                     const ok = await api.bootstrapAdminAccess();

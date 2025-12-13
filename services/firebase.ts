@@ -151,7 +151,15 @@ export const api = {
                 },
                 body: JSON.stringify({})
             });
-            if (!res.ok) return false;
+            if (!res.ok) {
+                try {
+                    const text = await res.text();
+                    console.warn('bootstrapAdminAccess failed:', res.status, text);
+                } catch {
+                    console.warn('bootstrapAdminAccess failed:', res.status);
+                }
+                return false;
+            }
             return true;
         } catch {
             return false;

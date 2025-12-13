@@ -77,11 +77,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const originHeader = req.headers.origin;
   const validatedOrigin = getValidatedOrigin(originHeader);
 
-  if (originHeader && !validatedOrigin) {
-    console.warn(`[${requestId}] Blocked request from unauthorized origin: ${originHeader}`);
-    return res.status(403).json({ error: 'Forbidden Origin' });
-  }
-
   if (validatedOrigin) {
     res.setHeader('Access-Control-Allow-Origin', validatedOrigin);
     res.setHeader('Vary', 'Origin');
