@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 const PWAUpdatePrompt: React.FC = () => {
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
+
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -10,11 +12,38 @@ const PWAUpdatePrompt: React.FC = () => {
   } = useRegisterSW({
     onRegistered(registration: ServiceWorkerRegistration | undefined) {
       if ((import.meta as any).env?.DEV) console.log('SW Registered:', registration);
+      swRegistrationRef.current = registration || null;
     },
     onRegisterError(error: Error) {
       console.error('SW registration error', error);
     },
   });
+
+  useEffect(() => {
+    const checkForUpdate = async () => {
+      const reg = swRegistrationRef.current;
+      if (!reg) return;
+      try {
+        await reg.update();
+      } catch {
+        // Ignore update errors (offline, transient).
+      }
+    };
+
+    // Check soon after load, then periodically.
+    checkForUpdate();
+    const interval = window.setInterval(checkForUpdate, 60_000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   const close = () => {
     setOfflineReady(false);
