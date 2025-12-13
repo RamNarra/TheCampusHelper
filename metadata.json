@@ -3,13 +3,200 @@
   "description": "A student resource platform featuring resources, academic tools, and a community platform.",
   "developer": {
     "name": "Ram Charan Narra",
-    "headline": "Full-stack builder — TheCampusHelper",
+    "pronouns": "He/Him",
+    "headline": "Freshman at SNIST | Interned at the Telangana Cybersecurity Bureau | Indian Institute of Technology, Hyderabad | International MUN | TheAISchool, T-Hub",
+    "location": "India",
+    "links": {
+      "linkedin": "https://linkedin.com/in/ram-charan-narra"
+    },
+    "stats": {
+      "connections": "500+",
+      "followers": 544,
+      "profileViewsLast7Days": 159,
+      "postImpressionsLast7Days": 14,
+      "searchAppearancesLast7Days": 23
+    },
+    "about": "Aspiring cybersecurity professional with hands-on experience in penetration testing, digital forensics, and vulnerability assessment. I’ve worked on ethical hacking projects, including exploitation of real-world vulnerabilities, malware analysis, and incident response simulations. Through internships, hackathons, and virtual work experiences with institutions like IIT Hyderabad, JPMorganChase, and Goldman Sachs, I’ve developed a strong foundation in securing systems against evolving digital threats.\n\nMy journey is driven by curiosity and resilience — from cracking thousands of password hashes under pressure at competitions to conducting full-scale penetration testing of virtual machines. I’m committed to building expertise in cyber defense, cryptography, and digital forensics, with the goal of protecting organizations from the threats of tomorrow.\n\nCurrently, I’m sharpening my technical skills while expanding my exposure to large-scale cybersecurity challenges. Always open to connecting with professionals in infosec, security research, and digital forensics.",
     "highlights": [
-      "Built a secure resource platform with Firebase Auth + Firestore",
-      "Added RBAC + moderation workflow for uploads",
-      "Implemented Study+ tools hub (timer, converters, simulators)"
+      "Information Security Associate (Internship) at Telangana Cyber Security Bureau",
+      "Summer Research Intern at Indian Institute of Technology Hyderabad",
+      "Built TheCampusHelper (student resource platform)"
     ],
-    "linkedin": "https://linkedin.com/in/ram-charan-narra"
+    "activity": {
+      "post": {
+        "summary": "Starting a new position as Information Security Associate at Telangana Cyber Security Bureau",
+        "when": "2 months ago",
+        "reactions": 42,
+        "comments": 7
+      }
+    },
+    "experience": [
+      {
+        "title": "Information Security Associate",
+        "organization": "Telangana Cyber Security Bureau",
+        "type": "Internship",
+        "location": "Hyderabad, Telangana, India (On-site)",
+        "start": "Oct 2025",
+        "end": "Nov 2025"
+      },
+      {
+        "title": "Campus Ambassador of E-Summit",
+        "organization": "E-Cell IIT Roorkee",
+        "start": "Nov 2024",
+        "end": "Feb 2025",
+        "bullets": [
+          "Served as a Campus Ambassador for E-Summit '25, organized by E-Cell IIT Roorkee.",
+          "Promoted entrepreneurship and innovation among peers through campus events and initiatives.",
+          "Acted as a liaison between E-Cell IIT Roorkee and my campus community.",
+          "Organized workshops, webinars, and activities to boost participation in E-Summit '25.",
+          "Networked with industry leaders, gaining insights into the startup ecosystem."
+        ]
+      },
+      {
+        "title": "Program Intern",
+        "organization": "TheAISCHOOL",
+        "location": "T-Hub, Hyderabad, Telangana, India",
+        "start": "Oct 2024",
+        "end": "Dec 2024",
+        "bullets": [
+          "Represented TheAISchool in discussions with Placement Officers (TPOs) of major Telangana engineering colleges to explore internship opportunities.",
+          "Prepared and issued certificates of achievement for 5G & 6G hackathon participants, mentors, and jury.",
+          "Curated a comprehensive magazine for the 5G & 6G hackathon (mentor interactions, testimonials, participant highlights, milestones).",
+          "Managed participant reimbursements and resolved discrepancies.",
+          "Designed a 'We Are Hiring' promotional poster for TheAISchool.",
+          "Supported various team tasks and responsibilities to contribute to program success."
+        ]
+      },
+      {
+        "title": "Campus Ambassador",
+        "organization": "International MUN",
+        "start": "Sep 2024",
+        "end": "Oct 2024",
+        "bullets": [
+          "Recognized as 'Best Intern from India'.",
+          "Awarded 'Top Intern' for exceptional performance (featured on social media).",
+          "Promoted IMUN events across channels to increase awareness and participation.",
+          "Collaborated to organize and facilitate training sessions and workshops.",
+          "Demonstrated strong communication and leadership, consistently exceeding expectations."
+        ]
+      },
+      {
+        "title": "Operations Manager",
+        "organization": "Department of Telecommunications (DOT)",
+        "start": "Sep 2024",
+        "end": "Sep 2024",
+        "bullets": [
+          "Managed the 5G & 6G Hackathon under guidance of the Ministry of Communications, DoT, ITU-WTSA New Delhi, TCoE India, and TheAISchool.",
+          "Led event planning and operations for smooth end-to-end execution.",
+          "Coordinated with officials, technical teams, and participants to resolve issues quickly.",
+          "Handled on-site decision-making and problem-solving under tight deadlines.",
+          "Maintained communication and alignment among stakeholders.",
+          "Engaged participants to foster a collaborative, high-energy environment."
+        ]
+      },
+      {
+        "title": "Summer Research Intern",
+        "organization": "Indian Institute of Technology Hyderabad",
+        "location": "On-site",
+        "start": "Jun 2024",
+        "end": "Jun 2024",
+        "bullets": [
+          "Participated in penetration testing exercises and recommended improvements.",
+          "Participated in tabletop cyber-attack simulations to enhance preparedness.",
+          "Participated in incident response drills (detect, analyze, mitigate).",
+          "Capstone on Complete System Hacking: exploited Mr. Robot and C0lddbox VMs; exploited SMB vulnerability (EternalBlue) for Windows 7 access; performed malware injection simulation and gained access to Windows 11 in a controlled environment."
+        ]
+      }
+    ],
+    "education": [
+      {
+        "school": "Sreenidhi Institute of Science and Technology",
+        "degree": "Bachelor of Technology (BTech), Computer Science and Engineering",
+        "start": "Jul 2025",
+        "end": "May 2029"
+      },
+      {
+        "school": "FIITJEE",
+        "degree": "Intermediate (PCM)",
+        "start": "2023",
+        "end": "2025"
+      },
+      {
+        "school": "Maharishi Vidya Mandir Senior Secondary School",
+        "degree": "Secondary School",
+        "start": "2015",
+        "end": "2023"
+      }
+    ],
+    "certifications": [
+      {
+        "name": "CTF - Hyderabad Chapter",
+        "issuer": "The Hackers Meetup",
+        "issued": "Mar 2025"
+      },
+      {
+        "name": "IELTS Academic UKVI",
+        "issuer": "IELTS Official",
+        "issued": "Dec 2024",
+        "expires": "Dec 2026"
+      },
+      {
+        "name": "W4RZON3 2.0",
+        "issuer": "VNR Vignana Jyothi Institute of Engineering and Technology (VNRVJIET)",
+        "issued": "Nov 2024"
+      },
+      {
+        "name": "Software Engineering Job Simulation",
+        "issuer": "Goldman Sachs",
+        "issued": "Oct 2024"
+      },
+      {
+        "name": "Cybersecurity Job Simulation",
+        "issuer": "JPMorganChase",
+        "issued": "Sep 2024"
+      },
+      {
+        "name": "OAKMUN 2024",
+        "issuer": "Oakridge International School",
+        "issued": "Aug 2024"
+      },
+      {
+        "name": "Beat The Kraken - 2024",
+        "issuer": "ICE",
+        "issued": "Jul 2024"
+      }
+    ],
+    "projects": [
+      {
+        "name": "TheCampusHelper",
+        "start": "Dec 2025",
+        "end": "Present",
+        "description": "No more searching WhatsApp groups or asking 10 people for details — TheCampusHelper gives every student exactly what they need in one app.",
+        "tagline": "Student Resource Platform"
+      }
+    ],
+    "volunteering": [
+      {
+        "role": "Event Manager",
+        "organization": "HSBC",
+        "category": "Science and Technology",
+        "bullets": [
+          "Played a crucial role in event management for smooth hackathon execution.",
+          "Coordinated with technical and non-technical teams to ensure effective planning and execution.",
+          "Motivated participants to stay and finish despite challenges.",
+          "Collaborated with organizers for timely communication with participants, judges, and sponsors.",
+          "Managed logistics to ensure resources and equipment availability."
+        ]
+      }
+    ],
+    "recommendations": [
+      {
+        "from": "Mohneesh Bhardwaj",
+        "relationship": "Managed Ram Charan directly",
+        "date": "Nov 30, 2024",
+        "text": "It is with great enthusiasm that I recommend Ram Charan Narra for his outstanding contributions as a Campus Ambassador Intern at International Model United Nations (IMUN). During his tenure, Ram Charan consistently demonstrated exceptional leadership, communication, and organizational skills, which made a significant impact on our initiatives.\n\nAs a Campus Ambassador, Ram Charan was instrumental in promoting IMUN conferences and encouraging participation among students. His ability to connect with peers, articulate the value of the program, and build strong relationships with university communities was truly impressive. He exceeded expectations in driving engagement and increasing awareness of IMUN’s mission to empower youth globally.\n\nRam Charan’s dedication to his role went beyond his primary responsibilities. He was proactive in seeking innovative ways to contribute, consistently meeting deadlines, and delivering high-quality work. His enthusiasm, professionalism, and commitment to excellence made him a valuable part of the IMUN team.\n\nI am confident that Ram Charan will bring the same level of dedication and success to any opportunity he pursues. He is a motivated, resourceful, and dependable individual who will undoubtedly excel in his future endeavors. I highly recommend him without reservation."
+      }
+    ]
   },
   "requestFramePermissions": []
 }

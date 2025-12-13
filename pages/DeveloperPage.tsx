@@ -1,12 +1,64 @@
 import React from 'react';
-import { User, Award, Link2 } from 'lucide-react';
+import { User, Award, Link2, Briefcase, GraduationCap, BadgeCheck, HeartHandshake, Quote, BarChart3, MapPin } from 'lucide-react';
 import metadata from '../metadata.json';
 
 type DeveloperMeta = {
   name: string;
+  pronouns?: string;
   headline?: string;
+  location?: string;
   highlights?: string[];
-  linkedin?: string;
+  about?: string;
+  links?: {
+    linkedin?: string;
+  };
+  stats?: {
+    connections?: string;
+    followers?: number;
+    profileViewsLast7Days?: number;
+    postImpressionsLast7Days?: number;
+    searchAppearancesLast7Days?: number;
+  };
+  experience?: Array<{
+    title: string;
+    organization: string;
+    type?: string;
+    location?: string;
+    start?: string;
+    end?: string;
+    bullets?: string[];
+  }>;
+  education?: Array<{
+    school: string;
+    degree?: string;
+    start?: string;
+    end?: string;
+  }>;
+  certifications?: Array<{
+    name: string;
+    issuer?: string;
+    issued?: string;
+    expires?: string;
+  }>;
+  projects?: Array<{
+    name: string;
+    start?: string;
+    end?: string;
+    description?: string;
+    tagline?: string;
+  }>;
+  volunteering?: Array<{
+    role: string;
+    organization: string;
+    category?: string;
+    bullets?: string[];
+  }>;
+  recommendations?: Array<{
+    from: string;
+    relationship?: string;
+    date?: string;
+    text: string;
+  }>;
 };
 
 const DeveloperPage: React.FC = () => {
@@ -15,7 +67,31 @@ const DeveloperPage: React.FC = () => {
   const name = dev?.name || 'Developer';
   const headline = dev?.headline || 'Built with React + Firebase + Vercel.';
   const highlights = dev?.highlights || [];
-  const linkedin = dev?.linkedin || '';
+  const linkedin = dev?.links?.linkedin || (dev as any)?.linkedin || '';
+  const about = dev?.about || '';
+  const pronouns = dev?.pronouns || '';
+  const location = dev?.location || '';
+  const stats = dev?.stats;
+  const experience = dev?.experience || [];
+  const education = dev?.education || [];
+  const certifications = dev?.certifications || [];
+  const projects = dev?.projects || [];
+  const volunteering = dev?.volunteering || [];
+  const recommendations = dev?.recommendations || [];
+
+  const Card: React.FC<{ title: string; icon: React.ComponentType<any>; children: React.ReactNode }> = ({
+    title,
+    icon: Icon,
+    children,
+  }) => (
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
+      <div className="flex items-center gap-2 font-semibold mb-3">
+        <Icon className="w-5 h-5 text-primary" />
+        {title}
+      </div>
+      {children}
+    </div>
+  );
 
   return (
     <div className="bg-background text-foreground">
@@ -25,17 +101,60 @@ const DeveloperPage: React.FC = () => {
             <User className="w-10 h-10 text-primary" />
             <h1 className="text-4xl font-bold">Developer</h1>
           </div>
-          <p className="text-muted-foreground text-lg">{name}</p>
+          <p className="text-muted-foreground text-lg">
+            {name}
+            {pronouns ? <span className="text-muted-foreground/70"> · {pronouns}</span> : null}
+          </p>
           <p className="text-muted-foreground mt-2">{headline}</p>
+          {location ? (
+            <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="w-4 h-4" />
+              {location}
+            </div>
+          ) : null}
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
-          {highlights.length > 0 && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 font-semibold mb-3">
-                <Award className="w-5 h-5 text-primary" />
-                Highlights
+        <div className="grid grid-cols-1 gap-6">
+          {stats ? (
+            <Card title="Stats" icon={BarChart3}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {stats.connections ? (
+                  <div className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Connections:</span> {stats.connections}
+                  </div>
+                ) : null}
+                {typeof stats.followers === 'number' ? (
+                  <div className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Followers:</span> {stats.followers}
+                  </div>
+                ) : null}
+                {typeof stats.profileViewsLast7Days === 'number' ? (
+                  <div className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Profile views (7d):</span> {stats.profileViewsLast7Days}
+                  </div>
+                ) : null}
+                {typeof stats.postImpressionsLast7Days === 'number' ? (
+                  <div className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Post impressions (7d):</span> {stats.postImpressionsLast7Days}
+                  </div>
+                ) : null}
+                {typeof stats.searchAppearancesLast7Days === 'number' ? (
+                  <div className="text-muted-foreground">
+                    <span className="text-foreground font-medium">Search appearances (7d):</span> {stats.searchAppearancesLast7Days}
+                  </div>
+                ) : null}
               </div>
+            </Card>
+          ) : null}
+
+          {about ? (
+            <Card title="About" icon={User}>
+              <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{about}</div>
+            </Card>
+          ) : null}
+
+          {highlights.length > 0 ? (
+            <Card title="Highlights" icon={Award}>
               <ul className="space-y-2">
                 {highlights.map((h) => (
                   <li key={h} className="flex items-start gap-2">
@@ -44,27 +163,148 @@ const DeveloperPage: React.FC = () => {
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            </Card>
+          ) : null}
 
-          {linkedin && (
-            <div>
-              <div className="flex items-center gap-2 font-semibold mb-2">
-                <Link2 className="w-5 h-5 text-primary" />
-                LinkedIn
+          {experience.length > 0 ? (
+            <Card title="Experience" icon={Briefcase}>
+              <div className="space-y-4">
+                {experience.map((e, idx) => (
+                  <div key={`${e.organization}-${e.title}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                      <div className="font-semibold">
+                        {e.title} <span className="text-muted-foreground font-normal">· {e.organization}</span>
+                      </div>
+                      {(e.start || e.end) ? (
+                        <div className="text-xs text-muted-foreground">{[e.start, e.end].filter(Boolean).join(' - ')}</div>
+                      ) : null}
+                    </div>
+                    {(e.type || e.location) ? (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {[e.type, e.location].filter(Boolean).join(' · ')}
+                      </div>
+                    ) : null}
+                    {e.bullets?.length ? (
+                      <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                        {e.bullets.map((b) => (
+                          <li key={b} className="flex items-start gap-2">
+                            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-primary/60" />
+                            <span>{b}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ))}
               </div>
+            </Card>
+          ) : null}
+
+          {education.length > 0 ? (
+            <Card title="Education" icon={GraduationCap}>
+              <div className="space-y-3">
+                {education.map((ed, idx) => (
+                  <div key={`${ed.school}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
+                    <div className="font-semibold">{ed.school}</div>
+                    {ed.degree ? <div className="text-sm text-muted-foreground mt-1">{ed.degree}</div> : null}
+                    {(ed.start || ed.end) ? (
+                      <div className="text-xs text-muted-foreground mt-1">{[ed.start, ed.end].filter(Boolean).join(' - ')}</div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {certifications.length > 0 ? (
+            <Card title="Licenses & Certifications" icon={BadgeCheck}>
+              <div className="space-y-3">
+                {certifications.map((c, idx) => (
+                  <div key={`${c.name}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
+                    <div className="font-semibold">{c.name}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {[c.issuer, c.issued ? `Issued ${c.issued}` : '', c.expires ? `Expires ${c.expires}` : ''].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {projects.length > 0 ? (
+            <Card title="Projects" icon={Award}>
+              <div className="space-y-3">
+                {projects.map((p, idx) => (
+                  <div key={`${p.name}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                      <div className="font-semibold">{p.name}</div>
+                      {(p.start || p.end) ? (
+                        <div className="text-xs text-muted-foreground">{[p.start, p.end].filter(Boolean).join(' - ')}</div>
+                      ) : null}
+                    </div>
+                    {p.tagline ? <div className="text-sm text-muted-foreground mt-1">{p.tagline}</div> : null}
+                    {p.description ? <div className="text-sm text-muted-foreground mt-2">{p.description}</div> : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {volunteering.length > 0 ? (
+            <Card title="Volunteering" icon={HeartHandshake}>
+              <div className="space-y-4">
+                {volunteering.map((v, idx) => (
+                  <div key={`${v.organization}-${v.role}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
+                    <div className="font-semibold">
+                      {v.role} <span className="text-muted-foreground font-normal">· {v.organization}</span>
+                    </div>
+                    {v.category ? <div className="text-xs text-muted-foreground mt-1">{v.category}</div> : null}
+                    {v.bullets?.length ? (
+                      <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                        {v.bullets.map((b) => (
+                          <li key={b} className="flex items-start gap-2">
+                            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-primary/60" />
+                            <span>{b}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {recommendations.length > 0 ? (
+            <Card title="Recommendations" icon={Quote}>
+              <div className="space-y-4">
+                {recommendations.map((r, idx) => (
+                  <div key={`${r.from}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
+                    <div className="font-semibold">{r.from}</div>
+                    {(r.relationship || r.date) ? (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {[r.relationship, r.date].filter(Boolean).join(' · ')}
+                      </div>
+                    ) : null}
+                    <div className="mt-3 text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{r.text}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {linkedin ? (
+            <Card title="LinkedIn" icon={Link2}>
               <div className="text-muted-foreground break-all">{linkedin}</div>
-              <div className="text-xs text-muted-foreground mt-2">
-                (Displayed for reference — not opened automatically.)
-              </div>
-            </div>
-          )}
+              <div className="text-xs text-muted-foreground mt-2">(Displayed for reference — not opened automatically.)</div>
+            </Card>
+          ) : null}
 
-          {!highlights.length && !linkedin && (
-            <div className="text-muted-foreground">
+          {!highlights.length && !linkedin && !about && !experience.length && !education.length && !certifications.length && !projects.length && !volunteering.length && !recommendations.length ? (
+            <div className="bg-card border border-border rounded-xl p-6 shadow-lg text-muted-foreground">
               Add your details in <span className="font-semibold">metadata.json</span> under the <span className="font-semibold">developer</span> key.
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
