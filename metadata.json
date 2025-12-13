@@ -3,18 +3,9 @@
   "description": "A student resource platform featuring resources, academic tools, and a community platform.",
   "developer": {
     "name": "Ram Charan Narra",
-    "pronouns": "He/Him",
-    "headline": "Freshman at SNIST | Interned at the Telangana Cybersecurity Bureau | Indian Institute of Technology, Hyderabad | International MUN | TheAISchool, T-Hub",
-    "location": "India",
+    "headline": "Former Intern at Telangana Cyber Security Bureau | Indian Institute of Technology, Hyderabad | International MUN | TheAISchool, T-Hub",
     "links": {
       "linkedin": "https://linkedin.com/in/ram-charan-narra"
-    },
-    "stats": {
-      "connections": "500+",
-      "followers": 544,
-      "profileViewsLast7Days": 159,
-      "postImpressionsLast7Days": 14,
-      "searchAppearancesLast7Days": 23
     },
     "about": "Aspiring cybersecurity professional with hands-on experience in penetration testing, digital forensics, and vulnerability assessment. I’ve worked on ethical hacking projects, including exploitation of real-world vulnerabilities, malware analysis, and incident response simulations. Through internships, hackathons, and virtual work experiences with institutions like IIT Hyderabad, JPMorganChase, and Goldman Sachs, I’ve developed a strong foundation in securing systems against evolving digital threats.\n\nMy journey is driven by curiosity and resilience — from cracking thousands of password hashes under pressure at competitions to conducting full-scale penetration testing of virtual machines. I’m committed to building expertise in cyber defense, cryptography, and digital forensics, with the goal of protecting organizations from the threats of tomorrow.\n\nCurrently, I’m sharpening my technical skills while expanding my exposure to large-scale cybersecurity challenges. Always open to connecting with professionals in infosec, security research, and digital forensics.",
     "highlights": [
@@ -37,7 +28,11 @@
         "type": "Internship",
         "location": "Hyderabad, Telangana, India (On-site)",
         "start": "Oct 2025",
-        "end": "Nov 2025"
+        "end": "Nov 2025",
+        "bullets": [
+          "Excelled in the Digital Forensics unit — assisted with evidence handling and analysis workflows in a controlled environment.",
+          "Contributed to Threat Intelligence efforts by supporting research and triage of security-relevant indicators and reports."
+        ]
       },
       {
         "title": "Campus Ambassador of E-Summit",
@@ -106,26 +101,6 @@
           "Participated in incident response drills (detect, analyze, mitigate).",
           "Capstone on Complete System Hacking: exploited Mr. Robot and C0lddbox VMs; exploited SMB vulnerability (EternalBlue) for Windows 7 access; performed malware injection simulation and gained access to Windows 11 in a controlled environment."
         ]
-      }
-    ],
-    "education": [
-      {
-        "school": "Sreenidhi Institute of Science and Technology",
-        "degree": "Bachelor of Technology (BTech), Computer Science and Engineering",
-        "start": "Jul 2025",
-        "end": "May 2029"
-      },
-      {
-        "school": "FIITJEE",
-        "degree": "Intermediate (PCM)",
-        "start": "2023",
-        "end": "2025"
-      },
-      {
-        "school": "Maharishi Vidya Mandir Senior Secondary School",
-        "degree": "Secondary School",
-        "start": "2015",
-        "end": "2023"
       }
     ],
     "certifications": [

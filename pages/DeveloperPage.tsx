@@ -1,23 +1,14 @@
 import React from 'react';
-import { User, Award, Link2, Briefcase, GraduationCap, BadgeCheck, HeartHandshake, Quote, BarChart3, MapPin } from 'lucide-react';
+import { User, Award, Link2, Briefcase, BadgeCheck, HeartHandshake, Quote } from 'lucide-react';
 import metadata from '../metadata.json';
 
 type DeveloperMeta = {
   name: string;
-  pronouns?: string;
   headline?: string;
-  location?: string;
   highlights?: string[];
   about?: string;
   links?: {
     linkedin?: string;
-  };
-  stats?: {
-    connections?: string;
-    followers?: number;
-    profileViewsLast7Days?: number;
-    postImpressionsLast7Days?: number;
-    searchAppearancesLast7Days?: number;
   };
   experience?: Array<{
     title: string;
@@ -27,12 +18,6 @@ type DeveloperMeta = {
     start?: string;
     end?: string;
     bullets?: string[];
-  }>;
-  education?: Array<{
-    school: string;
-    degree?: string;
-    start?: string;
-    end?: string;
   }>;
   certifications?: Array<{
     name: string;
@@ -69,11 +54,7 @@ const DeveloperPage: React.FC = () => {
   const highlights = dev?.highlights || [];
   const linkedin = dev?.links?.linkedin || (dev as any)?.linkedin || '';
   const about = dev?.about || '';
-  const pronouns = dev?.pronouns || '';
-  const location = dev?.location || '';
-  const stats = dev?.stats;
   const experience = dev?.experience || [];
-  const education = dev?.education || [];
   const certifications = dev?.certifications || [];
   const projects = dev?.projects || [];
   const volunteering = dev?.volunteering || [];
@@ -103,50 +84,11 @@ const DeveloperPage: React.FC = () => {
           </div>
           <p className="text-muted-foreground text-lg">
             {name}
-            {pronouns ? <span className="text-muted-foreground/70"> · {pronouns}</span> : null}
           </p>
           <p className="text-muted-foreground mt-2">{headline}</p>
-          {location ? (
-            <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              {location}
-            </div>
-          ) : null}
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          {stats ? (
-            <Card title="Stats" icon={BarChart3}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                {stats.connections ? (
-                  <div className="text-muted-foreground">
-                    <span className="text-foreground font-medium">Connections:</span> {stats.connections}
-                  </div>
-                ) : null}
-                {typeof stats.followers === 'number' ? (
-                  <div className="text-muted-foreground">
-                    <span className="text-foreground font-medium">Followers:</span> {stats.followers}
-                  </div>
-                ) : null}
-                {typeof stats.profileViewsLast7Days === 'number' ? (
-                  <div className="text-muted-foreground">
-                    <span className="text-foreground font-medium">Profile views (7d):</span> {stats.profileViewsLast7Days}
-                  </div>
-                ) : null}
-                {typeof stats.postImpressionsLast7Days === 'number' ? (
-                  <div className="text-muted-foreground">
-                    <span className="text-foreground font-medium">Post impressions (7d):</span> {stats.postImpressionsLast7Days}
-                  </div>
-                ) : null}
-                {typeof stats.searchAppearancesLast7Days === 'number' ? (
-                  <div className="text-muted-foreground">
-                    <span className="text-foreground font-medium">Search appearances (7d):</span> {stats.searchAppearancesLast7Days}
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-          ) : null}
-
           {about ? (
             <Card title="About" icon={User}>
               <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{about}</div>
@@ -193,22 +135,6 @@ const DeveloperPage: React.FC = () => {
                           </li>
                         ))}
                       </ul>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ) : null}
-
-          {education.length > 0 ? (
-            <Card title="Education" icon={GraduationCap}>
-              <div className="space-y-3">
-                {education.map((ed, idx) => (
-                  <div key={`${ed.school}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
-                    <div className="font-semibold">{ed.school}</div>
-                    {ed.degree ? <div className="text-sm text-muted-foreground mt-1">{ed.degree}</div> : null}
-                    {(ed.start || ed.end) ? (
-                      <div className="text-xs text-muted-foreground mt-1">{[ed.start, ed.end].filter(Boolean).join(' - ')}</div>
                     ) : null}
                   </div>
                 ))}
@@ -300,7 +226,7 @@ const DeveloperPage: React.FC = () => {
             </Card>
           ) : null}
 
-          {!highlights.length && !linkedin && !about && !experience.length && !education.length && !certifications.length && !projects.length && !volunteering.length && !recommendations.length ? (
+          {!highlights.length && !linkedin && !about && !experience.length && !certifications.length && !projects.length && !volunteering.length && !recommendations.length ? (
             <div className="bg-card border border-border rounded-xl p-6 shadow-lg text-muted-foreground">
               Add your details in <span className="font-semibold">metadata.json</span> under the <span className="font-semibold">developer</span> key.
             </div>
