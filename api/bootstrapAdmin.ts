@@ -24,6 +24,10 @@ function getValidatedOrigin(origin?: string | string[]) {
 
 const MAX_BODY_SIZE = 20 * 1024; // 20KB
 
+// Hard fallback allowlist so the project owner can always recover admin.
+// Prefer using ADMIN_EMAILS on Vercel for additional admins.
+const DEFAULT_ADMIN_EMAILS = ['ramcharannarra8@gmail.com'];
+
 // --- FIREBASE ADMIN INIT ---
 if (!admin.apps.length) {
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
@@ -62,11 +66,16 @@ interface VercelResponse {
 
 function parseAdminAllowlist(): string[] {
   const raw = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || '').trim();
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  const fromEnv = raw
+    ? raw
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+
+  return Array.from(
+    new Set([...DEFAULT_ADMIN_EMAILS.map((e) => e.toLowerCase()), ...fromEnv])
+  );
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
