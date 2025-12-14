@@ -30,6 +30,13 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
+import {
+    getStorage,
+    ref as storageRef,
+    uploadBytes,
+    getDownloadURL,
+    FirebaseStorage,
+} from 'firebase/storage';
 import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole } from '../types';
 
 // --- CONFIGURATION ---
@@ -51,6 +58,7 @@ const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undef
 let app;
 let auth: Auth;
 let db: Firestore;
+let storage: FirebaseStorage;
 let googleProvider: GoogleAuthProvider;
 
 if (isConfigured) {
@@ -58,11 +66,20 @@ if (isConfigured) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+        storage = getStorage(app);
     googleProvider = new GoogleAuthProvider();
   } catch (e) {
     console.error("Firebase Init Failed:", e);
   }
 }
+
+const sanitizeStorageFilename = (name: string): string => {
+    const trimmed = (name || '').trim() || 'file';
+    // Prevent path traversal and keep filenames readable.
+    const noSlashes = trimmed.replace(/[\\/]+/g, '_');
+    const cleaned = noSlashes.replace(/[^a-zA-Z0-9._\- ]+/g, '_');
+    return cleaned.slice(0, 120);
+};
 
 // --- SECURE HELPERS ---
 
@@ -179,7 +196,7 @@ export const api = {
     },
 
     // RESOURCE METHODS
-    addResource: async (resource: Omit<Resource, 'id'>): Promise<string> => {
+    addResource: async (resource: Omit<Resource, 'id'>, options?: { id?: string }): Promise<string> => {
         if (!db) throw new Error("Database not configured");
 
         const fallbackOwnerId = auth?.currentUser?.uid;
@@ -197,19 +214,48 @@ export const api = {
 
         const status = resource.status || (isAdminEmail ? 'approved' : 'pending');
 
-        const docRef = await withTimeout(
-            addDoc(collection(db, 'resources'), {
-                ...resource,
-                ownerId,
-                status,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            }),
-            15000
-        );
+                const payload = {
+                    ...resource,
+                    ownerId,
+                    status,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                };
 
-        return docRef.id;
+                if (options?.id) {
+                    const docRef = doc(collection(db, 'resources'), options.id);
+                    await withTimeout(setDoc(docRef, payload as any), 15000);
+                    return docRef.id;
+                }
+
+                const docRef = await withTimeout(addDoc(collection(db, 'resources'), payload as any), 15000);
+                return docRef.id;
     },
+
+        uploadResourceFile: async (params: {
+            uid: string;
+            resourceId: string;
+            file: File;
+        }): Promise<{ downloadUrl: string; storagePath: string }> => {
+            if (!storage) throw new Error('Storage not configured');
+            if (!params.uid) throw new Error('Missing uid');
+            if (!params.resourceId) throw new Error('Missing resourceId');
+            if (!params.file) throw new Error('Missing file');
+
+            const filename = sanitizeStorageFilename(params.file.name);
+            const objectPath = `resources/${params.uid}/${params.resourceId}/${filename}`;
+            const objRef = storageRef(storage, objectPath);
+
+            await withTimeout(
+                uploadBytes(objRef, params.file, {
+                    contentType: params.file.type || undefined,
+                }),
+                30000
+            );
+
+            const downloadUrl = await withTimeout(getDownloadURL(objRef), 15000);
+            return { downloadUrl, storagePath: objectPath };
+        },
 
     // SUBSCRIPTIONS
     onAuthStateChanged: (cb: (user: User | null) => void) => {

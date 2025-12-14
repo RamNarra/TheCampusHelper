@@ -45,6 +45,7 @@ const ResourcesPage: React.FC = () => {
   // Upload State
   const [uploadName, setUploadName] = useState('');
   const [uploadLink, setUploadLink] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -262,7 +263,16 @@ const ResourcesPage: React.FC = () => {
         if (!user?.uid) throw new Error('Please sign in to upload a resource.');
         if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
         if (!uploadName.trim()) throw new Error("Resource name is required.");
-        if (!uploadLink.trim()) throw new Error("Link is required.");
+        if (!uploadLink.trim() && !uploadFile) throw new Error("Please paste a link or upload a file.");
+
+        const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+        const isPptx = (f: File) =>
+          f.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+          f.name.toLowerCase().endsWith('.pptx');
+
+        if (uploadFile && !(isPdf(uploadFile) || isPptx(uploadFile))) {
+          throw new Error('Only PDF and PPTX files are allowed for now.');
+        }
 
         // 2. Validate Category
         const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
@@ -272,7 +282,20 @@ const ResourcesPage: React.FC = () => {
 
         // 3. Prepare Object
         const finalType = isExamFolder ? (selectedFolder as ResourceType) : selectedCategory!;
-        const driveId = extractDriveId(uploadLink);
+
+        const resourceId = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+          ? (globalThis.crypto as any).randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        let finalUrl = uploadLink.trim();
+        let driveId: string | null = null;
+
+        if (uploadFile) {
+          const uploaded = await api.uploadResourceFile({ uid: user.uid, resourceId, file: uploadFile });
+          finalUrl = uploaded.downloadUrl;
+        } else {
+          driveId = extractDriveId(finalUrl);
+        }
 
         const newResource: Omit<Resource, 'id'> = {
             title: uploadName,
@@ -281,14 +304,14 @@ const ResourcesPage: React.FC = () => {
             semester: semester,
             unit: selectedFolder,
             type: finalType,
-            downloadUrl: uploadLink,
+            downloadUrl: finalUrl,
             driveFileId: driveId || undefined,
           ownerId: user.uid,
           status: (user.role === 'admin' || user.role === 'mod') ? 'approved' : 'pending'
         };
 
         // 4. Send to Firebase (Protected by Timeout)
-        const createdId = await api.addResource(newResource);
+        const createdId = await api.addResource(newResource, { id: resourceId });
         const createdResource: Resource = { id: createdId, ...newResource };
         setLastSubmittedResource(createdResource);
 
@@ -311,6 +334,7 @@ const ResourcesPage: React.FC = () => {
         // 6. Success State
         setUploadName('');
         setUploadLink('');
+        setUploadFile(null);
 
     } catch (err: any) {
         console.error("Upload error:", err);
@@ -611,9 +635,32 @@ const ResourcesPage: React.FC = () => {
                                   type="url" 
                                   placeholder="Drive Link or URL" 
                                   value={uploadLink}
-                                  onChange={e => setUploadLink(e.target.value)}
+                                  onChange={e => {
+                                    setUploadLink(e.target.value);
+                                    if (e.target.value) setUploadFile(null);
+                                  }}
                                   className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
                               />
+
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <div className="h-px flex-1 bg-border" />
+                                <span>OR</span>
+                                <div className="h-px flex-1 bg-border" />
+                              </div>
+
+                              <input
+                                type="file"
+                                accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0] || null;
+                                  setUploadFile(f);
+                                  if (f) setUploadLink('');
+                                }}
+                                className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
+                              />
+                              <div className="text-xs text-muted-foreground -mt-2">
+                                Accepted: PDF, PPTX
+                              </div>
                               
                               <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
                                   Using context: {branch} &gt; {semester} &gt; {subject} <br/>
