@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Award, Link2, Briefcase, BadgeCheck, HeartHandshake, Quote } from 'lucide-react';
+import { User, Award, Link2, Briefcase, HeartHandshake, Quote } from 'lucide-react';
 import metadata from '../metadata.json';
 
 type DeveloperMeta = {
@@ -18,12 +18,6 @@ type DeveloperMeta = {
     start?: string;
     end?: string;
     bullets?: string[];
-  }>;
-  certifications?: Array<{
-    name: string;
-    issuer?: string;
-    issued?: string;
-    expires?: string;
   }>;
   projects?: Array<{
     name: string;
@@ -55,7 +49,6 @@ const DeveloperPage: React.FC = () => {
   const linkedin = dev?.links?.linkedin || (dev as any)?.linkedin || '';
   const about = dev?.about || '';
   const experience = dev?.experience || [];
-  const certifications = dev?.certifications || [];
   const projects = dev?.projects || [];
   const volunteering = dev?.volunteering || [];
   const recommendations = dev?.recommendations || [];
@@ -142,21 +135,6 @@ const DeveloperPage: React.FC = () => {
             </Card>
           ) : null}
 
-          {certifications.length > 0 ? (
-            <Card title="Licenses & Certifications" icon={BadgeCheck}>
-              <div className="space-y-3">
-                {certifications.map((c, idx) => (
-                  <div key={`${c.name}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
-                    <div className="font-semibold">{c.name}</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {[c.issuer, c.issued ? `Issued ${c.issued}` : '', c.expires ? `Expires ${c.expires}` : ''].filter(Boolean).join(' · ')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ) : null}
-
           {projects.length > 0 ? (
             <Card title="Projects" icon={Award}>
               <div className="space-y-3">
@@ -226,7 +204,7 @@ const DeveloperPage: React.FC = () => {
             </Card>
           ) : null}
 
-          {!highlights.length && !linkedin && !about && !experience.length && !certifications.length && !projects.length && !volunteering.length && !recommendations.length ? (
+          {!highlights.length && !linkedin && !about && !experience.length && !projects.length && !volunteering.length && !recommendations.length ? (
             <div className="bg-card border border-border rounded-xl p-6 shadow-lg text-muted-foreground">
               Add your details in <span className="font-semibold">metadata.json</span> under the <span className="font-semibold">developer</span> key.
             </div>
