@@ -659,7 +659,7 @@ const ResourcesPage: React.FC = () => {
                                 className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
                               />
                               <div className="text-xs text-muted-foreground -mt-2">
-                                Accepted: PDF, PPTX
+                                Accepted: PDF, PPTX{uploadFile ? ` · Selected: ${uploadFile.name}` : ''}
                               </div>
                               
                               <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
@@ -669,8 +669,8 @@ const ResourcesPage: React.FC = () => {
 
                               {uploadError && <div className="text-red-500 text-sm">{uploadError}</div>}
 
-                              <button disabled={isUploading} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex justify-center">
-                                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Upload"}
+                                <button disabled={isUploading} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
+                                  {isUploading ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>Uploading…</span></>) : "Upload"}
                               </button>
                           </form>
                         )}

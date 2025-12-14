@@ -81,6 +81,16 @@ const sanitizeStorageFilename = (name: string): string => {
     return cleaned.slice(0, 120);
 };
 
+const inferContentTypeFromFilename = (filename: string): string | undefined => {
+    const lower = (filename || '').toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.pptx')) {
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    }
+    if (lower.endsWith('.ppt')) return 'application/vnd.ms-powerpoint';
+    return undefined;
+};
+
 // --- SECURE HELPERS ---
 
 /**
@@ -237,7 +247,7 @@ export const api = {
             resourceId: string;
             file: File;
         }): Promise<{ downloadUrl: string; storagePath: string }> => {
-            if (!storage) throw new Error('Storage not configured');
+            if (!storage) throw new Error('Storage not configured (missing Firebase Storage config)');
             if (!params.uid) throw new Error('Missing uid');
             if (!params.resourceId) throw new Error('Missing resourceId');
             if (!params.file) throw new Error('Missing file');
@@ -246,9 +256,12 @@ export const api = {
             const objectPath = `resources/${params.uid}/${params.resourceId}/${filename}`;
             const objRef = storageRef(storage, objectPath);
 
+            const contentType = params.file.type || inferContentTypeFromFilename(filename);
+
             await withTimeout(
                 uploadBytes(objRef, params.file, {
-                    contentType: params.file.type || undefined,
+                    // Storage rules validate request.resource.contentType; some browsers provide empty File.type.
+                    contentType,
                 }),
                 30000
             );
