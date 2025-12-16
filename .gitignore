@@ -125,3 +125,7 @@ Ram_CV_IITMBS_2025.pdf
 # Local-only personal files
 private/
 dist/registerSW.js
+
+# Firebase Admin service account keys (NEVER commit)
+thecampushelper-adcdc-firebase-adminsdk-*.json
+firebase-adminsdk-*.json

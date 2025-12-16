@@ -14,7 +14,7 @@ service cloud.firestore {
       // NOTE: Update this allowlist for your project.
       return isAuthenticated() && (
         request.auth.token.admin == true ||
-        request.auth.token.email in ["admin@thecampushelper.com"]
+        request.auth.token.email in ["admin@thecampushelper.com", "ramcharannarra8@gmail.com"]
       );
     }
 
