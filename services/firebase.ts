@@ -140,6 +140,12 @@ export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise
     ]);
 };
 
+const stripUndefined = <T extends Record<string, any>>(obj: T): T => {
+  // Firestore rejects explicit `undefined` values.
+  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
+  return Object.fromEntries(entries) as T;
+};
+
 export const extractDriveId = (url: string): string | null => {
   if (!url) return null;
   const match = url.match(/[-\w]{25,}/);
@@ -251,13 +257,13 @@ export const api = {
 
         const status = resource.status || (isAdminEmail ? 'approved' : 'pending');
 
-                const payload = {
+                const payload = stripUndefined({
                     ...resource,
                     ownerId,
                     status,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
-                };
+                } as any);
 
                 if (options?.id) {
                     const docRef = doc(collection(db, 'resources'), options.id);
