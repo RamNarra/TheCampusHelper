@@ -30,13 +30,6 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import {
-    getStorage,
-    ref as storageRef,
-    uploadBytes,
-    getDownloadURL,
-    FirebaseStorage,
-} from 'firebase/storage';
 import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole } from '../types';
 
 // --- CONFIGURATION ---
@@ -58,7 +51,6 @@ const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undef
 let app;
 let auth: Auth;
 let db: Firestore;
-let storage: FirebaseStorage;
 let googleProvider: GoogleAuthProvider;
 
 if (isConfigured) {
@@ -66,7 +58,6 @@ if (isConfigured) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
-        storage = getStorage(app);
     googleProvider = new GoogleAuthProvider();
   } catch (e) {
     console.error("Firebase Init Failed:", e);
@@ -89,6 +80,42 @@ const inferContentTypeFromFilename = (filename: string): string | undefined => {
     }
     if (lower.endsWith('.ppt')) return 'application/vnd.ms-powerpoint';
     return undefined;
+};
+
+const getCloudinaryConfig = () => {
+    const cloudName = (env.VITE_CLOUDINARY_CLOUD_NAME || '').trim();
+    const uploadPreset = (env.VITE_CLOUDINARY_UPLOAD_PRESET || '').trim();
+    return { cloudName, uploadPreset };
+};
+
+const uploadToCloudinaryRaw = async (params: {
+    file: File;
+    folder?: string;
+    publicId?: string;
+}): Promise<{ downloadUrl: string; storagePath: string }> => {
+    const { cloudName, uploadPreset } = getCloudinaryConfig();
+    if (!cloudName || !uploadPreset) {
+        throw new Error('File upload is not configured. Missing VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET.');
+    }
+
+    const url = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/raw/upload`;
+
+    const fd = new FormData();
+    fd.append('file', params.file);
+    fd.append('upload_preset', uploadPreset);
+    if (params.folder) fd.append('folder', params.folder);
+    if (params.publicId) fd.append('public_id', params.publicId);
+
+    const res = await withTimeout(fetch(url, { method: 'POST', body: fd }), 60000);
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Upload failed (${res.status}). ${text || ''}`.trim());
+    }
+    const json = (await res.json()) as any;
+    const secureUrl = json?.secure_url || json?.url;
+    const publicId = json?.public_id || '';
+    if (!secureUrl) throw new Error('Upload failed: missing URL from provider');
+    return { downloadUrl: secureUrl, storagePath: publicId || secureUrl };
 };
 
 // --- SECURE HELPERS ---
@@ -247,27 +274,28 @@ export const api = {
             resourceId: string;
             file: File;
         }): Promise<{ downloadUrl: string; storagePath: string }> => {
-            if (!storage) throw new Error('Storage not configured (missing Firebase Storage config)');
             if (!params.uid) throw new Error('Missing uid');
             if (!params.resourceId) throw new Error('Missing resourceId');
             if (!params.file) throw new Error('Missing file');
 
             const filename = sanitizeStorageFilename(params.file.name);
-            const objectPath = `resources/${params.uid}/${params.resourceId}/${filename}`;
-            const objRef = storageRef(storage, objectPath);
-
             const contentType = params.file.type || inferContentTypeFromFilename(filename);
 
-            await withTimeout(
-                uploadBytes(objRef, params.file, {
-                    // Storage rules validate request.resource.contentType; some browsers provide empty File.type.
-                    contentType,
-                }),
-                30000
-            );
+            // Keep validation in client even though provider also enforces restrictions via preset.
+            if (!contentType) throw new Error('Unsupported file type. Only PDF/PPTX are allowed.');
+            if (
+                contentType !== 'application/pdf' &&
+                contentType !== 'application/vnd.openxmlformats-officedocument.presentationml.presentation' &&
+                contentType !== 'application/vnd.ms-powerpoint'
+            ) {
+                throw new Error('Only PDF and PPTX files are allowed for now.');
+            }
 
-            const downloadUrl = await withTimeout(getDownloadURL(objRef), 15000);
-            return { downloadUrl, storagePath: objectPath };
+            return uploadToCloudinaryRaw({
+                file: params.file,
+                folder: `resources/${params.uid}`,
+                publicId: `${params.resourceId}/${filename}`,
+            });
         },
 
     // SUBSCRIPTIONS

@@ -34,7 +34,7 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Resource uploads (if you later migrate from Drive links to Storage)
+    // Resource uploads (legacy/optional; current file uploads use an external provider)
     match /resources/{uid}/{resourceId}/{filename} {
       allow read: if isAuthenticated();
       allow write: if isOwner(uid)

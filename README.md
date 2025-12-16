@@ -63,6 +63,12 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
+# --- OPTIONAL (Client-side file uploads: PDF/PPTX) ---
+# If Firebase Storage billing is not enabled, configure Cloudinary (free tier) for device uploads.
+# Create an *unsigned* upload preset with resource type "raw" and allowed formats: pdf,pptx
+VITE_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+VITE_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
+
 # --- PRIVATE (Server-Side ONLY) ---
 # NEVER prefix with VITE_. Only accessible by api/ functions.
 GEMINI_API_KEY=REDACTED
