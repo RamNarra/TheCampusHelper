@@ -1,17 +1,23 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { FileText, Upload, LogOut, Bookmark, FolderOpen } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import GamificationCard from '../components/GamificationCard';
+import { api } from '../services/firebase';
 
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
+  const [adminFixLoading, setAdminFixLoading] = useState(false);
+  const [adminFixMessage, setAdminFixMessage] = useState<string | null>(null);
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+  const isOwnerEmail = (user.email || '').toLowerCase() === 'ramcharannarra8@gmail.com';
+  const canAttemptAdminFix = isOwnerEmail && user.role !== 'admin' && !adminFixLoading;
 
   return (
     <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -42,6 +48,37 @@ const ProfilePage: React.FC = () => {
                 {user.branch || 'General'}
               </span>
             </div>
+
+            {isOwnerEmail && user.role !== 'admin' ? (
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  disabled={!canAttemptAdminFix}
+                  onClick={async () => {
+                    setAdminFixLoading(true);
+                    setAdminFixMessage(null);
+                    try {
+                      const result = await api.bootstrapAdminAccessDetailed();
+                      if (!result.ok) {
+                        setAdminFixMessage(`Admin restore failed (${result.status}). ${result.bodyText || ''}`.trim());
+                        return;
+                      }
+                      await api.forceRefreshAuthToken();
+                      setAdminFixMessage('Admin restore requested. Refreshing…');
+                      // Let Firestore/claims propagate.
+                      setTimeout(() => window.location.reload(), 600);
+                    } finally {
+                      setAdminFixLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-semibold disabled:opacity-50"
+                >
+                  {adminFixLoading ? 'Restoring…' : 'Restore Admin Access'}
+                </button>
+                {adminFixMessage ? (
+                  <div className="text-xs text-muted-foreground break-words max-w-xl">{adminFixMessage}</div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <button 
             onClick={logout}

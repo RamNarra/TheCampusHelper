@@ -124,7 +124,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const idToken = bearerToken.split('Bearer ')[1];
 
   try {
-    if (!admin.apps.length) throw new Error('Firebase Admin not initialized');
+    if (!admin.apps.length) {
+      const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      return res.status(500).json({
+        error: 'admin_not_initialized',
+        requestId,
+        missing: {
+          FIREBASE_PROJECT_ID: !projectId,
+          FIREBASE_CLIENT_EMAIL: !clientEmail,
+          FIREBASE_PRIVATE_KEY: !privateKey,
+        },
+      });
+    }
 
     const decoded = await admin.auth().verifyIdToken(idToken);
     const email = (decoded.email || '').toLowerCase();
@@ -162,6 +175,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error(`[${requestId}] bootstrapAdmin failed:`, e);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'internal_error', requestId });
   }
 }

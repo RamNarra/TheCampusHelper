@@ -130,6 +130,11 @@ export const getAuthToken = async (): Promise<string | null> => {
   return auth.currentUser.getIdToken(false);
 };
 
+export const forceRefreshAuthToken = async (): Promise<string | null> => {
+    if (!auth || !auth.currentUser) return null;
+    return auth.currentUser.getIdToken(true);
+};
+
 // Timeout Wrapper for Async Operations
 export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
     return Promise.race([
@@ -225,6 +230,29 @@ export const api = {
             return false;
         }
     },
+
+        bootstrapAdminAccessDetailed: async (): Promise<{ ok: boolean; status: number; bodyText: string }> => {
+            try {
+                const token = await getAuthToken();
+                if (!token) return { ok: false, status: 0, bodyText: 'Not signed in' };
+                const res = await fetch('/api/bootstrapAdmin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({}),
+                });
+                const bodyText = await res.text().catch(() => '');
+                return { ok: res.ok, status: res.status, bodyText };
+            } catch (e: any) {
+                return { ok: false, status: 0, bodyText: e?.message || 'Request failed' };
+            }
+        },
+
+        forceRefreshAuthToken: async (): Promise<void> => {
+            await forceRefreshAuthToken();
+        },
 
     updateUserRole: async (targetUid: string, role: UserRole) => {
         if (!db) throw new Error("Database not configured");
