@@ -230,11 +230,8 @@ const ResourcesPage: React.FC = () => {
   };
 
   const openResource = async (res: Resource) => {
-    if (res.driveFileId) {
-      setSelectedResource(res);
-    } else {
-      window.open(res.downloadUrl, '_blank');
-    }
+    // Always use the in-app preview overlay.
+    setSelectedResource(res);
     
     // Award XP for viewing resource
     if (user) {
@@ -249,6 +246,44 @@ const ResourcesPage: React.FC = () => {
       // Note: This requires a resourcesViewed counter field in the user profile
       // TODO: Implement resource view counter and unlock resource_master at 50 views
     }
+  };
+
+  const getDrivePreviewId = (res: Resource): string | null => {
+    if (res.driveFileId) return res.driveFileId;
+    // Back-compat: some older resources may have a Drive link but no driveFileId field.
+    const fromUrl = extractDriveId(res.downloadUrl || '');
+    return fromUrl || null;
+  };
+
+  const getPreviewIframeSrc = (res: Resource): string | null => {
+    const driveId = getDrivePreviewId(res);
+    if (driveId) return `https://drive.google.com/file/d/${driveId}/preview`;
+
+    const url = (res.downloadUrl || '').trim();
+    if (!url) return null;
+
+    const lower = url.toLowerCase();
+    const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.pdf#');
+    const isPptx = lower.endsWith('.pptx') || lower.includes('.pptx?') || lower.includes('.pptx#');
+
+    if (isPptx) {
+      // Office viewer can render PPTX if the URL is publicly accessible.
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+    }
+
+    if (isPdf) {
+      // Most PDF URLs can be embedded directly. If the host blocks iframes, user can still Download/Open.
+      return url;
+    }
+
+    // Best-effort fallback for other docs.
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+  };
+
+  const getDownloadUrl = (res: Resource): string => {
+    const driveId = getDrivePreviewId(res);
+    if (driveId) return `https://drive.google.com/u/0/uc?id=${driveId}&export=download`;
+    return res.downloadUrl;
   };
 
   // --- UPLOAD LOGIC ---
@@ -724,7 +759,7 @@ const ResourcesPage: React.FC = () => {
                     <button onClick={() => setSelectedResource(null)} className="flex items-center gap-2 hover:text-gray-300"><ArrowLeft className="w-4 h-4" /> Back</button>
                     <span className="font-bold truncate max-w-md">{selectedResource.title}</span>
                     <a 
-                        href={selectedResource.downloadUrl || `https://drive.google.com/u/0/uc?id=${selectedResource.driveFileId}&export=download`} 
+                        href={getDownloadUrl(selectedResource)} 
                         target="_blank" 
                         rel="noreferrer" 
                         onClick={() => {
@@ -737,7 +772,29 @@ const ResourcesPage: React.FC = () => {
                     </a>
                 </div>
                 <div className="flex-1 bg-zinc-900">
-                    <iframe src={`https://drive.google.com/file/d/${selectedResource.driveFileId}/preview`} className="w-full h-full border-0" allow="autoplay" title="Preview" />
+                    {(() => {
+                      const src = getPreviewIframeSrc(selectedResource);
+                      if (!src) {
+                        return (
+                          <div className="w-full h-full flex items-center justify-center p-8 text-center text-zinc-300">
+                            <div className="max-w-lg">
+                              <div className="font-semibold">Preview unavailable</div>
+                              <div className="text-sm text-zinc-400 mt-2">
+                                This resource doesn’t have a preview link. Use Download to open it.
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <iframe
+                          src={src}
+                          className="w-full h-full border-0"
+                          allow="autoplay; fullscreen"
+                          title="Preview"
+                        />
+                      );
+                    })()}
                 </div>
              </div>
         )}
