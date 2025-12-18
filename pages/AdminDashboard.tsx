@@ -10,7 +10,7 @@ import { Navigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'approvals' | 'resources' | 'users'>('approvals');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'resources' | 'users'>('overview');
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -21,9 +21,9 @@ const AdminDashboard: React.FC = () => {
   const [isLoadingResources, setIsLoadingResources] = useState(false);
   const [resourceSearchTerm, setResourceSearchTerm] = useState('');
 
-  // Fetch users when tab changes to 'users' (admin only)
+  // Fetch users for admin-only User Database (and stats)
   useEffect(() => {
-    if (activeTab === 'users' && user?.role === 'admin') {
+    if (user?.role === 'admin' && (activeTab === 'users' || activeTab === 'overview')) {
       const fetchUsers = async () => {
         setIsLoadingUsers(true);
         const data = await api.getAllUsers();
@@ -34,9 +34,8 @@ const AdminDashboard: React.FC = () => {
     }
   }, [activeTab, user]);
 
-  // Staff: subscribe to all resources for management
+  // Staff: subscribe to all resources (used for stats + management)
   useEffect(() => {
-    if (activeTab !== 'resources') return;
     if (!user || (user.role !== 'admin' && user.role !== 'mod')) return;
     setIsLoadingResources(true);
     const unsub = api.onAllResourcesChanged((list) => {
@@ -44,7 +43,7 @@ const AdminDashboard: React.FC = () => {
       setIsLoadingResources(false);
     });
     return () => unsub();
-  }, [activeTab, user?.role]);
+  }, [user?.role]);
 
   // Mods/admins: subscribe to pending resource approvals
   useEffect(() => {
@@ -170,40 +169,50 @@ const AdminDashboard: React.FC = () => {
     return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }: any) => (
-    <div className="bg-card border border-white/10 p-6 rounded-xl relative overflow-hidden group">
-      <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${color}`}>
-        <Icon className="w-16 h-16" />
+  const StatCard = ({ title, value, icon: Icon }: { title: string; value: React.ReactNode; icon: any }) => (
+    <div className="bg-card border border-border p-6 rounded-2xl relative overflow-hidden shadow-sm">
+      <div className="absolute top-0 right-0 p-4 opacity-10">
+        <Icon className="w-16 h-16 text-primary" />
       </div>
       <div className="relative z-10">
-        <p className="text-gray-400 text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-3xl font-bold text-white">{value}</h3>
+        <p className="text-muted-foreground text-sm font-medium mb-1">{title}</p>
+        <h3 className="text-3xl font-bold text-foreground">{value}</h3>
       </div>
     </div>
   );
 
+  const totalUsers = user.role === 'admin' ? usersList.length : undefined;
+  const pendingCount = pendingResources.length;
+  const totalResources = allResources.length;
+
   return (
     <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
-        <p className="text-gray-400">Manage resources and user content</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <StatCard title="Registered Users" value={usersList.length || "1,248"} icon={Users} color="text-blue-500" />
-        <StatCard title="Total PDFs" value="456" icon={FileText} color="text-primary" />
-        <StatCard title="Total Views" value="89.2K" icon={Eye} color="text-secondary" />
+        <h1 className="text-3xl font-bold text-foreground mb-2">Admin Dashboard</h1>
+        <p className="text-muted-foreground">Moderate resources and manage users</p>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-white/10 pb-1 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 mb-6 border-b border-border pb-1 overflow-x-auto scrollbar-hide">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
+            activeTab === 'overview'
+              ? 'text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          } whitespace-nowrap`}
+        >
+          Overview
+          {activeTab === 'overview' && (
+            <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
+        </button>
         <button
           onClick={() => setActiveTab('approvals')}
           className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
             activeTab === 'approvals' 
               ? 'text-primary' 
-              : 'text-gray-400 hover:text-white'
+              : 'text-muted-foreground hover:text-foreground'
           } whitespace-nowrap`}
         >
           Pending Approvals
@@ -216,7 +225,7 @@ const AdminDashboard: React.FC = () => {
           className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
             activeTab === 'resources'
               ? 'text-primary'
-              : 'text-gray-400 hover:text-white'
+              : 'text-muted-foreground hover:text-foreground'
           } whitespace-nowrap`}
         >
           Manage Resources
@@ -231,7 +240,7 @@ const AdminDashboard: React.FC = () => {
           className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
             activeTab === 'users' 
               ? 'text-primary' 
-              : 'text-gray-400 hover:text-white'
+              : 'text-muted-foreground hover:text-foreground'
           } ${user.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           User Database
@@ -246,12 +255,82 @@ const AdminDashboard: React.FC = () => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className="bg-card border border-white/10 rounded-xl overflow-hidden"
+        className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
       >
-        {activeTab === 'approvals' ? (
+        {activeTab === 'overview' ? (
           <>
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-white">Pending Resource Approvals</h2>
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Overview</h2>
+                <p className="text-sm text-muted-foreground">Quick stats and moderation shortcuts</p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                {user.role === 'admin' ? 'Administrator' : 'Moderator'}
+              </span>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <StatCard
+                  title="Pending Approvals"
+                  value={pendingCount}
+                  icon={Shield}
+                />
+                <StatCard
+                  title="Total Resources"
+                  value={isLoadingResources ? '…' : totalResources}
+                  icon={FileText}
+                />
+                <StatCard
+                  title="Registered Users"
+                  value={user.role === 'admin' ? (isLoadingUsers ? '…' : (totalUsers ?? 0)) : '—'}
+                  icon={Users}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <button
+                  onClick={() => setActiveTab('approvals')}
+                  className="bg-muted/30 border border-border rounded-2xl p-5 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-foreground font-semibold">
+                    <Check className="w-5 h-5 text-primary" />
+                    Review approvals
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2">Approve or reject newly submitted resources.</div>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('resources')}
+                  className="bg-muted/30 border border-border rounded-2xl p-5 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-foreground font-semibold">
+                    <Search className="w-5 h-5 text-primary" />
+                    Manage resources
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2">Search, review, and delete resources.</div>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('users')}
+                  disabled={user.role !== 'admin'}
+                  className={`bg-muted/30 border border-border rounded-2xl p-5 text-left hover:bg-muted/50 transition-colors ${
+                    user.role !== 'admin' ? 'opacity-50 cursor-not-allowed hover:bg-muted/30' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-foreground font-semibold">
+                    <Users className="w-5 h-5 text-primary" />
+                    User database
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2">Roles, disable/enable, and profile lookup.</div>
+                </button>
+              </div>
+            </div>
+          </>
+        ) : activeTab === 'approvals' ? (
+          <>
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-lg font-bold text-foreground">Pending Resource Approvals</h2>
               <span className="px-2 py-1 bg-yellow-500/10 text-yellow-500 text-xs rounded-full border border-yellow-500/20">
                 {pendingResources.length} Pending
               </span>
