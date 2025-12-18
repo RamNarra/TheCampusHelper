@@ -105,6 +105,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // USER-SCOPED TO-DO + HABITS (private)
+    match /users/{userId}/todoItems/{todoId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time;
+
+      allow update: if isOwner(userId)
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/habits/{habitId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time;
+
+      allow update: if isOwner(userId)
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isOwner(userId);
+    }
+
     // LEADERBOARD COLLECTION (Public subset of user data for leaderboard)
     match /leaderboard/{userId} {
       // Anyone authenticated can read leaderboard entries (contains only public data)

@@ -24,6 +24,7 @@ import {
   serverTimestamp,
   updateDoc,
   deleteDoc,
+    writeBatch,
   arrayUnion,
   arrayRemove,
   Firestore,
@@ -333,21 +334,134 @@ export const api = {
         },
 
     // --- TO-DO / HABITS ---
-    onTodoItemsChanged: (uid: string, startDate: string, endDate: string, cb: (items: TodoItem[]) => void) => {
+    clearAllTodos: async (uid: string): Promise<number> => {
+        if (!db) throw new Error('Database not configured');
+        const col = collection(doc(db, 'users', uid), 'todoItems');
+        let deleted = 0;
+        const batchSize = 250;
+
+        while (true) {
+            const snap = await withTimeout(getDocs(query(col, limit(batchSize))), 15000);
+            if (snap.empty) break;
+
+            const batch = writeBatch(db);
+            for (const d of snap.docs) {
+                batch.delete(d.ref);
+            }
+            await withTimeout(batch.commit(), 15000);
+            deleted += snap.size;
+
+            if (snap.size < batchSize) break;
+        }
+
+        return deleted;
+    },
+
+    clearAllHabits: async (uid: string): Promise<number> => {
+        if (!db) throw new Error('Database not configured');
+        const col = collection(doc(db, 'users', uid), 'habits');
+        let deleted = 0;
+        const batchSize = 250;
+
+        while (true) {
+            const snap = await withTimeout(getDocs(query(col, limit(batchSize))), 15000);
+            if (snap.empty) break;
+
+            const batch = writeBatch(db);
+            for (const d of snap.docs) {
+                batch.delete(d.ref);
+            }
+            await withTimeout(batch.commit(), 15000);
+            deleted += snap.size;
+
+            if (snap.size < batchSize) break;
+        }
+
+        return deleted;
+    },
+
+    rolloverIncompleteTodosFromRange: async (uid: string, fromStartDate: string, fromEndDate: string): Promise<number> => {
+        if (!db) throw new Error('Database not configured');
+
+        const toISODate = (d: Date): string => {
+            const pad2 = (n: number) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        };
+        const addDays = (iso: string, days: number): string => {
+            const d = new Date(`${iso}T00:00:00`);
+            d.setDate(d.getDate() + days);
+            return toISODate(d);
+        };
+
+        const col = collection(doc(db, 'users', uid), 'todoItems');
+        const snap = await withTimeout(
+            getDocs(
+                query(
+                    col,
+                    where('date', '>=', fromStartDate),
+                    where('date', '<=', fromEndDate),
+                    orderBy('date', 'asc'),
+                    limit(2000)
+                )
+            ),
+            15000
+        );
+
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as TodoItem));
+        const incompletes = items.filter(t => !t.completed);
+        if (incompletes.length === 0) return 0;
+
+        let created = 0;
+        const chunkSize = 250;
+        for (let i = 0; i < incompletes.length; i += chunkSize) {
+            const chunk = incompletes.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+
+            for (const t of chunk) {
+                const newDate = addDays(t.date, 7);
+                const ref = doc(col);
+                batch.set(ref, {
+                    uid,
+                    date: newDate,
+                    title: t.title,
+                    completed: false,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                } as any);
+            }
+
+            await withTimeout(batch.commit(), 20000);
+            created += chunk.length;
+        }
+
+        return created;
+    },
+
+    onTodoItemsChanged: (
+        uid: string,
+        startDate: string,
+        endDate: string,
+        cb: (items: TodoItem[]) => void,
+        onError?: (e: unknown) => void
+    ) => {
         if (!db) { cb([]); return () => {}; }
         const q = query(
-            collection(db, 'todoItems'),
-            where('uid', '==', uid),
+            collection(doc(db, 'users', uid), 'todoItems'),
             where('date', '>=', startDate),
             where('date', '<=', endDate),
             orderBy('date', 'asc'),
-            orderBy('createdAt', 'asc'),
             limit(2000)
         );
-        return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as TodoItem));
-            cb(list);
-        });
+        return onSnapshot(
+            q,
+            (snap) => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as TodoItem));
+                cb(list);
+            },
+            (err) => {
+                onError?.(err);
+            }
+        );
     },
 
     addTodo: async (params: { uid: string; date: string; title: string }): Promise<string> => {
@@ -360,33 +474,34 @@ export const api = {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         } as any);
-        const ref = await withTimeout(addDoc(collection(db, 'todoItems'), payload as any), 15000);
+        const ref = await withTimeout(addDoc(collection(doc(db, 'users', params.uid), 'todoItems'), payload as any), 15000);
         return ref.id;
     },
 
-    setTodoCompleted: async (todoId: string, completed: boolean): Promise<void> => {
+    setTodoCompleted: async (uid: string, todoId: string, completed: boolean): Promise<void> => {
         if (!db) throw new Error('Database not configured');
-        const ref = doc(db, 'todoItems', todoId);
+        const ref = doc(db, 'users', uid, 'todoItems', todoId);
         await withTimeout(updateDoc(ref, { completed, updatedAt: serverTimestamp() }), 8000);
     },
 
-    deleteTodo: async (todoId: string): Promise<void> => {
+    deleteTodo: async (uid: string, todoId: string): Promise<void> => {
         if (!db) throw new Error('Database not configured');
-        await withTimeout(deleteDoc(doc(db, 'todoItems', todoId)), 8000);
+        await withTimeout(deleteDoc(doc(db, 'users', uid, 'todoItems', todoId)), 8000);
     },
 
-    onHabitsChanged: (uid: string, cb: (items: Habit[]) => void) => {
+    onHabitsChanged: (uid: string, cb: (items: Habit[]) => void, onError?: (e: unknown) => void) => {
         if (!db) { cb([]); return () => {}; }
-        const q = query(
-            collection(db, 'habits'),
-            where('uid', '==', uid),
-            orderBy('createdAt', 'asc'),
-            limit(100)
+        const q = query(collection(doc(db, 'users', uid), 'habits'), orderBy('createdAt', 'asc'), limit(100));
+        return onSnapshot(
+            q,
+            (snap) => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Habit));
+                cb(list);
+            },
+            (err) => {
+                onError?.(err);
+            }
         );
-        return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Habit));
-            cb(list);
-        });
     },
 
     addHabit: async (params: { uid: string; name: string }): Promise<string> => {
@@ -398,13 +513,13 @@ export const api = {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         } as any);
-        const ref = await withTimeout(addDoc(collection(db, 'habits'), payload as any), 15000);
+        const ref = await withTimeout(addDoc(collection(doc(db, 'users', params.uid), 'habits'), payload as any), 15000);
         return ref.id;
     },
 
-    setHabitCompletion: async (habitId: string, date: string, completed: boolean): Promise<void> => {
+    setHabitCompletion: async (uid: string, habitId: string, date: string, completed: boolean): Promise<void> => {
         if (!db) throw new Error('Database not configured');
-        const ref = doc(db, 'habits', habitId);
+        const ref = doc(db, 'users', uid, 'habits', habitId);
         const key = `completions.${date}`;
         await withTimeout(updateDoc(ref, { [key]: completed, updatedAt: serverTimestamp() } as any), 8000);
     },

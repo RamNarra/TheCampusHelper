@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CalendarDays, CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Habit, TodoItem } from '../types';
 import { api } from '../services/firebase';
@@ -80,6 +80,8 @@ const ToDoPage: React.FC = () => {
 
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [addingForDate, setAddingForDate] = useState<Record<string, string>>({});
   const [newHabit, setNewHabit] = useState('');
 
@@ -90,9 +92,17 @@ const ToDoPage: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
+    setError(null);
+    setNotice(null);
 
-    const unsubTodos = api.onTodoItemsChanged(user.uid, weekStartISO, weekEndISO, setTodos);
-    const unsubHabits = api.onHabitsChanged(user.uid, setHabits);
+    const unsubTodos = api.onTodoItemsChanged(user.uid, weekStartISO, weekEndISO, setTodos, (e: any) => {
+      const message = e?.message || String(e);
+      setError(message);
+    });
+    const unsubHabits = api.onHabitsChanged(user.uid, setHabits, (e: any) => {
+      const message = e?.message || String(e);
+      setError(message);
+    });
 
     return () => {
       unsubTodos?.();
@@ -136,11 +146,16 @@ const ToDoPage: React.FC = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="relative pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-secondary/10" />
       <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+              <Sparkles className="w-4 h-4" />
+              Weekly study system
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-muted-foreground">
               <CalendarDays className="w-5 h-5" />
               <span className="text-sm font-medium">Personalized To-Do</span>
             </div>
@@ -149,15 +164,86 @@ const ToDoPage: React.FC = () => {
               Week of {formatShortDate(weekStart)} — {formatShortDate(addDays(weekStart, 6))}
             </p>
           </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm hover:bg-accent/60 backdrop-blur"
+              onClick={async () => {
+                try {
+                  setError(null);
+                  setNotice(null);
+                  const prevStart = toISODate(addDays(weekStart, -7));
+                  const prevEnd = toISODate(addDays(weekStart, -1));
+                  const created = await api.rolloverIncompleteTodosFromRange(user.uid, prevStart, prevEnd);
+                  setNotice(created > 0 ? `Rolled over ${created} unfinished task(s) from last week.` : 'No unfinished tasks to roll over.');
+                } catch (e: any) {
+                  setError(e?.message || 'Rollover failed');
+                }
+              }}
+              title="Copy last week's unfinished tasks into this week"
+            >
+              Rollover unfinished
+            </button>
+            <button
+              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm hover:bg-accent/60 backdrop-blur"
+              onClick={async () => {
+                const ok = window.confirm('Clear ALL your tasks and habits? This cannot be undone.');
+                if (!ok) return;
+                try {
+                  setError(null);
+                  setNotice(null);
+                  const [deletedTodos, deletedHabits] = await Promise.all([
+                    api.clearAllTodos(user.uid),
+                    api.clearAllHabits(user.uid),
+                  ]);
+                  setNotice(`Cleared ${deletedTodos} task(s) and ${deletedHabits} habit(s). Fresh start.`);
+                } catch (e: any) {
+                  setError(e?.message || 'Clear failed');
+                }
+              }}
+              title="Start fresh"
+            >
+              Clear everything
+            </button>
+          </div>
         </div>
       </motion.div>
+
+      {notice && (
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="mb-8 rounded-2xl border border-border bg-card/60 p-4 text-sm backdrop-blur"
+        >
+          <div className="font-medium text-foreground">{notice}</div>
+        </motion.div>
+      )}
+
+      {error && (
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="mb-8 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 w-4 h-4 text-destructive" />
+            <div>
+              <div className="font-semibold text-foreground">To-Do data error</div>
+              <div className="mt-1 text-muted-foreground break-words">{error}</div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                If you see <span className="font-medium">Missing or insufficient permissions</span>, publish the updated Firestore rules.
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Overall Progress */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.05 }}
-        className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-8"
+        className="bg-card/70 border border-border rounded-3xl p-6 shadow-sm mb-8 backdrop-blur"
       >
         <div className="flex flex-col lg:flex-row lg:items-center gap-6">
           <div className="flex-1">
@@ -218,7 +304,7 @@ const ToDoPage: React.FC = () => {
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.08 }}
-                className="bg-card border border-border rounded-2xl p-5 shadow-sm"
+                className="bg-card/70 border border-border rounded-3xl p-5 shadow-sm backdrop-blur"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -238,7 +324,10 @@ const ToDoPage: React.FC = () => {
                       <div key={t.id} className="flex items-center gap-3 bg-muted/30 rounded-xl px-3 py-2">
                         <button
                           className="shrink-0 text-primary"
-                          onClick={() => api.setTodoCompleted(t.id, !t.completed)}
+                          onClick={() => {
+                            setError(null);
+                            return api.setTodoCompleted(user.uid, t.id, !t.completed);
+                          }}
                           title={t.completed ? 'Mark as incomplete' : 'Mark as complete'}
                         >
                           <CheckCircle2 className={t.completed ? 'w-5 h-5' : 'w-5 h-5 opacity-40'} />
@@ -248,7 +337,10 @@ const ToDoPage: React.FC = () => {
                         </div>
                         <button
                           className="text-muted-foreground hover:text-foreground"
-                          onClick={() => api.deleteTodo(t.id)}
+                          onClick={() => {
+                            setError(null);
+                            return api.deleteTodo(user.uid, t.id);
+                          }}
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -270,6 +362,7 @@ const ToDoPage: React.FC = () => {
                     onClick={async () => {
                       const text = (addingForDate[iso] || '').trim();
                       if (!text) return;
+                      setError(null);
                       await api.addTodo({ uid: user.uid, date: iso, title: text });
                       setAddingForDate((prev) => ({ ...prev, [iso]: '' }));
                     }}
@@ -287,7 +380,7 @@ const ToDoPage: React.FC = () => {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.08 }}
-          className="bg-card border border-border rounded-2xl p-6 shadow-sm"
+          className="bg-card/70 border border-border rounded-3xl p-6 shadow-sm backdrop-blur"
         >
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-foreground">Habit Tracker</h2>
@@ -306,6 +399,7 @@ const ToDoPage: React.FC = () => {
               onClick={async () => {
                 const name = newHabit.trim();
                 if (!name) return;
+                setError(null);
                 await api.addHabit({ uid: user.uid, name });
                 setNewHabit('');
               }}
@@ -346,7 +440,10 @@ const ToDoPage: React.FC = () => {
                                 ? 'h-9 rounded-lg bg-primary/20 border border-primary/30'
                                 : 'h-9 rounded-lg bg-background border border-border hover:bg-muted'
                             }
-                            onClick={() => api.setHabitCompletion(h.id, iso, !checked)}
+                            onClick={() => {
+                              setError(null);
+                              return api.setHabitCompletion(user.uid, h.id, iso, !checked);
+                            }}
                             title={checked ? 'Mark incomplete' : 'Mark complete'}
                           />
                         );
