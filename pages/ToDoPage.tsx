@@ -32,6 +32,11 @@ const formatShortDate = (d: Date): string =>
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
+const btnBase =
+  'inline-flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
+const btnTonal = `${btnBase} border border-border bg-background/70 text-foreground hover:bg-accent/60 backdrop-blur`;
+const btnFilled = `${btnBase} bg-primary text-primary-foreground hover:opacity-90`;
+
 const ProgressRing: React.FC<{ value: number; size?: number; stroke?: number }> = ({
   value,
   size = 72,
@@ -146,7 +151,7 @@ const ToDoPage: React.FC = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="relative pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="relative pt-8 pb-12 px-4 max-w-screen-2xl mx-auto sm:px-6 lg:px-8 2xl:px-10">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-secondary/10" />
       <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8">
         <div className="flex items-start justify-between gap-4">
@@ -167,7 +172,7 @@ const ToDoPage: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-2">
             <button
-              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm hover:bg-accent/60 backdrop-blur"
+              className={btnTonal}
               onClick={async () => {
                 try {
                   setError(null);
@@ -185,7 +190,7 @@ const ToDoPage: React.FC = () => {
               Rollover unfinished
             </button>
             <button
-              className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-sm hover:bg-accent/60 backdrop-blur"
+              className={btnTonal}
               onClick={async () => {
                 const ok = window.confirm('Clear ALL your tasks and habits? This cannot be undone.');
                 if (!ok) return;
@@ -213,7 +218,7 @@ const ToDoPage: React.FC = () => {
         <motion.div
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mb-8 rounded-2xl border border-border bg-card/60 p-4 text-sm backdrop-blur"
+          className="mb-8 rounded-2xl border border-border bg-card/70 p-4 text-sm backdrop-blur"
         >
           <div className="font-medium text-foreground">{notice}</div>
         </motion.div>
@@ -291,9 +296,17 @@ const ToDoPage: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Week + Habit Tracker */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Week Dashboard (full width) */}
+      <div>
+        <div className="flex items-end justify-between gap-4 mb-4">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Your week</div>
+            <h2 className="text-lg font-bold text-foreground tracking-tight">Daily board</h2>
+          </div>
+          <div className="hidden md:block text-xs text-muted-foreground">Full-width dashboard layout</div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-5">
           {weekDays.map((day) => {
             const iso = toISODate(day);
             const items = todosByDate[iso] || [];
@@ -305,28 +318,29 @@ const ToDoPage: React.FC = () => {
                 key={iso}
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.08 }}
+                transition={{ delay: 0.06 }}
                 className="rounded-3xl p-[1px] bg-gradient-to-b from-primary/20 via-border to-transparent"
               >
-                <div className="bg-card/70 border border-border/60 rounded-3xl p-5 shadow-sm backdrop-blur">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-muted-foreground">{formatShortDate(day)}</div>
-                      <div className="text-base font-bold text-foreground tracking-tight">{formatDayLabel(day)}</div>
+                <div className="bg-card/70 border border-border/60 rounded-3xl p-4 shadow-sm backdrop-blur h-full flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground truncate">{formatShortDate(day)}</div>
+                      <div className="text-sm font-bold text-foreground tracking-tight truncate">{formatDayLabel(day)}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{done}/{items.length} done</div>
                     </div>
-                    <ProgressRing value={pct} size={64} stroke={8} />
+                    <ProgressRing value={pct} size={56} stroke={7} />
                   </div>
 
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-3 space-y-2 flex-1 overflow-y-auto pr-1">
                     {items.length === 0 ? (
-                      <div className="text-sm text-muted-foreground bg-muted/30 rounded-2xl p-4 border border-border/60">
-                        No tasks yet. Add one and lock in.
+                      <div className="text-sm text-muted-foreground bg-muted/20 rounded-2xl p-3 border border-border/60">
+                        No tasks yet.
                       </div>
                     ) : (
                       items.map((t) => (
                         <div
                           key={t.id}
-                          className="group flex items-center gap-3 bg-muted/20 hover:bg-muted/30 rounded-2xl px-3 py-2 border border-border/60 transition-colors"
+                          className="group flex items-center gap-2 bg-muted/15 hover:bg-muted/25 rounded-2xl px-2.5 py-2 border border-border/60 transition-colors"
                         >
                           <button
                             className="shrink-0"
@@ -346,8 +360,8 @@ const ToDoPage: React.FC = () => {
                               {t.completed ? <Check className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 opacity-40" />}
                             </div>
                           </button>
-                          <div className={t.completed ? 'text-sm text-muted-foreground line-through flex-1' : 'text-sm text-foreground flex-1'}>
-                            {t.title}
+                          <div className={t.completed ? 'text-xs text-muted-foreground line-through flex-1 min-w-0' : 'text-xs text-foreground flex-1 min-w-0'}>
+                            <span className="block truncate">{t.title}</span>
                           </div>
                           <button
                             className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
@@ -364,15 +378,23 @@ const ToDoPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-3 flex gap-2">
                     <input
                       value={addingForDate[iso] || ''}
                       onChange={(e) => setAddingForDate((prev) => ({ ...prev, [iso]: e.target.value }))}
-                      placeholder="Add a task…"
+                      placeholder="Add task…"
                       className="flex-1 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
+                      onKeyDown={async (e) => {
+                        if (e.key !== 'Enter') return;
+                        const text = (addingForDate[iso] || '').trim();
+                        if (!text) return;
+                        setError(null);
+                        await api.addTodo({ uid: user.uid, date: iso, title: text });
+                        setAddingForDate((prev) => ({ ...prev, [iso]: '' }));
+                      }}
                     />
                     <button
-                      className="px-3 py-2 rounded-2xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                      className={btnFilled}
                       onClick={async () => {
                         const text = (addingForDate[iso] || '').trim();
                         if (!text) return;
@@ -390,94 +412,103 @@ const ToDoPage: React.FC = () => {
             );
           })}
         </div>
+      </div>
 
-        <motion.div
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.08 }}
-          className="rounded-3xl p-[1px] bg-gradient-to-b from-primary/20 via-border to-transparent"
-        >
-          <div className="bg-card/70 border border-border/60 rounded-3xl p-6 shadow-sm backdrop-blur">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground">Consistency</div>
-                <h2 className="text-lg font-bold text-foreground">Habit Tracker</h2>
+      {/* Habit Tracker (moved down, full width) */}
+      <motion.div
+        initial={{ y: 10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.08 }}
+        className="mt-10 rounded-3xl p-[1px] bg-gradient-to-b from-primary/20 via-border to-transparent"
+      >
+        <div className="bg-card/70 border border-border/60 rounded-3xl p-6 shadow-sm backdrop-blur">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Consistency</div>
+              <h2 className="text-lg font-bold text-foreground">Habit Tracker</h2>
+            </div>
+            <div className="text-xs text-muted-foreground">Last 7 days</div>
+          </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-2">
+            <input
+              value={newHabit}
+              onChange={(e) => setNewHabit(e.target.value)}
+              placeholder="Add a habit…"
+              className="flex-1 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
+              onKeyDown={async (e) => {
+                if (e.key !== 'Enter') return;
+                const name = newHabit.trim();
+                if (!name) return;
+                setError(null);
+                await api.addHabit({ uid: user.uid, name });
+                setNewHabit('');
+              }}
+            />
+            <button
+              className={btnFilled}
+              onClick={async () => {
+                const name = newHabit.trim();
+                if (!name) return;
+                setError(null);
+                await api.addHabit({ uid: user.uid, name });
+                setNewHabit('');
+              }}
+              title="Add habit"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="mt-5 overflow-x-auto">
+            <div className="min-w-[720px]">
+              <div className="grid grid-cols-8 gap-2 text-xs text-muted-foreground mb-2">
+                <div className="col-span-1">Habit</div>
+                {weekDays.map((d) => (
+                  <div key={toISODate(d)} className="text-center">
+                    {d.toLocaleDateString(undefined, { weekday: 'short' })}
+                  </div>
+                ))}
               </div>
-              <div className="text-xs text-muted-foreground">Last 7 days</div>
-            </div>
 
-            <div className="mt-4 flex gap-2">
-              <input
-                value={newHabit}
-                onChange={(e) => setNewHabit(e.target.value)}
-                placeholder="Add a habit…"
-                className="flex-1 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
-              />
-              <button
-                className="px-3 py-2 rounded-2xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-                onClick={async () => {
-                  const name = newHabit.trim();
-                  if (!name) return;
-                  setError(null);
-                  await api.addHabit({ uid: user.uid, name });
-                  setNewHabit('');
-                }}
-                title="Add habit"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 overflow-x-auto">
-              <div className="min-w-[520px]">
-                <div className="grid grid-cols-8 gap-2 text-xs text-muted-foreground mb-2">
-                  <div className="col-span-1">Habit</div>
-                  {weekDays.map((d) => (
-                    <div key={toISODate(d)} className="text-center">
-                      {d.toLocaleDateString(undefined, { weekday: 'short' })}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  {habits.length === 0 ? (
-                    <div className="text-sm text-muted-foreground bg-muted/30 rounded-2xl p-4 border border-border/60">No habits yet</div>
-                  ) : (
-                    habits.map((h) => (
-                      <div key={h.id} className="grid grid-cols-8 gap-2 items-center bg-muted/15 hover:bg-muted/20 rounded-2xl p-2 border border-border/60 transition-colors">
-                        <div className="col-span-1 text-sm text-foreground font-medium truncate" title={h.name}>
-                          {h.name}
-                        </div>
-                        {weekDays.map((d) => {
-                          const iso = toISODate(d);
-                          const checked = !!(h.completions && (h.completions as any)[iso]);
-                          return (
-                            <button
-                              key={iso}
-                              className={
-                                checked
-                                  ? 'h-9 rounded-xl bg-primary/20 border border-primary/30 text-primary flex items-center justify-center'
-                                  : 'h-9 rounded-xl bg-background/60 border border-border hover:bg-muted/40 text-muted-foreground flex items-center justify-center'
-                              }
-                              onClick={() => {
-                                setError(null);
-                                return api.setHabitCompletion(user.uid, h.id, iso, !checked);
-                              }}
-                              title={checked ? 'Mark incomplete' : 'Mark complete'}
-                            >
-                              {checked ? <Check className="h-4 w-4" /> : null}
-                            </button>
-                          );
-                        })}
+              <div className="space-y-2">
+                {habits.length === 0 ? (
+                  <div className="text-sm text-muted-foreground bg-muted/20 rounded-2xl p-4 border border-border/60">No habits yet</div>
+                ) : (
+                  habits.map((h) => (
+                    <div key={h.id} className="grid grid-cols-8 gap-2 items-center bg-muted/10 hover:bg-muted/15 rounded-2xl p-2 border border-border/60 transition-colors">
+                      <div className="col-span-1 text-sm text-foreground font-medium truncate" title={h.name}>
+                        {h.name}
                       </div>
-                    ))
-                  )}
-                </div>
+                      {weekDays.map((d) => {
+                        const iso = toISODate(d);
+                        const checked = !!(h.completions && (h.completions as any)[iso]);
+                        return (
+                          <button
+                            key={iso}
+                            className={
+                              checked
+                                ? 'h-9 rounded-xl bg-primary/20 border border-primary/30 text-primary flex items-center justify-center'
+                                : 'h-9 rounded-xl bg-background/60 border border-border hover:bg-muted/40 text-muted-foreground flex items-center justify-center'
+                            }
+                            onClick={() => {
+                              setError(null);
+                              return api.setHabitCompletion(user.uid, h.id, iso, !checked);
+                            }}
+                            title={checked ? 'Mark incomplete' : 'Mark complete'}
+                          >
+                            {checked ? <Check className="h-4 w-4" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 };
