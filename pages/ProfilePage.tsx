@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { FileText, Upload, LogOut, Bookmark, FolderOpen } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, NavLink } from 'react-router-dom';
 import GamificationCard from '../components/GamificationCard';
 import { api } from '../services/firebase';
 
@@ -25,68 +25,116 @@ const ProfilePage: React.FC = () => {
       <motion.div 
         initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-card border border-border rounded-2xl p-8 mb-8 relative overflow-hidden shadow-sm"
+        className="bg-card border border-border rounded-2xl mb-8 relative overflow-hidden shadow-sm"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
-        
-        <div className="flex flex-col sm:flex-row items-center gap-8 relative z-10">
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-background shadow-lg overflow-hidden bg-muted flex-shrink-0">
-             <img 
-                src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-          </div>
-          <div className="text-center sm:text-left flex-1">
-            <h1 className="text-3xl font-bold text-foreground mb-1">{user.displayName}</h1>
-            <p className="text-base text-muted-foreground mb-4">{user.email}</p>
-            <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                {user.role === 'admin' ? 'Administrator' : 'Student'}
-              </span>
-              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20">
-                {user.branch || 'General'}
-              </span>
+        {/* Banner */}
+        <div className="h-28 sm:h-32 bg-primary/15 relative">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-primary/20 rounded-full blur-[90px] -translate-y-1/2 translate-x-1/2" />
+        </div>
+
+        {/* Body */}
+        <div className="p-6 sm:p-8 pt-0 relative z-10">
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="flex items-start gap-4 w-full lg:w-auto -mt-10">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-card shadow-lg overflow-hidden bg-muted flex-shrink-0">
+                <img
+                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="pt-10 sm:pt-12">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">{user.displayName}</h1>
+                <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                    {user.role === 'admin' ? 'Administrator' : 'Student'}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20">
+                    {user.branch || 'General'}
+                  </span>
+                  {user.year ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
+                      Year {user.year}
+                    </span>
+                  ) : null}
+                  {user.section ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
+                      Sec {user.section}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
-            {isOwnerEmail && user.role !== 'admin' ? (
-              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                <button
-                  disabled={!canAttemptAdminFix}
-                  onClick={async () => {
-                    setAdminFixLoading(true);
-                    setAdminFixMessage(null);
-                    try {
-                      const result = await api.bootstrapAdminAccessDetailed();
-                      if (!result.ok) {
-                        setAdminFixMessage(`Admin restore failed (${result.status}). ${result.bodyText || ''}`.trim());
-                        return;
-                      }
-                      await api.forceRefreshAuthToken();
-                      setAdminFixMessage('Admin restore requested. Refreshing…');
-                      // Let Firestore/claims propagate.
-                      setTimeout(() => window.location.reload(), 600);
-                    } finally {
-                      setAdminFixLoading(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-semibold disabled:opacity-50"
-                >
-                  {adminFixLoading ? 'Restoring…' : 'Restore Admin Access'}
-                </button>
-                {adminFixMessage ? (
-                  <div className="text-xs text-muted-foreground break-words max-w-xl">{adminFixMessage}</div>
+            <div className="flex-1 w-full">
+              <div className="bg-muted/30 border border-border rounded-2xl p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About</h2>
+                  <NavLink
+                    to="/todo"
+                    className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Open Mega Calendar
+                  </NavLink>
+                </div>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">Branch:</span> {user.branch || '—'}
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">College Email:</span> {user.collegeEmail || '—'}
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">DOB:</span> {user.dateOfBirth || '—'}
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">Role:</span> {user.role}
+                  </div>
+                </div>
+
+                {isOwnerEmail && user.role !== 'admin' ? (
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <button
+                      disabled={!canAttemptAdminFix}
+                      onClick={async () => {
+                        setAdminFixLoading(true);
+                        setAdminFixMessage(null);
+                        try {
+                          const result = await api.bootstrapAdminAccessDetailed();
+                          if (!result.ok) {
+                            setAdminFixMessage(`Admin restore failed (${result.status}). ${result.bodyText || ''}`.trim());
+                            return;
+                          }
+                          await api.forceRefreshAuthToken();
+                          setAdminFixMessage('Admin restore requested. Refreshing…');
+                          setTimeout(() => window.location.reload(), 600);
+                        } finally {
+                          setAdminFixLoading(false);
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-semibold disabled:opacity-50"
+                    >
+                      {adminFixLoading ? 'Restoring…' : 'Restore Admin Access'}
+                    </button>
+                    {adminFixMessage ? (
+                      <div className="text-xs text-muted-foreground break-words max-w-xl">{adminFixMessage}</div>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-            ) : null}
+
+              <div className="mt-4">
+                <button
+                  onClick={logout}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-sm font-medium"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Logout
+                </button>
+              </div>
+            </div>
           </div>
-          <button 
-            onClick={logout}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-sm font-medium"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
         </div>
       </motion.div>
 

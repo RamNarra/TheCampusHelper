@@ -164,6 +164,42 @@ service cloud.firestore {
                     );
     }
 
+    // TO-DO ITEMS (private per-user)
+    match /todoItems/{todoId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time;
+
+      allow update: if isAuthenticated()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    // HABITS (private per-user)
+    match /habits/{habitId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time;
+
+      allow update: if isAuthenticated()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
     // INTERACTIONS COLLECTION (private per-user analytics)
     match /interactions/{interactionId} {
       allow create: if isAuthenticated()

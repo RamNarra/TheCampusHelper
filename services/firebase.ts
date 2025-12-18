@@ -30,7 +30,7 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole } from '../types';
+import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit } from '../types';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
@@ -331,6 +331,83 @@ export const api = {
                 publicId: `${params.resourceId}/${filename}`,
             });
         },
+
+    // --- TO-DO / HABITS ---
+    onTodoItemsChanged: (uid: string, startDate: string, endDate: string, cb: (items: TodoItem[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, 'todoItems'),
+            where('uid', '==', uid),
+            where('date', '>=', startDate),
+            where('date', '<=', endDate),
+            orderBy('date', 'asc'),
+            orderBy('createdAt', 'asc'),
+            limit(2000)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as TodoItem));
+            cb(list);
+        });
+    },
+
+    addTodo: async (params: { uid: string; date: string; title: string }): Promise<string> => {
+        if (!db) throw new Error('Database not configured');
+        const payload = stripUndefined({
+            uid: params.uid,
+            date: params.date,
+            title: params.title,
+            completed: false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        } as any);
+        const ref = await withTimeout(addDoc(collection(db, 'todoItems'), payload as any), 15000);
+        return ref.id;
+    },
+
+    setTodoCompleted: async (todoId: string, completed: boolean): Promise<void> => {
+        if (!db) throw new Error('Database not configured');
+        const ref = doc(db, 'todoItems', todoId);
+        await withTimeout(updateDoc(ref, { completed, updatedAt: serverTimestamp() }), 8000);
+    },
+
+    deleteTodo: async (todoId: string): Promise<void> => {
+        if (!db) throw new Error('Database not configured');
+        await withTimeout(deleteDoc(doc(db, 'todoItems', todoId)), 8000);
+    },
+
+    onHabitsChanged: (uid: string, cb: (items: Habit[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(
+            collection(db, 'habits'),
+            where('uid', '==', uid),
+            orderBy('createdAt', 'asc'),
+            limit(100)
+        );
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Habit));
+            cb(list);
+        });
+    },
+
+    addHabit: async (params: { uid: string; name: string }): Promise<string> => {
+        if (!db) throw new Error('Database not configured');
+        const payload = stripUndefined({
+            uid: params.uid,
+            name: params.name,
+            completions: {},
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        } as any);
+        const ref = await withTimeout(addDoc(collection(db, 'habits'), payload as any), 15000);
+        return ref.id;
+    },
+
+    setHabitCompletion: async (habitId: string, date: string, completed: boolean): Promise<void> => {
+        if (!db) throw new Error('Database not configured');
+        const ref = doc(db, 'habits', habitId);
+        const key = `completions.${date}`;
+        await withTimeout(updateDoc(ref, { [key]: completed, updatedAt: serverTimestamp() } as any), 8000);
+    },
 
     // SUBSCRIPTIONS
     onAuthStateChanged: (cb: (user: User | null) => void) => {

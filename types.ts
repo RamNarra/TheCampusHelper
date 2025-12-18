@@ -44,6 +44,25 @@ export interface Resource {
   updatedAt?: any; // Firestore Timestamp
 }
 
+export interface TodoItem {
+  id: string;
+  uid: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  completed: boolean;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface Habit {
+  id: string;
+  uid: string;
+  name: string;
+  completions?: Record<string, boolean>; // date -> completed
+  createdAt?: any;
+  updatedAt?: any;
+}
+
 export interface StatMetric {
   label: string;
   value: string;
