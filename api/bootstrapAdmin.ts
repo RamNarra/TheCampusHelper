@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import { randomUUID } from 'crypto';
 import * as admin from 'firebase-admin';
 import { Buffer } from 'buffer';
 
@@ -79,7 +79,7 @@ function parseAdminAllowlist(): string[] {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const requestId = crypto.randomUUID();
+  const requestId = randomUUID();
 
   res.setHeader('Cache-Control', 'no-store');
 
