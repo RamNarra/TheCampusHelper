@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
-import * as admin from 'firebase-admin';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { Buffer } from 'buffer';
 
 export const config = {
@@ -29,15 +31,15 @@ const MAX_BODY_SIZE = 20 * 1024; // 20KB
 const DEFAULT_ADMIN_EMAILS = ['ramcharannarra8@gmail.com'];
 
 // --- FIREBASE ADMIN INIT ---
-if (!admin.apps.length) {
+if (!getApps().length) {
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (projectId && clientEmail && privateKey) {
     try {
-      admin.initializeApp({
-        credential: admin.credential.cert({
+      initializeApp({
+        credential: cert({
           projectId,
           clientEmail,
           privateKey: privateKey.replace(/\\n/g, '\n'),
@@ -124,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const idToken = bearerToken.split('Bearer ')[1];
 
   try {
-    if (!admin.apps.length) {
+    if (!getApps().length) {
       const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
       const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
       const privateKey = process.env.FIREBASE_PRIVATE_KEY;
@@ -139,7 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const decoded = await admin.auth().verifyIdToken(idToken);
+    const decoded = await getAuth().verifyIdToken(idToken);
     const email = (decoded.email || '').toLowerCase();
     const uid = decoded.uid;
 
@@ -148,22 +150,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const userRecord = await admin.auth().getUser(uid);
+    const userRecord = await getAuth().getUser(uid);
     const existingClaims = (userRecord.customClaims || {}) as Record<string, any>;
     if (existingClaims.admin !== true) {
-      await admin.auth().setCustomUserClaims(uid, { ...existingClaims, admin: true });
+      await getAuth().setCustomUserClaims(uid, { ...existingClaims, admin: true });
     }
 
     // Keep Firestore role in sync for UI and back-compat.
     try {
-      const db = admin.firestore();
+      const db = getFirestore();
       await db
         .collection('users')
         .doc(uid)
         .set(
           {
             role: 'admin',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           },
           { merge: true }
         );
