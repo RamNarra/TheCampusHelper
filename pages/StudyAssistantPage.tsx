@@ -8,7 +8,15 @@ import { getAuthToken } from '../services/firebase';
 const CONTEXT_TRUNCATE_LENGTH = 200;
 
 // Helper function to generate unique message ID
-const generateMessageId = () => crypto.randomUUID();
+const generateMessageId = () => {
+  try {
+    const c = (globalThis as any).crypto;
+    if (c?.randomUUID) return c.randomUUID();
+  } catch {
+    // ignore
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
 
 const StudyAssistantPage: React.FC = () => {
   const { user } = useAuth();
@@ -90,8 +98,18 @@ const StudyAssistantPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to get response');
+        if (response.status === 404) {
+          throw new Error('Study Assistant backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.');
+        }
+
+        let message = 'Failed to get response';
+        try {
+          const error = await response.json();
+          message = error?.error || error?.message || message;
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(message);
       }
 
       const data = await response.json();

@@ -200,7 +200,7 @@ const QuizPage: React.FC = () => {
             </p>
             <Link
               to="/login"
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
             >
               <LogIn className="w-5 h-5 mr-2" />
               Sign In to Continue
@@ -349,7 +349,7 @@ const QuizPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isGenerating}
-                    className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+                    className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
                   >
                     {isGenerating ? (
                       <>
@@ -447,7 +447,7 @@ const QuizPage: React.FC = () => {
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-primary bg-primary text-white' : 'border-border'
+                              isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border'
                             }`}>
                               {isSelected && <CheckCircle2 className="w-4 h-4" />}
                             </div>
@@ -475,7 +475,7 @@ const QuizPage: React.FC = () => {
                 <button
                   onClick={handleNext}
                   disabled={!selectedAnswers[currentQuestion.id]}
-                  className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30"
+                  className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30"
                 >
                   {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
                 </button>
@@ -521,7 +521,7 @@ const QuizPage: React.FC = () => {
 
                 <button
                   onClick={handleRestart}
-                  className="px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 inline-flex items-center gap-2"
+                  className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 inline-flex items-center gap-2"
                 >
                   <RotateCcw className="w-5 h-5" />
                   Take Another Quiz

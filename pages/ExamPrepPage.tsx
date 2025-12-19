@@ -165,20 +165,20 @@ const ExamPrepPage: React.FC = () => {
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground flex items-center gap-3">
             <Brain className="w-10 h-10 text-primary" />
             Exam Preparation Dashboard
           </h1>
           <button
             disabled
-            className="flex items-center gap-2 px-4 py-2 bg-primary/50 text-white rounded-lg cursor-not-allowed transition-all font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-primary/50 text-primary-foreground rounded-lg cursor-not-allowed transition-all font-medium"
             title="Coming soon"
           >
             <Plus className="w-5 h-5" />
             Add Exam
           </button>
         </div>
-        <p className="text-gray-400 text-lg">
+        <p className="text-muted-foreground text-lg">
           AI-powered tracking, personalized plans, and analytics for focused exam preparation.
         </p>
       </div>
@@ -196,8 +196,8 @@ const ExamPrepPage: React.FC = () => {
                 onClick={() => setSelectedExam(exam)}
                 className={`px-6 py-3 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
                   selectedExam?.id === exam.id
-                    ? 'bg-primary text-white shadow-lg'
-                    : 'bg-card text-gray-400 hover:text-white hover:bg-card/80 border border-border'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-card text-muted-foreground hover:text-foreground hover:bg-card/80 border border-border'
                 }`}
               >
                 <div className="flex flex-col items-start">
@@ -256,7 +256,7 @@ const ExamPrepPage: React.FC = () => {
             >
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium text-gray-300">Readiness</span>
+                <span className="text-sm font-medium text-muted-foreground">Readiness</span>
               </div>
               <div className={`text-3xl font-bold ${getReadinessColor(selectedExam.progress.predictedReadiness)}`}>
                 {selectedExam.progress.predictedReadiness}%
@@ -273,7 +273,7 @@ const ExamPrepPage: React.FC = () => {
             >
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
-                <span className="text-sm font-medium text-gray-300">Completed</span>
+                <span className="text-sm font-medium text-muted-foreground">Completed</span>
               </div>
               <div className="text-3xl font-bold text-white">
                 {selectedExam.progress.completed}
@@ -292,7 +292,7 @@ const ExamPrepPage: React.FC = () => {
             >
               <div className="flex items-center gap-2 mb-2">
                 <Heart className="w-5 h-5 text-pink-500" />
-                <span className="text-sm font-medium text-gray-300">Stress Level</span>
+                <span className="text-sm font-medium text-muted-foreground">Stress Level</span>
               </div>
               <div className={`text-3xl font-bold capitalize ${getStressColor(selectedExam.stressLevel)}`}>
                 {selectedExam.stressLevel || 'Low'}
@@ -333,7 +333,7 @@ const ExamPrepPage: React.FC = () => {
                       <div className="flex items-start gap-2 text-sm">
                         <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
                         <div>
-                          <span className="text-gray-400">Weak Topics: </span>
+                          <span className="text-muted-foreground">Weak Topics: </span>
                           <span className="text-yellow-500">{subject.weakTopics.join(', ')}</span>
                         </div>
                       </div>
@@ -426,14 +426,14 @@ const ExamPrepPage: React.FC = () => {
                     key={idx}
                     className="p-3 bg-secondary/10 border border-secondary/20 rounded-lg"
                   >
-                    <p className="text-sm text-gray-300">{rec}</p>
+                    <p className="text-sm text-muted-foreground">{rec}</p>
                   </div>
                 ))}
                 {selectedExam.stressLevel === 'high' && (
                   <div className="p-3 bg-pink-500/10 border border-pink-500/20 rounded-lg">
                     <div className="flex items-start gap-2">
                       <Heart className="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-gray-300">
+                      <div className="text-sm text-muted-foreground">
                         <p className="font-medium text-pink-500 mb-1">High Stress Detected</p>
                         <p className="text-xs">Take regular breaks, practice deep breathing, and maintain a healthy sleep schedule.</p>
                       </div>
@@ -447,11 +447,11 @@ const ExamPrepPage: React.FC = () => {
       ) : (
         <div className="text-center py-20">
           <Brain className="w-20 h-20 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-300 mb-2">No Exams Added</h3>
+          <h3 className="text-xl font-bold text-foreground mb-2">No Exams Added</h3>
           <p className="text-gray-500 mb-6">Start by adding your first exam to begin tracking.</p>
           <button
             disabled
-            className="px-6 py-3 bg-primary/50 text-white rounded-lg cursor-not-allowed transition-all font-medium"
+            className="px-6 py-3 bg-primary/50 text-primary-foreground rounded-lg cursor-not-allowed transition-all font-medium"
             title="Coming soon"
           >
             Add Your First Exam

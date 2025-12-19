@@ -23,26 +23,35 @@
         theme: {
           extend: {
             colors: {
-              background: 'var(--background)',
-              foreground: 'var(--foreground)',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
               primary: {
-                DEFAULT: 'var(--primary)',
-                foreground: 'var(--primary-foreground)',
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))',
               },
               secondary: {
-                DEFAULT: 'var(--secondary)',
-                foreground: 'var(--secondary-foreground)',
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive))',
+                foreground: 'hsl(var(--destructive-foreground))',
               },
               muted: {
-                DEFAULT: 'var(--muted)',
-                foreground: 'var(--muted-foreground)',
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))',
               },
               card: {
-                DEFAULT: 'var(--card)',
-                foreground: 'var(--card-foreground)',
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))',
               },
-              border: 'var(--border)',
-              input: 'var(--input)',
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
             },
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
@@ -64,52 +73,70 @@
 
     <style>
       :root {
-        /* Light Mode - SNIST Theme (Royal Blue & Gold) */
-        --background: #ffffff;
-        --foreground: #0f172a; /* Slate-900 */
-        
-        --card: #ffffff;
-        --card-foreground: #0f172a;
-        
-        --primary: #1e40af; /* Blue-800 - Deep Royal Blue */
-        --primary-foreground: #ffffff;
-        
-        --secondary: #ca8a04; /* Yellow-600 - Academic Gold */
-        --secondary-foreground: #ffffff;
-        
-        --muted: #f1f5f9; /* Slate-100 */
-        --muted-foreground: #475569; /* Slate-600 */
-        
-        --border: #cbd5e1; /* Slate-300 */
-        --input: #cbd5e1;
-        
-        --radius: 0.5rem; 
+        /* Material You / Material 3 inspired (static) */
+        --background: 0 0% 100%;
+        --foreground: 222 47% 11%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+
+        /* Primary seed-ish: modern indigo */
+        --primary: 258 62% 43%;
+        --primary-foreground: 0 0% 100%;
+
+        /* Secondary: supportive tone */
+        --secondary: 269 19% 42%;
+        --secondary-foreground: 0 0% 100%;
+
+        /* Accent: subtle surface tint (used for hover backgrounds) */
+        --accent: 258 40% 96%;
+        --accent-foreground: 222 47% 11%;
+
+        --muted: 258 30% 96%;
+        --muted-foreground: 220 10% 40%;
+
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 220 13% 88%;
+        --input: 220 13% 88%;
+        --ring: 258 62% 43%;
+
+        /* Material 3 tends to use larger radii */
+        --radius: 0.85rem;
       }
 
       .dark {
-        /* Dark Mode - SNIST Theme */
-        --background: #09090b; /* Zinc-950 */
-        --foreground: #fafafa; /* Zinc-50 */
-        
-        --card: #18181b; /* Zinc-900 */
-        --card-foreground: #fafafa;
-        
-        --primary: #3b82f6; /* Blue-500 - Bright Blue */
-        --primary-foreground: #ffffff;
-        
-        --secondary: #fbbf24; /* Amber-400 - Bright Gold */
-        --secondary-foreground: #451a03; /* Amber-950 - Contrast Text */
-        
-        --muted: #27272a; /* Zinc-800 */
-        --muted-foreground: #a1a1aa; /* Zinc-400 */
-        
-        --border: #27272a; /* Zinc-800 */
-        --input: #27272a;
+        /* Material You / Material 3 inspired dark */
+        --background: 240 10% 4%;
+        --foreground: 0 0% 98%;
+
+        --card: 240 6% 10%;
+        --card-foreground: 0 0% 98%;
+
+        --primary: 258 80% 74%;
+        --primary-foreground: 258 30% 12%;
+
+        --secondary: 269 16% 72%;
+        --secondary-foreground: 258 30% 12%;
+
+        --accent: 240 6% 16%;
+        --accent-foreground: 0 0% 98%;
+
+        --muted: 240 4% 16%;
+        --muted-foreground: 240 5% 72%;
+
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 240 4% 18%;
+        --input: 240 4% 18%;
+        --ring: 258 80% 74%;
       }
 
       body {
-        background-color: var(--background);
-        color: var(--foreground);
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         font-family: 'Inter', sans-serif;
         transition: background-color 0.3s ease, color 0.3s ease;
         -webkit-font-smoothing: antialiased;
@@ -122,7 +149,7 @@
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: var(--muted-foreground);
+        background: hsl(var(--muted-foreground));
         border-radius: 4px;
         opacity: 0.3;
       }
@@ -135,15 +162,15 @@
       input:-webkit-autofill:hover, 
       input:-webkit-autofill:focus, 
       input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 30px var(--card) inset !important;
-          -webkit-text-fill-color: var(--foreground) !important;
+          -webkit-box-shadow: 0 0 0 30px hsl(var(--card)) inset !important;
+          -webkit-text-fill-color: hsl(var(--foreground)) !important;
           transition: background-color 5000s ease-in-out 0s;
       }
       
       /* Ensure select dropdowns match theme */
       select {
-        background-color: var(--muted);
-        color: var(--foreground);
+        background-color: hsl(var(--muted));
+        color: hsl(var(--foreground));
       }
       
       /* PWA prompt animations */

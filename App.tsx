@@ -56,13 +56,13 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white p-6 text-center">
+        <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6 text-center">
           <div className="max-w-md">
-            <h1 className="text-2xl font-bold text-red-500 mb-4">Something went wrong</h1>
-            <p className="text-zinc-400 mb-6">The application encountered an unexpected error.</p>
+            <h1 className="text-2xl font-bold text-destructive mb-4">Something went wrong</h1>
+            <p className="text-muted-foreground mb-6">The application encountered an unexpected error.</p>
             <button 
               onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-white text-black rounded font-bold hover:bg-gray-200"
+              className="px-6 py-2 bg-primary text-primary-foreground rounded font-bold hover:bg-primary/90"
             >
               Reload Application
             </button>
