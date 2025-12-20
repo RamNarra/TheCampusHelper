@@ -260,28 +260,6 @@ const StudyGroupsPage: React.FC = () => {
     { id: 'notes' as const, name: 'notes', icon: FileText, badge: notes.length },
   ];
 
-  const ServerButton: React.FC<{
-    label: string;
-    active?: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-  }> = ({ label, active, onClick, children }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={`group relative grid h-12 w-12 place-items-center overflow-hidden rounded-2xl border transition-all ${
-        active
-          ? 'border-primary/50 bg-primary/15'
-          : 'border-border bg-card/40 hover:bg-muted/40 hover:border-primary/30'
-      }`}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="relative z-10">{children}</div>
-    </button>
-  );
-
   const selectGroup = (groupId: string) => {
     setIsDiscover(false);
     setSelectedGroupId(groupId);
@@ -293,194 +271,58 @@ const StudyGroupsPage: React.FC = () => {
     setSelectedGroupId(null);
   };
 
+  const showEmptySelection = !isDiscover && !selectedGroup;
+  const hasServers = myGroups.length > 0;
+
   return (
     <div className="flex-1 min-h-0">
-      <div className="h-full min-h-0 grid grid-cols-[64px_1fr] lg:grid-cols-[64px_240px_1fr] xl:grid-cols-[64px_240px_1fr_260px]">
-        {/* Servers */}
+      <div className="h-full min-h-0 grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[320px_1fr_320px]">
+        {/* Sidebar */}
         <aside className="min-h-0 border-r border-border bg-background/60 backdrop-blur">
           <div className="h-full min-h-0 flex flex-col">
-            <div className="p-3 flex flex-col gap-3">
-              <ServerButton
-                label="Discover servers"
-                active={isDiscover}
-                onClick={openDiscover}
-              >
-                <Compass className={`h-5 w-5 ${isDiscover ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-              </ServerButton>
-
-              <div className="h-px bg-border" />
-
-              <div className="flex flex-col gap-3">
-                {myGroups.map((g) => {
-                  const isActive = !isDiscover && selectedGroupId === g.id;
-                  const letter = (g.name || 'G').trim().charAt(0).toUpperCase();
-                  return (
-                    <ServerButton
-                      key={g.id}
-                      label={g.name}
-                      active={isActive}
-                      onClick={() => selectGroup(g.id)}
-                    >
-                      <div
-                        className={`grid h-9 w-9 place-items-center rounded-xl text-sm font-bold ${
-                          isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted/40 text-foreground'
-                        }`}
-                      >
-                        {letter}
-                      </div>
-                    </ServerButton>
-                  );
-                })}
-
-                {myGroups.length === 0 && !loading ? (
-                  <div className="px-2 text-center text-xs text-muted-foreground">
-                    No servers
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="mt-auto p-3 flex flex-col gap-3">
-              <ServerButton
-                label="Create a server"
-                active={false}
-                onClick={handleCreateGroup}
-              >
-                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
-              </ServerButton>
-            </div>
-          </div>
-        </aside>
-
-        {/* Channels */}
-        <aside className="hidden lg:block min-h-0 border-r border-border bg-card/30">
-          <div className="h-full min-h-0 flex flex-col">
             <div className="p-4 border-b border-border">
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                {isDiscover ? 'Explore' : 'Server'}
-              </div>
-              <div className="mt-1 text-base font-bold text-foreground truncate">
-                {isDiscover ? 'Discover groups' : selectedGroup?.name || 'Select a group'}
-              </div>
-              {selectedGroup?.subject ? (
-                <div className="mt-1 text-xs text-muted-foreground truncate">{selectedGroup.subject}</div>
-              ) : null}
-            </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Study Groups
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-foreground truncate">
+                    {isDiscover ? 'Discover' : 'My groups'}
+                  </div>
+                </div>
 
-            <div className="p-4">
-              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsDiscover((v) => !v)}
+                  className={`shrink-0 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                    isDiscover
+                      ? 'border-primary/30 bg-primary/10 text-foreground'
+                      : 'border-border bg-card/40 text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Compass className="h-4 w-4" />
+                  {isDiscover ? 'Browse' : 'Discover'}
+                </button>
+              </div>
+
+              <div className="mt-4 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <input
                   type="text"
-                  placeholder={isDiscover ? 'Search public groups…' : 'Search servers…'}
+                  placeholder={isDiscover ? 'Search public groups…' : 'Search my groups…'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2 border border-border rounded-xl bg-background/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
                 />
               </div>
-            </div>
 
-            {isDiscover ? (
-              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                  Public groups
-                </div>
-                {loading ? (
-                  <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-                ) : filteredPublicGroups.length > 0 ? (
-                  <div className="space-y-3">
-                    {filteredPublicGroups.map((group) => (
-                      <GroupCard
-                        key={group.id}
-                        group={group}
-                        onJoin={() => handleJoinGroup(group.id)}
-                        isMember={false}
-                        compact
-                      />
-                    ))}
-                    <AdUnit className="mt-4" />
-                  </div>
-                ) : (
-                  <div className="py-12 text-center text-sm text-muted-foreground">
-                    No public groups found.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                  Channels
-                </div>
-                {selectedGroup ? (
-                  <div className="space-y-1">
-                    {channels.map(({ id, name, icon: Icon, badge }) => {
-                      const active = activeChannel === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => setActiveChannel(id)}
-                          className={`w-full flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
-                            active
-                              ? 'bg-primary/12 text-foreground border border-primary/20'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent'
-                          }`}
-                        >
-                          <span className="flex items-center gap-2 min-w-0">
-                            <Icon className={`h-4 w-4 ${active ? 'text-primary' : ''}`} />
-                            <span className="truncate"># {name}</span>
-                          </span>
-                          {typeof badge === 'number' ? (
-                            <span className="text-xs rounded-full border border-border bg-background/60 px-2 py-0.5 text-muted-foreground">
-                              {badge}
-                            </span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-12 text-center text-sm text-muted-foreground">
-                    Select a group to see channels.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* Main */}
-        <section className="min-h-0 flex flex-col">
-          <div className="border-b border-border bg-background/60 backdrop-blur">
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-foreground truncate">
-                  {isDiscover
-                    ? 'Explore public groups'
-                    : selectedGroup
-                      ? `${selectedGroup.name} · # ${channels.find((c) => c.id === activeChannel)?.name || 'general'}`
-                      : 'Select a group'}
-                </div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {isPreview
-                    ? 'Preview mode enabled. Sign in to create/join and chat.'
-                    : selectedGroup?.subject || 'Real-time chat, sessions, and notes.'}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={openDiscover}
-                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
-                    isDiscover
-                      ? 'border-primary/30 bg-primary/10 text-foreground'
-                      : 'border-border bg-card/40 text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                  }`}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                 >
                   <Compass className="h-4 w-4" />
                   Discover
@@ -489,12 +331,184 @@ const StudyGroupsPage: React.FC = () => {
                   type="button"
                   onClick={handleCreateGroup}
                   disabled={!user}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   <Plus className="h-4 w-4" />
                   Create
                 </button>
               </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              {isDiscover ? (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Public groups
+                  </div>
+                  {loading ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+                  ) : filteredPublicGroups.length > 0 ? (
+                    <div className="space-y-3">
+                      {filteredPublicGroups.map((group) => (
+                        <GroupCard
+                          key={group.id}
+                          group={group}
+                          onJoin={() => handleJoinGroup(group.id)}
+                          isMember={false}
+                          compact
+                        />
+                      ))}
+                      <AdUnit className="mt-4" />
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center text-sm text-muted-foreground">No public groups found.</div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    My groups
+                  </div>
+                  {loading ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+                  ) : filteredMyGroups.length > 0 ? (
+                    <div className="space-y-2">
+                      {filteredMyGroups.map((g) => {
+                        const active = selectedGroupId === g.id && !isDiscover;
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => selectGroup(g.id)}
+                            className={`w-full text-left rounded-xl border px-3 py-3 transition-colors ${
+                              active
+                                ? 'border-primary/30 bg-primary/10'
+                                : 'border-border bg-card/30 hover:bg-muted/40'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-foreground truncate">{g.name}</div>
+                                <div className="mt-1 text-xs text-muted-foreground truncate">{g.subject}</div>
+                              </div>
+                              <div className="shrink-0 text-[11px] text-muted-foreground">
+                                {g.members?.length ? `${g.members.length} members` : ''}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-border bg-background/60 p-4">
+                      <div className="text-sm font-semibold text-foreground">No groups yet</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Discover a public group to join, or create one.
+                      </div>
+                      <div className="mt-4 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={openDiscover}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                        >
+                          <Compass className="h-4 w-4" />
+                          Discover groups
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateGroup}
+                          disabled={!user}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create group
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main */}
+        <section className="min-h-0 flex flex-col">
+          <div className="border-b border-border bg-background/60 backdrop-blur">
+            <div className="px-6 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    {isDiscover ? 'Explore' : 'Dashboard'}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-foreground truncate">
+                    {isDiscover ? 'Discover study groups' : selectedGroup?.name || 'Study groups'}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground truncate">
+                    {isPreview
+                      ? 'Preview mode enabled. Sign in to join and chat.'
+                      : isDiscover
+                        ? 'Browse public groups and join the ones you need.'
+                        : selectedGroup?.subject || 'Select a group from the sidebar.'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={openDiscover}
+                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                      isDiscover
+                        ? 'border-primary/30 bg-primary/10 text-foreground'
+                        : 'border-border bg-card/40 text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                    }`}
+                  >
+                    <Compass className="h-4 w-4" />
+                    Discover
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateGroup}
+                    disabled={!user}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create
+                  </button>
+                </div>
+              </div>
+
+              {!isDiscover && selectedGroup ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {([
+                    { id: 'chat' as const, label: 'Chat', icon: MessageSquare, badge: undefined as number | undefined },
+                    { id: 'sessions' as const, label: 'Sessions', icon: Video, badge: sessions.length },
+                    { id: 'notes' as const, label: 'Notes', icon: FileText, badge: notes.length },
+                  ] as const).map(({ id, label, icon: Icon, badge }) => {
+                    const active = activeChannel === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setActiveChannel(id)}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                          active
+                            ? 'border-primary/30 bg-primary/10 text-foreground'
+                            : 'border-border bg-card/40 text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                        }`}
+                      >
+                        <Icon className={`h-4 w-4 ${active ? 'text-primary' : ''}`} />
+                        {label}
+                        {typeof badge === 'number' ? (
+                          <span className="ml-1 text-[11px] rounded-full border border-border bg-background/60 px-2 py-0.5 text-muted-foreground">
+                            {badge}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -563,10 +577,75 @@ const StudyGroupsPage: React.FC = () => {
               </div>
             ) : (
               <div className="h-full min-h-0 flex items-center justify-center p-8">
-                <div className="text-center max-w-md">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-                  <div className="text-lg font-semibold text-foreground">Select a group</div>
-                  <div className="mt-2 text-sm text-muted-foreground">Pick a server on the left, or discover a new one.</div>
+                <div className="w-full max-w-2xl">
+                  <div className="rounded-2xl border border-border bg-card/30 p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Users className="h-6 w-6 text-primary" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-lg font-semibold text-foreground">
+                          {hasServers ? 'Select a group' : 'Get started with study groups'}
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {hasServers
+                            ? 'Pick a group from the sidebar to open chat, sessions, and notes.'
+                            : 'Discover public groups, or create a new one for your class.'}
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={openDiscover}
+                            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                          >
+                            <Compass className="h-4 w-4" />
+                            Discover groups
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCreateGroup}
+                            disabled={!user}
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Create group
+                          </button>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
+                          <div className="rounded-xl border border-border bg-background/60 p-3">
+                            <div className="flex items-center gap-2 text-foreground font-semibold">
+                              <MessageSquare className="h-4 w-4 text-primary" />
+                              Chat
+                            </div>
+                            <div className="mt-1">Real-time discussion with your group.</div>
+                          </div>
+                          <div className="rounded-xl border border-border bg-background/60 p-3">
+                            <div className="flex items-center gap-2 text-foreground font-semibold">
+                              <Video className="h-4 w-4 text-primary" />
+                              Sessions
+                            </div>
+                            <div className="mt-1">Schedule study sessions and calls.</div>
+                          </div>
+                          <div className="rounded-xl border border-border bg-background/60 p-3">
+                            <div className="flex items-center gap-2 text-foreground font-semibold">
+                              <FileText className="h-4 w-4 text-primary" />
+                              Notes
+                            </div>
+                            <div className="mt-1">Collaborate on shared notes.</div>
+                          </div>
+                        </div>
+
+                        {showEmptySelection && !user ? (
+                          <div className="mt-4 text-xs text-muted-foreground">
+                            Preview mode lets you browse. Sign in to create/join and chat.
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -578,10 +657,10 @@ const StudyGroupsPage: React.FC = () => {
           <div className="h-full min-h-0 flex flex-col">
             <div className="p-4 border-b border-border">
               <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                {isDiscover ? 'Tips' : 'About'}
+                {isDiscover ? 'Tips' : 'Details'}
               </div>
               <div className="mt-1 text-sm font-semibold text-foreground">
-                {isDiscover ? 'How it works' : selectedGroup?.name || 'No server selected'}
+                {isDiscover ? 'How it works' : selectedGroup?.name || 'No group selected'}
               </div>
             </div>
 
@@ -589,7 +668,7 @@ const StudyGroupsPage: React.FC = () => {
               {isDiscover ? (
                 <div className="space-y-3 text-sm text-muted-foreground">
                   <div className="rounded-xl border border-border bg-background/60 p-4">
-                    Browse public groups, then join to show it in your server list.
+                    Browse public groups, then join to add it to your list.
                   </div>
                   <div className="rounded-xl border border-border bg-background/60 p-4">
                     Each group has channels: chat, sessions, notes.
@@ -640,7 +719,35 @@ const StudyGroupsPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="py-10 text-center text-sm text-muted-foreground">Select a server to see details.</div>
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="text-sm font-semibold text-foreground">
+                      {hasServers ? 'No group selected' : 'Get started'}
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {hasServers
+                        ? 'Select a group to see member status and details.'
+                        : 'Discover public groups, join one, and it will appear in your list.'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openDiscover}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <Compass className="h-4 w-4" />
+                    Discover groups
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateGroup}
+                    disabled={!user}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create group
+                  </button>
+                </div>
               )}
             </div>
           </div>
