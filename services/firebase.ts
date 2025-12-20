@@ -845,8 +845,7 @@ export const api = {
             // Filter groups where user is a member
             q = query(
                 collection(db, 'studyGroups'),
-                where('members', 'array-contains', userId),
-                orderBy('createdAt', 'desc')
+                where('members', 'array-contains', userId)
             );
         } else {
             // Discover: only groups visible to the current user's year.
@@ -861,10 +860,27 @@ export const api = {
                 where('visibleToYears', 'array-contains', year)
             );
         }
-        return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyGroup));
-            cb(list);
-        });
+        return onSnapshot(
+            q,
+            (snap) => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyGroup));
+
+                // Avoid requiring a composite index by sorting client-side.
+                // createdAt is typically a Firestore Timestamp.
+                const toMillis = (t: any): number => {
+                    if (!t) return 0;
+                    if (typeof t === 'number') return t;
+                    return t?.toMillis?.() ?? 0;
+                };
+                list.sort((a: any, b: any) => toMillis(b.createdAt) - toMillis(a.createdAt));
+
+                cb(list);
+            },
+            (err) => {
+                console.error('onStudyGroupsChanged snapshot error:', err);
+                cb([]);
+            }
+        );
     },
 
     // MESSAGES METHODS
