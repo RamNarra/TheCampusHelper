@@ -1,12 +1,7 @@
-import { initializeApp } from 'firebase/app';
 import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signOut, 
   onAuthStateChanged,
   User,
-  Auth
+    type Auth
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -32,38 +27,17 @@ import {
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit } from '../types';
+import { env, getAuthClient, getDb, getGoogleProvider, isConfigured } from './platform/firebaseClient';
+import { stripUndefined, withTimeout } from './platform/utils';
+import { authService, moderationService, usersService } from './domains';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
-const env = (import.meta as any).env || {};
 
-const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
-};
-
-const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined';
-
-let app;
-let auth: Auth;
-let db: Firestore;
-let googleProvider: GoogleAuthProvider;
-
-if (isConfigured) {
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    googleProvider = new GoogleAuthProvider();
-  } catch (e) {
-    console.error("Firebase Init Failed:", e);
-  }
-}
+// Platform-owned initialization.
+const auth = getAuthClient() as Auth | undefined;
+const db = getDb() as Firestore | undefined;
+const googleProvider = getGoogleProvider();
 
 const sanitizeStorageFilename = (name: string): string => {
     const trimmed = (name || '').trim() || 'file';
@@ -119,38 +93,9 @@ const uploadToCloudinaryRaw = async (params: {
     return { downloadUrl: secureUrl, storagePath: publicId || secureUrl };
 };
 
-// --- SECURE HELPERS ---
-
-/**
- * Gets the current user's ID token for making authenticated backend requests.
- * @returns Promise<string | null>
- */
-export const getAuthToken = async (): Promise<string | null> => {
-  if (!auth || !auth.currentUser) return null;
-  // forceRefresh = false (uses cached token if valid)
-  return auth.currentUser.getIdToken(false);
-};
-
-export const forceRefreshAuthToken = async (): Promise<string | null> => {
-    if (!auth || !auth.currentUser) return null;
-    return auth.currentUser.getIdToken(true);
-};
-
-// Timeout Wrapper for Async Operations
-export const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
-    return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => 
-            setTimeout(() => reject(new Error('Operation timed out. Check your connection.')), ms)
-        )
-    ]);
-};
-
-const stripUndefined = <T extends Record<string, any>>(obj: T): T => {
-  // Firestore rejects explicit `undefined` values.
-  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
-  return Object.fromEntries(entries) as T;
-};
+// --- SECURE HELPERS (re-exported for backwards compatibility) ---
+export const getAuthToken = authService.getAuthToken;
+export const forceRefreshAuthToken = authService.forceRefreshAuthToken;
 
 export const extractDriveId = (url: string): string | null => {
   if (!url) return null;
@@ -159,16 +104,14 @@ export const extractDriveId = (url: string): string | null => {
 };
 
 export const mapAuthToProfile = (user: User): UserProfile => {
-  const email = user.email?.toLowerCase() || '';
-  const adminEmails = (env.VITE_ADMIN_EMAILS || "").split(',').map((e: string) => e.trim().toLowerCase());
-  const isAdmin = adminEmails.includes(email);
-
   return {
     uid: user.uid,
     displayName: user.displayName,
     email: user.email,
     photoURL: user.photoURL,
-    role: isAdmin ? 'admin' : 'user',
+        // Never trust client env allowlists for authorization.
+        // Real roles come from Firestore + custom claims.
+        role: 'student',
     branch: undefined,
         year: undefined,
         section: undefined,
@@ -183,72 +126,28 @@ export const mapAuthToProfile = (user: User): UserProfile => {
 export const api = {
     // AUTH METHODS
     signIn: async () => {
-        if (!auth) throw new Error("Auth not configured");
-        return signInWithPopup(auth, googleProvider);
+        return authService.signIn();
     },
 
     signOut: async () => {
-        if (!auth) return;
-        return signOut(auth);
+        return authService.signOutUser();
     },
 
     // PROFILE METHODS (Direct Firestore Access via Rules)
     updateProfile: async (uid: string, data: Partial<UserProfile>) => {
-        if (!db) return;
-        const docRef = doc(db, 'users', uid);
-        return withTimeout(setDoc(docRef, data, { merge: true }), 5000);
+        return usersService.updateProfile(uid, data);
     },
 
     getAllUsers: async (): Promise<UserProfile[]> => {
-        if (!db) return [];
-        const snap = await getDocs(collection(db, 'users'));
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
+        return usersService.getAllUsers();
     },
 
     bootstrapAdminAccess: async (): Promise<boolean> => {
-        try {
-            const token = await getAuthToken();
-            if (!token) return false;
-            const res = await fetch('/api/bootstrapAdmin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({})
-            });
-            if (!res.ok) {
-                try {
-                    const text = await res.text();
-                    console.warn('bootstrapAdminAccess failed:', res.status, text);
-                } catch {
-                    console.warn('bootstrapAdminAccess failed:', res.status);
-                }
-                return false;
-            }
-            return true;
-        } catch {
-            return false;
-        }
+        return moderationService.bootstrapAdminAccess();
     },
 
         bootstrapAdminAccessDetailed: async (): Promise<{ ok: boolean; status: number; bodyText: string }> => {
-            try {
-                const token = await getAuthToken();
-                if (!token) return { ok: false, status: 0, bodyText: 'Not signed in' };
-                const res = await fetch('/api/bootstrapAdmin', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({}),
-                });
-                const bodyText = await res.text().catch(() => '');
-                return { ok: res.ok, status: res.status, bodyText };
-            } catch (e: any) {
-                return { ok: false, status: 0, bodyText: e?.message || 'Request failed' };
-            }
+            return moderationService.bootstrapAdminAccessDetailed();
         },
 
         forceRefreshAuthToken: async (): Promise<void> => {
@@ -256,15 +155,11 @@ export const api = {
         },
 
     updateUserRole: async (targetUid: string, role: UserRole) => {
-        if (!db) throw new Error("Database not configured");
-        const docRef = doc(db, 'users', targetUid);
-        return withTimeout(updateDoc(docRef, { role, updatedAt: serverTimestamp() }), 5000);
+        return moderationService.updateUserRole(targetUid, role);
     },
 
     setUserDisabled: async (targetUid: string, disabled: boolean) => {
-        if (!db) throw new Error("Database not configured");
-        const docRef = doc(db, 'users', targetUid);
-        return withTimeout(updateDoc(docRef, { disabled, updatedAt: serverTimestamp() }), 5000);
+        return moderationService.setUserDisabled(targetUid, disabled);
     },
 
     // RESOURCE METHODS
@@ -275,16 +170,9 @@ export const api = {
         const ownerId = resource.ownerId || fallbackOwnerId;
         if (!ownerId) throw new Error('You must be signed in to upload a resource.');
 
-        const isAdminEmail = (() => {
-          const email = auth?.currentUser?.email?.toLowerCase() || '';
-          const adminEmails = (env.VITE_ADMIN_EMAILS || "")
-            .split(',')
-            .map((e: string) => e.trim().toLowerCase())
-            .filter(Boolean);
-          return !!email && adminEmails.includes(email);
-        })();
-
-        const status = resource.status || (isAdminEmail ? 'approved' : 'pending');
+        // Client should default to pending; staff can approve via moderation tools.
+        // Firestore rules enforce this as the source of truth.
+        const status = resource.status || 'pending';
 
                 const payload = stripUndefined({
                     ...resource,
@@ -526,15 +414,11 @@ export const api = {
 
     // SUBSCRIPTIONS
     onAuthStateChanged: (cb: (user: User | null) => void) => {
-        if (!auth) { cb(null); return () => {}; }
-        return onAuthStateChanged(auth, cb);
+        return authService.onAuthChanged(cb);
     },
 
     onProfileChanged: (uid: string, cb: (data: DocumentData | undefined) => void) => {
-        if (!db) { cb(undefined); return () => {}; }
-        return onSnapshot(doc(db, 'users', uid), (snap) => {
-            cb(snap.exists() ? snap.data() : undefined);
-        });
+        return usersService.onProfileChanged(uid, cb);
     },
 
     // --- RESOURCES (safe queries) ---

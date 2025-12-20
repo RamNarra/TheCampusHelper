@@ -4,6 +4,7 @@ import { Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api, extractDriveId } from '../services/firebase';
 import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
+import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { 
   Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
   FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
@@ -58,7 +59,7 @@ const ResourcesPage: React.FC = () => {
     resource: Resource | null;
   }>({ open: false, x: 0, y: 0, resource: null });
 
-  const isStaff = user?.role === 'admin' || user?.role === 'mod';
+  const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
 
   useEffect(() => {
     if (!contextMenu.open) return;
@@ -124,7 +125,7 @@ const ResourcesPage: React.FC = () => {
     }
 
     // Staff can see everything (including pending).
-    if (user.role === 'admin' || user.role === 'mod') {
+    if (isStaff) {
       const unsub = api.onAllResourcesChanged((fetched) => {
         setDynamicResources(fetched);
         setIsResourcesLoading(false);
@@ -157,7 +158,7 @@ const ResourcesPage: React.FC = () => {
       unsubApproved();
       unsubMine();
     };
-  }, [user?.uid, user?.role]);
+  }, [user?.uid, isStaff]);
 
   const loadRecommendations = useCallback(async () => {
     if (!user?.uid) return;
@@ -342,7 +343,8 @@ const ResourcesPage: React.FC = () => {
             downloadUrl: finalUrl,
             driveFileId: driveId || undefined,
           ownerId: user.uid,
-          status: (user.role === 'admin' || user.role === 'mod') ? 'approved' : 'pending'
+          // Client submits as pending; staff approves via moderation tools.
+          status: 'pending'
         };
 
         // 4. Send to Firebase (Protected by Timeout)
@@ -350,11 +352,7 @@ const ResourcesPage: React.FC = () => {
         const createdResource: Resource = { id: createdId, ...newResource };
         setLastSubmittedResource(createdResource);
 
-        if (user.role === 'admin' || user.role === 'mod') {
-          setUploadSuccess('Resource added and published. It is now visible on the website.');
-        } else {
-          setUploadSuccess('Your resource has been submitted for approval. Once approved, it will be visible on the website.');
-        }
+        setUploadSuccess('Your resource has been submitted for approval. Once approved, it will be visible on the website.');
 
         // 5. Award XP for contribution
         if (user) {

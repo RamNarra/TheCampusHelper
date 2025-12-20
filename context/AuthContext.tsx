@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { UserProfile } from '../types';
 import { api, mapAuthToProfile } from '../services/firebase';
 import { initializeGamification, updateStreak, awardXP, XP_REWARDS } from '../services/gamification';
+import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -78,7 +79,8 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
                 // Admin self-recovery: if this email is configured as admin in env,
                 // but Firestore role got downgraded, restore via server bootstrap.
                 // Note: We attempt once for any non-admin; the server allowlist is the real gate.
-                const hasAdminInDb = (data as any).role === 'admin';
+                const dbRole = normalizeRole((data as any).role);
+                const hasAdminInDb = isAtLeastRole(dbRole, 'admin');
                 if (!hasAdminInDb && !attemptedAdminRecoveryRef.current) {
                   attemptedAdminRecoveryRef.current = true;
                   try {

@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Menu, X, BookOpen, LayoutDashboard, User, LogIn, Sparkles, Calculator, Terminal, Sun, Moon, Trophy, Users, BarChart3, Brain, Calendar, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
+import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 
 const Navbar: React.FC = () => {
   const { user } = useAuth();
@@ -16,7 +17,7 @@ const Navbar: React.FC = () => {
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const isStaff = user?.role === 'admin' || user?.role === 'mod';
+  const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
 
   const primaryLinks = useMemo(() => {
     return [

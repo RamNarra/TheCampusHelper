@@ -6,6 +6,7 @@ import { FileText, Upload, LogOut, Bookmark, FolderOpen } from 'lucide-react';
 import { Navigate, NavLink } from 'react-router-dom';
 import GamificationCard from '../components/GamificationCard';
 import { api } from '../services/firebase';
+import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -17,7 +18,7 @@ const ProfilePage: React.FC = () => {
   }
 
   const isOwnerEmail = (user.email || '').toLowerCase() === 'ramcharannarra8@gmail.com';
-  const canAttemptAdminFix = isOwnerEmail && user.role !== 'admin' && !adminFixLoading;
+  const canAttemptAdminFix = isOwnerEmail && !isAtLeastRole(normalizeRole(user.role), 'admin') && !adminFixLoading;
 
   return (
     <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -48,7 +49,7 @@ const ProfilePage: React.FC = () => {
                 <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                    {user.role === 'admin' ? 'Administrator' : 'Student'}
+                    {isAtLeastRole(normalizeRole(user.role), 'admin') ? 'Administrator' : 'Student'}
                   </span>
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20">
                     {user.branch || 'General'}
@@ -93,7 +94,7 @@ const ProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                {isOwnerEmail && user.role !== 'admin' ? (
+                {isOwnerEmail && !isAtLeastRole(normalizeRole(user.role), 'admin') ? (
                   <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
                     <button
                       disabled={!canAttemptAdminFix}

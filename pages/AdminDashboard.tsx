@@ -7,9 +7,11 @@ import { Resource, UserRole } from '../types';
 import { motion } from 'framer-motion';
 import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2, ExternalLink, Mail } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
+  const role = normalizeRole(user?.role);
   const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'resources' | 'users'>('overview');
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -23,7 +25,7 @@ const AdminDashboard: React.FC = () => {
 
   // Fetch users for admin-only User Database (and stats)
   useEffect(() => {
-    if (user?.role === 'admin' && (activeTab === 'users' || activeTab === 'overview')) {
+    if (isAtLeastRole(role, 'admin') && (activeTab === 'users' || activeTab === 'overview')) {
       const fetchUsers = async () => {
         setIsLoadingUsers(true);
         const data = await api.getAllUsers();
@@ -32,31 +34,31 @@ const AdminDashboard: React.FC = () => {
       };
       fetchUsers();
     }
-  }, [activeTab, user]);
+  }, [activeTab, role]);
 
   // Staff: subscribe to all resources (used for stats + management)
   useEffect(() => {
-    if (!user || (user.role !== 'admin' && user.role !== 'mod')) return;
+    if (!user || !isAtLeastRole(role, 'moderator')) return;
     setIsLoadingResources(true);
     const unsub = api.onAllResourcesChanged((list) => {
       setAllResources(list);
       setIsLoadingResources(false);
     });
     return () => unsub();
-  }, [user?.role]);
+  }, [role, user]);
 
   // Mods/admins: subscribe to pending resource approvals
   useEffect(() => {
-    if (!user || (user.role !== 'admin' && user.role !== 'mod')) return;
+    if (!user || !isAtLeastRole(role, 'moderator')) return;
     setIsLoadingApprovals(true);
     const unsub = api.onPendingResourcesChanged((list) => {
       setPendingResources(list);
       setIsLoadingApprovals(false);
     });
     return () => unsub();
-  }, [user?.role]);
+  }, [role, user]);
 
-  if (!user || (user.role !== 'admin' && user.role !== 'mod')) {
+  if (!user || !isAtLeastRole(role, 'moderator')) {
     return <Navigate to="/" replace />;
   }
 
@@ -77,7 +79,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleResetToPending = async (id: string) => {
-    if (user.role !== 'admin') return;
+    if (!isAtLeastRole(role, 'admin')) return;
     try {
       await api.updateResourceStatus(id, 'pending');
     } catch (e) {
@@ -94,7 +96,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleRoleChange = async (targetUid: string, role: UserRole) => {
-    if (user.role !== 'admin') return;
+    if (!isAtLeastRole(normalizeRole(user.role), 'admin')) return;
     try {
       await api.updateUserRole(targetUid, role);
       setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, role } : u)));
@@ -104,7 +106,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDisableToggle = async (targetUid: string, disabled: boolean) => {
-    if (user.role !== 'admin') return;
+    if (!isAtLeastRole(normalizeRole(user.role), 'admin')) return;
     try {
       await api.setUserDisabled(targetUid, disabled);
       setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, disabled } : u)));
@@ -181,7 +183,7 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
-  const totalUsers = user.role === 'admin' ? usersList.length : undefined;
+  const totalUsers = isAtLeastRole(role, 'admin') ? usersList.length : undefined;
   const pendingCount = pendingResources.length;
   const totalResources = allResources.length;
 
@@ -236,12 +238,12 @@ const AdminDashboard: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('users')}
-          disabled={user.role !== 'admin'}
+          disabled={!isAtLeastRole(role, 'admin')}
           className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
             activeTab === 'users' 
               ? 'text-primary' 
               : 'text-muted-foreground hover:text-foreground'
-          } ${user.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } ${!isAtLeastRole(role, 'admin') ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           User Database
           {activeTab === 'users' && (
@@ -265,7 +267,7 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-muted-foreground">Quick stats and moderation shortcuts</p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                {user.role === 'admin' ? 'Administrator' : 'Moderator'}
+                {isAtLeastRole(role, 'admin') ? 'Administrator' : 'Moderator'}
               </span>
             </div>
 
@@ -283,7 +285,7 @@ const AdminDashboard: React.FC = () => {
                 />
                 <StatCard
                   title="Registered Users"
-                  value={user.role === 'admin' ? (isLoadingUsers ? '…' : (totalUsers ?? 0)) : '—'}
+                  value={isAtLeastRole(role, 'admin') ? (isLoadingUsers ? '…' : (totalUsers ?? 0)) : '—'}
                   icon={Users}
                 />
               </div>
@@ -313,9 +315,9 @@ const AdminDashboard: React.FC = () => {
 
                 <button
                   onClick={() => setActiveTab('users')}
-                  disabled={user.role !== 'admin'}
+                  disabled={!isAtLeastRole(role, 'admin')}
                   className={`bg-muted/30 border border-border rounded-2xl p-5 text-left hover:bg-muted/50 transition-colors ${
-                    user.role !== 'admin' ? 'opacity-50 cursor-not-allowed hover:bg-muted/30' : ''
+                    !isAtLeastRole(role, 'admin') ? 'opacity-50 cursor-not-allowed hover:bg-muted/30' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 text-foreground font-semibold">
@@ -524,7 +526,7 @@ const AdminDashboard: React.FC = () => {
                               </button>
                             )}
 
-                            {user.role === 'admin' && (item.status || 'approved') !== 'pending' && (
+                            {isAtLeastRole(role, 'admin') && (item.status || 'approved') !== 'pending' && (
                               <button
                                 onClick={() => handleResetToPending(item.id)}
                                 className="px-2 py-2 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-colors text-xs font-medium"
@@ -656,13 +658,15 @@ const AdminDashboard: React.FC = () => {
 
                           <div className="flex flex-wrap items-center gap-2">
                             <select
-                              value={selectedUser.role || 'user'}
+                              value={selectedUser.role || 'student'}
                               onChange={(e) => handleRoleChange(selectedUser.uid, e.target.value as UserRole)}
                               className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200"
                             >
-                              <option value="user">User</option>
-                              <option value="mod">Mod</option>
+                              <option value="student">Student</option>
+                              <option value="instructor">Instructor</option>
+                              <option value="moderator">Moderator</option>
                               <option value="admin">Admin</option>
+                              <option value="super_admin">Super Admin</option>
                             </select>
                             <button
                               onClick={() => handleDisableToggle(selectedUser.uid, !selectedUser.disabled)}

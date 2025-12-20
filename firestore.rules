@@ -23,21 +23,45 @@ service cloud.firestore {
     }
 
     function myRole() {
-      return (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && ('role' in myUserDoc()))
+      // Normalize legacy roles to new platform roles.
+      // Default is 'student' (never 'admin').
+      let r = (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && ('role' in myUserDoc()))
         ? myUserDoc().role
-        : 'user';
+        : 'student';
+
+      return r == 'user' ? 'student'
+        : r == 'mod' ? 'moderator'
+        : r;
     }
 
     function isAdmin() {
-      return isAuthenticated() && (isBootstrapAdmin() || myRole() == 'admin');
+      return isAuthenticated() && (isBootstrapAdmin() || myRole() == 'admin' || myRole() == 'super_admin');
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (isAdmin() || myRole() == 'moderator');
     }
 
     function isMod() {
-      return isAuthenticated() && (isAdmin() || myRole() == 'mod');
+      return isAuthenticated() && (isAdmin() || myRole() == 'moderator');
     }
 
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // --- COURSE-SCOPED ABAC HELPERS ---
+    function isActiveEnrollment(courseId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/courses/$(courseId)/enrollments/$(request.auth.uid))
+        && get(/databases/$(database)/documents/courses/$(courseId)/enrollments/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isInstructor(courseId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/courses/$(courseId)/enrollments/$(request.auth.uid))
+        && get(/databases/$(database)/documents/courses/$(courseId)/enrollments/$(request.auth.uid)).data.status == 'active'
+        && get(/databases/$(database)/documents/courses/$(courseId)/enrollments/$(request.auth.uid)).data.role == 'instructor';
     }
 
     // Validates resource structure (allows extra keys)
@@ -59,19 +83,21 @@ service cloud.firestore {
 
     // Prevents privilege escalation on user profiles
     function roleIsAllowedOnCreate(data) {
-      // Normal users may only create with role 'user' (or omit role).
-      // Bootstrap admin may create their own profile with role 'admin'.
+      // Normal users may only create with role 'student' (or omit role).
+      // Bootstrap admin may create their own profile with role 'admin' (back-compat).
       return !("role" in data)
+        || data.role == 'student'
         || data.role == 'user'
-        || (data.role == 'admin' && isBootstrapAdmin());
+        || (data.role == 'admin' && isBootstrapAdmin())
+        || (data.role == 'super_admin' && isBootstrapAdmin());
     }
 
     function roleIsSafeOnOwnerUpdate(newData, currentData) {
       // Owners cannot change role/disabled.
-      // Back-compat: if role is missing, owner may set role='user' only.
+      // Back-compat: if role is missing, owner may set role='student' (or legacy 'user') only.
       let roleOk = !("role" in newData)
         || ("role" in currentData && newData.role == currentData.role)
-        || (!("role" in currentData) && newData.role == 'user');
+        || (!("role" in currentData) && (newData.role == 'student' || newData.role == 'user'));
 
       let disabledOk = !("disabled" in newData)
         || ("disabled" in currentData && newData.disabled == currentData.disabled);
@@ -95,14 +121,42 @@ service cloud.firestore {
                       && roleIsSafeOnOwnerUpdate(request.resource.data, resource.data)
                     )
                     || (
-                      // Admin can manage roles/disable for any user.
+                      // Staff can update user docs EXCEPT privileged fields.
+                      // Privileged changes must go through server endpoints (audited).
                       isAdmin()
-                      && (
-                        !("role" in request.resource.data) || (request.resource.data.role in ['user','mod','admin'])
-                      )
+                      && !("role" in request.resource.data)
+                      && !("disabled" in request.resource.data)
                     );
 
       allow delete: if isAdmin();
+    }
+
+    // --- COURSES / ENROLLMENTS (FOUNDATION) ---
+    match /courses/{courseId} {
+      allow read: if isStaff() || isActiveEnrollment(courseId);
+      // Server-only writes (Admin SDK bypasses rules)
+      allow create, update, delete: if false;
+
+      match /enrollments/{enrolledUserId} {
+        allow read: if isStaff() || enrolledUserId == request.auth.uid || isInstructor(courseId);
+        allow create, update, delete: if false;
+      }
+    }
+
+    // Canonical events collection (course-scoped visibility)
+    match /events/{eventId} {
+      // Students should consume events via userCalendars feed.
+      // Canonical events are reserved for staff/instructors (for management/edit workflows).
+      allow read: if isStaff()
+        || (('courseId' in resource.data) && isInstructor(resource.data.courseId))
+        || (('createdBy' in resource.data) && resource.data.createdBy == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // Per-user denormalized calendar feed (dashboard-friendly, no joins)
+    match /userCalendars/{userId}/events/{eventId} {
+      allow read: if isStaff() || userId == request.auth.uid;
+      allow create, update, delete: if false;
     }
 
     // USER-SCOPED TO-DO + HABITS (private)

@@ -1,7 +1,8 @@
 
 export type ResourceType = 'Note' | 'PYQ' | 'Lab Record' | 'PPT' | 'MidPaper' | 'ImpQ';
 
-export type UserRole = 'user' | 'mod' | 'admin';
+// Platform roles (new) + legacy roles (back-compat with existing documents).
+export type UserRole = 'super_admin' | 'admin' | 'moderator' | 'instructor' | 'student' | 'user' | 'mod';
 
 export interface UserProfile {
   uid: string;
@@ -23,6 +24,59 @@ export interface UserProfile {
   lastLoginDate?: string; // ISO date string
   achievementIds?: string[];
   studyPattern?: 'visual' | 'text' | 'mixed'; // Learning preference
+}
+
+// --- COURSES / ENROLLMENTS (FOUNDATION) ---
+
+export interface Course {
+  id: string;
+  name: string;
+  code: string; // e.g. "CS301"
+  term: string; // e.g. "2025-Fall" or "JNTUH-III-I"
+  description?: string;
+  archived?: boolean;
+  createdBy: string;
+  createdAt: any;
+  updatedAt?: any;
+}
+
+export type CourseEnrollmentRole = 'student' | 'instructor';
+export type EnrollmentStatus = 'active' | 'removed';
+
+export interface Enrollment {
+  id: string;
+  courseId: string;
+  userId: string;
+  role: CourseEnrollmentRole;
+  status: EnrollmentStatus;
+  createdAt: any;
+  updatedAt?: any;
+  createdBy: string;
+}
+
+// --- UNIFIED CALENDAR / EVENTS (FOUNDATION) ---
+
+export type CalendarEventType =
+  | 'assignment_deadline'
+  | 'test_window'
+  | 'live_test'
+  | 'class_event';
+
+export interface CalendarEvent {
+  id: string;
+  type: CalendarEventType;
+  title: string;
+  description?: string;
+  startMillis: number;
+  endMillis: number;
+  // Course-scoped event
+  courseId?: string;
+  courseName?: string;
+  // Metadata
+  createdBy: string;
+  createdAt: any;
+  updatedAt?: any;
+  source: 'course' | 'personal';
 }
 
 export interface Resource {

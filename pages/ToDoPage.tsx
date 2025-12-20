@@ -383,7 +383,7 @@ const ToDoPage: React.FC = () => {
                       value={addingForDate[iso] || ''}
                       onChange={(e) => setAddingForDate((prev) => ({ ...prev, [iso]: e.target.value }))}
                       placeholder="Add task…"
-                      className="flex-1 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
+                      className="flex-1 min-w-0 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
                       onKeyDown={async (e) => {
                         if (e.key !== 'Enter') return;
                         const text = (addingForDate[iso] || '').trim();
@@ -394,7 +394,7 @@ const ToDoPage: React.FC = () => {
                       }}
                     />
                     <button
-                      className={btnFilled}
+                      className={`${btnFilled} shrink-0`}
                       onClick={async () => {
                         const text = (addingForDate[iso] || '').trim();
                         if (!text) return;
@@ -435,7 +435,7 @@ const ToDoPage: React.FC = () => {
               value={newHabit}
               onChange={(e) => setNewHabit(e.target.value)}
               placeholder="Add a habit…"
-              className="flex-1 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
+              className="flex-1 min-w-0 bg-background/60 border border-border rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 backdrop-blur"
               onKeyDown={async (e) => {
                 if (e.key !== 'Enter') return;
                 const name = newHabit.trim();
@@ -446,7 +446,7 @@ const ToDoPage: React.FC = () => {
               }}
             />
             <button
-              className={btnFilled}
+              className={`${btnFilled} shrink-0`}
               onClick={async () => {
                 const name = newHabit.trim();
                 if (!name) return;
