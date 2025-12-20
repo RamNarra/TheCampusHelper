@@ -25,6 +25,47 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
+    let stopPresence: (() => void) | null = null;
+    let presenceUid: string | null = null;
+
+    const startPresence = (uid: string, profile: { displayName: string | null; photoURL: string | null }) => {
+      const safeSet = (fn: () => Promise<any>) => fn().catch(() => undefined);
+
+      const computeState = () => {
+        try {
+          return document.visibilityState === 'hidden' ? 'idle' : 'online';
+        } catch {
+          return 'online';
+        }
+      };
+
+      const push = () => {
+        const state = computeState();
+        if (state === 'idle') {
+          safeSet(() => api.setPresenceIdle(uid, profile));
+        } else {
+          safeSet(() => api.setPresenceOnline(uid, profile));
+        }
+      };
+
+      const onVisibility = () => push();
+      const onUnload = () => {
+        // Best-effort only; async is not guaranteed to complete.
+        api.setPresenceOffline(uid).catch(() => undefined);
+      };
+
+      push();
+      const interval = window.setInterval(push, 25000);
+      document.addEventListener('visibilitychange', onVisibility);
+      window.addEventListener('beforeunload', onUnload);
+
+      return () => {
+        window.clearInterval(interval);
+        document.removeEventListener('visibilitychange', onVisibility);
+        window.removeEventListener('beforeunload', onUnload);
+        api.setPresenceOffline(uid).catch(() => undefined);
+      };
+    };
 
     // LAYER 1: Firebase Auth Listener
     const unsubscribeAuth = api.onAuthStateChanged((firebaseUser) => {
@@ -34,9 +75,22 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         unsubscribeProfile = null;
       }
 
+      if (stopPresence) {
+        stopPresence();
+        stopPresence = null;
+        presenceUid = null;
+      }
+
       if (firebaseUser) {
         // 1. Immediate: Map basic data from Google Token
         const basicProfile = mapAuthToProfile(firebaseUser);
+
+        // Presence: start heartbeat immediately on auth.
+        presenceUid = firebaseUser.uid;
+        stopPresence = startPresence(firebaseUser.uid, {
+          displayName: basicProfile.displayName,
+          photoURL: basicProfile.photoURL,
+        });
         
         // 2. Optimistic Update: Unblock the UI immediately
         setUser(prev => ({ ...prev, ...basicProfile }));
@@ -123,12 +177,18 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         setProfileLoaded(false);
         gamificationInitializedRef.current = false;
         attemptedAdminRecoveryRef.current = false;
+
+        if (presenceUid) {
+          api.setPresenceOffline(presenceUid).catch(() => undefined);
+          presenceUid = null;
+        }
       }
     });
 
     return () => {
       unsubscribeAuth();
       if (unsubscribeProfile) unsubscribeProfile();
+      if (stopPresence) stopPresence();
     };
   }, []);
 

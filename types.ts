@@ -26,6 +26,18 @@ export interface UserProfile {
   studyPattern?: 'visual' | 'text' | 'mixed'; // Learning preference
 }
 
+// --- PRESENCE (REAL-TIME ONLINE/OFFLINE) ---
+export type PresenceState = 'online' | 'idle' | 'offline';
+
+export interface Presence {
+  uid: string;
+  state: PresenceState;
+  lastSeen?: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
+  displayName?: string | null;
+  photoURL?: string | null;
+}
+
 // --- COURSES / ENROLLMENTS (FOUNDATION) ---
 
 export interface Course {
@@ -259,6 +271,10 @@ export interface Message {
   senderName: string;
   senderPhotoURL?: string;
   content: string;
+  kind?: 'text' | 'file' | 'audio';
+  fileUrl?: string;
+  fileName?: string;
+  mimeType?: string;
   timestamp: any; // Firestore Timestamp
   edited?: boolean;
   editedAt?: any;
@@ -304,6 +320,21 @@ export interface StudyGroup {
   createdAt: any; // Firestore Timestamp
   isPrivate: boolean; // Private groups require approval to join
   maxMembers?: number;
+}
+
+export interface StudyGroupRequest {
+  id: string;
+  name: string;
+  purpose: string;
+  subject: string; // "General" for general-purpose groups
+  visibleToYears: string[]; // e.g. ["1","2","3","4"]
+  requestedBy: string;
+  requestedByName: string;
+  createdAt: any;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: any;
+  rejectionReason?: string;
 }
 
 // Resource Recommendation System Types

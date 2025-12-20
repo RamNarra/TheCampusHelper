@@ -12,6 +12,9 @@ import {
   UserPlus,
   Send,
   Compass,
+  Paperclip,
+  Mic,
+  Square,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
@@ -43,6 +46,7 @@ const StudyGroupsPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [notes, setNotes] = useState<CollaborativeNote[]>([]);
+  const [presenceByUid, setPresenceByUid] = useState<Record<string, any>>({});
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -64,10 +68,14 @@ const StudyGroupsPage: React.FC = () => {
       setLoading(false);
     }, user.uid);
 
-    // Subscribe to public groups
-    const unsubscribePublic = api.onStudyGroupsChanged((groups) => {
-      setPublicGroups(groups.filter(g => !g.members.includes(user.uid)));
-    });
+    // Subscribe to discoverable public groups (year-scoped)
+    const unsubscribePublic = api.onStudyGroupsChanged(
+      (groups) => {
+        setPublicGroups(groups.filter(g => !g.members.includes(user.uid)));
+      },
+      undefined,
+      user.year
+    );
 
     return () => {
       unsubscribeMyGroups();
@@ -79,6 +87,53 @@ const StudyGroupsPage: React.FC = () => {
     if (!selectedGroupId) return null;
     return myGroups.find((g) => g.id === selectedGroupId) ?? null;
   }, [myGroups, selectedGroupId]);
+
+  const membersKey = useMemo(() => {
+    if (!selectedGroup?.members?.length) return '';
+    return selectedGroup.members.slice().sort().join('|');
+  }, [selectedGroup]);
+
+  useEffect(() => {
+    setPresenceByUid({});
+    if (!user) return;
+    if (!selectedGroup) return;
+    return api.onPresenceByUserIds(selectedGroup.members, setPresenceByUid);
+  }, [user?.uid, selectedGroupId, membersKey]);
+
+  const memberRows = useMemo(() => {
+    if (!selectedGroup?.members?.length) return [] as Array<{ uid: string; name: string; status: 'online' | 'idle' | 'offline' }>;
+
+    const toMillis = (t: any): number => {
+      if (typeof t === 'number') return t;
+      return t?.toMillis?.() ?? 0;
+    };
+
+    const computeStatus = (p: any): 'online' | 'idle' | 'offline' => {
+      if (!p) return 'offline';
+      const last = toMillis(p.lastSeen);
+      if (!last) return 'offline';
+      const age = Date.now() - last;
+      if (age > 90000) return 'offline';
+      return p.state === 'idle' ? 'idle' : 'online';
+    };
+
+    const rows = selectedGroup.members.map((uid) => {
+      const p = presenceByUid?.[uid];
+      const name = (p?.displayName as string | undefined) || (uid.length > 10 ? `${uid.slice(0, 6)}…${uid.slice(-4)}` : uid);
+      return { uid, name, status: computeStatus(p) };
+    });
+
+    const rank = (s: 'online' | 'idle' | 'offline') => (s === 'online' ? 0 : s === 'idle' ? 1 : 2);
+    rows.sort((a, b) => rank(a.status) - rank(b.status) || a.name.localeCompare(b.name));
+    return rows;
+  }, [presenceByUid, selectedGroup]);
+
+  const memberCounts = useMemo(() => {
+    const total = memberRows.length;
+    const online = memberRows.filter((m) => m.status === 'online').length;
+    const idle = memberRows.filter((m) => m.status === 'idle').length;
+    return { total, online, idle };
+  }, [memberRows]);
 
   // Default selection when groups load
   useEffect(() => {
@@ -138,6 +193,7 @@ const StudyGroupsPage: React.FC = () => {
         senderName: user.displayName || 'Unknown',
         senderPhotoURL: user.photoURL || undefined,
         content: newMessage.trim(),
+        kind: 'text',
       });
       setNewMessage('');
     } catch (error) {
@@ -146,6 +202,27 @@ const StudyGroupsPage: React.FC = () => {
       setSending(false);
     }
   }, [newMessage, selectedGroupId, user]);
+
+  const handleSendAttachment = useCallback(async (params: { file: File; kind: 'file' | 'audio' }) => {
+    if (!user) return;
+    if (!selectedGroupId) return;
+    try {
+      const uploaded = await api.uploadStudyGroupAttachment(selectedGroupId, params.file);
+      await api.sendMessage(selectedGroupId, {
+        studyGroupId: selectedGroupId,
+        senderId: user.uid,
+        senderName: user.displayName || 'Unknown',
+        senderPhotoURL: user.photoURL || undefined,
+        content: params.kind === 'audio' ? 'Voice message' : params.file.name,
+        kind: params.kind,
+        fileUrl: uploaded.downloadUrl,
+        fileName: params.file.name,
+        mimeType: params.file.type || undefined,
+      } as any);
+    } catch (error) {
+      console.error('Attachment send failed:', error);
+    }
+  }, [selectedGroupId, user]);
 
   const normalizedSearch = useMemo(() => searchTerm.trim().toLowerCase(), [searchTerm]);
 
@@ -218,7 +295,7 @@ const StudyGroupsPage: React.FC = () => {
 
   return (
     <div className="flex-1 min-h-0">
-      <div className="h-full min-h-0 grid grid-cols-[72px_1fr] lg:grid-cols-[72px_260px_1fr] xl:grid-cols-[72px_260px_1fr_280px]">
+      <div className="h-full min-h-0 grid grid-cols-[64px_1fr] lg:grid-cols-[64px_240px_1fr] xl:grid-cols-[64px_240px_1fr_260px]">
         {/* Servers */}
         <aside className="min-h-0 border-r border-border bg-background/60 backdrop-blur">
           <div className="h-full min-h-0 flex flex-col">
@@ -428,6 +505,11 @@ const StudyGroupsPage: React.FC = () => {
                   <div className="mb-4 text-sm text-muted-foreground">
                     Join a group like you’d join a server.
                   </div>
+                  {!user?.year ? (
+                    <div className="mb-4 rounded-xl border border-border bg-background/60 p-3 text-sm text-muted-foreground">
+                      Public groups are filtered by your year. Complete your profile to see year-specific groups.
+                    </div>
+                  ) : null}
                   {loading ? (
                     <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
                   ) : filteredPublicGroups.length > 0 ? (
@@ -457,8 +539,10 @@ const StudyGroupsPage: React.FC = () => {
                     newMessage={newMessage}
                     setNewMessage={setNewMessage}
                     onSend={handleSendMessage}
+                    onSendAttachment={handleSendAttachment}
                     sending={sending}
                     currentUserId={user.uid}
+                    groupId={selectedGroup.id}
                     canSend={Boolean(user)}
                   />
                 ) : activeChannel === 'chat' ? (
@@ -525,8 +609,34 @@ const StudyGroupsPage: React.FC = () => {
                   ) : null}
                   <div className="rounded-xl border border-border bg-background/60 p-4">
                     <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">{selectedGroup.members.length}</div>
-                    <div className="mt-2 text-xs text-muted-foreground">Member list display will improve once profiles are wired in.</div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-foreground">
+                        {memberCounts.online + memberCounts.idle}/{memberCounts.total} online
+                      </div>
+                      <div className="text-xs text-muted-foreground">{memberCounts.idle} idle</div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {memberRows.map((m) => (
+                        <div key={m.uid} className="flex items-center gap-3 rounded-lg border border-border bg-card/30 px-3 py-2">
+                          <div
+                            className={`h-2.5 w-2.5 rounded-full ${
+                              m.status === 'online'
+                                ? 'bg-primary'
+                                : m.status === 'idle'
+                                  ? 'bg-secondary'
+                                  : 'bg-muted-foreground/40'
+                            }`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-foreground">{m.name}</div>
+                            <div className="text-[11px] capitalize text-muted-foreground">{m.status}</div>
+                          </div>
+                        </div>
+                      ))}
+                      {memberRows.length === 0 ? (
+                        <div className="text-xs text-muted-foreground">No members found.</div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -624,14 +734,12 @@ const CreateGroupModal: React.FC<{
 }> = ({ isOpen, onClose, user }) => {
   const [formData, setFormData] = useState({
     name: '',
-    subject: '',
-    description: '',
-    branch: '',
-    semester: '',
-    isPrivate: false,
-    maxMembers: 50
+    subject: 'General',
+    purpose: '',
+    years: ['1', '2', '3', '4'] as string[],
   });
   const [creating, setCreating] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -639,29 +747,15 @@ const CreateGroupModal: React.FC<{
 
     setCreating(true);
     try {
-      await api.createStudyGroup({
-        name: formData.name,
-        subject: formData.subject,
-        description: formData.description || undefined,
-        branch: formData.branch as any || undefined,
-        semester: formData.semester || undefined,
-        members: [user.uid],
-        admins: [user.uid],
-        createdBy: user.uid,
-        createdByName: user.displayName || 'Unknown',
-        isPrivate: formData.isPrivate,
-        maxMembers: formData.maxMembers
+      await api.createStudyGroupRequest({
+        name: formData.name.trim(),
+        purpose: formData.purpose.trim(),
+        subject: (formData.subject || 'General').trim() || 'General',
+        visibleToYears: formData.years.length ? formData.years : ['1', '2', '3', '4'],
+        requestedBy: user.uid,
+        requestedByName: user.displayName || 'Unknown',
       });
-      onClose();
-      setFormData({
-        name: '',
-        subject: '',
-        description: '',
-        branch: '',
-        semester: '',
-        isPrivate: false,
-        maxMembers: 50
-      });
+      setSubmitted(true);
     } catch (error) {
       console.error('Error creating group:', error);
     } finally {
@@ -685,7 +779,25 @@ const CreateGroupModal: React.FC<{
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {submitted ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+              Thank you for making one. Waiting for admin approval and your group will be created.
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitted(false);
+                setFormData({ name: '', subject: 'General', purpose: '', years: ['1', '2', '3', '4'] });
+                onClose();
+              }}
+              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-2">
               Group Name *
@@ -702,7 +814,7 @@ const CreateGroupModal: React.FC<{
 
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Subject *
+              Subject (or write General) *
             </label>
             <input
               type="text"
@@ -710,67 +822,57 @@ const CreateGroupModal: React.FC<{
               value={formData.subject}
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary/50"
-              placeholder="e.g., Computer Science"
+              placeholder="e.g., Computer Science / General"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Description
+              Purpose *
             </label>
             <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+              value={formData.purpose}
+              onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
               className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary/50"
-              placeholder="Brief description of the group"
-              rows={3}
+              placeholder="What is this group for? (study plan, topics, exams, etc.)"
+              rows={4}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Branch
-              </label>
-              <select
-                value={formData.branch}
-                onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary/50"
+          <div>
+            <div className="block text-sm font-medium text-muted-foreground mb-2">Visible to which years? *</div>
+            <div className="grid grid-cols-2 gap-2">
+              {['1', '2', '3', '4'].map((y) => {
+                const checked = formData.years.includes(y);
+                return (
+                  <label key={y} className="flex items-center gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? Array.from(new Set([...formData.years, y]))
+                          : formData.years.filter((v) => v !== y);
+                        setFormData({ ...formData, years: next });
+                      }}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    Year {y}
+                  </label>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, years: ['1', '2', '3', '4'] })}
+                className="col-span-2 px-3 py-2 rounded-lg border border-border bg-muted/30 text-sm text-foreground hover:bg-muted/50 transition-all"
               >
-                <option value="">Select...</option>
-                <option value="CS_IT_DS">CS/IT/DS</option>
-                <option value="AIML_ECE_CYS">AIML/ECE/CYS</option>
-              </select>
+                All years
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Semester
-              </label>
-              <select
-                value={formData.semester}
-                onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="">Select...</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                  <option key={sem} value={sem.toString()}>{sem}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="isPrivate"
-              checked={formData.isPrivate}
-              onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })}
-              className="w-4 h-4 rounded border-border"
-            />
-            <label htmlFor="isPrivate" className="text-sm text-muted-foreground">
-              Make this group private (require approval to join)
-            </label>
+            {formData.years.length === 0 ? (
+              <div className="mt-2 text-xs text-destructive">Pick at least one year.</div>
+            ) : null}
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -783,13 +885,14 @@ const CreateGroupModal: React.FC<{
             </button>
             <button
               type="submit"
-              disabled={creating}
+              disabled={creating || formData.years.length === 0}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
             >
-              {creating ? 'Creating...' : 'Create Group'}
+              {creating ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </form>
+        )}
       </motion.div>
     </div>
   );
@@ -800,10 +903,75 @@ const ChatView: React.FC<{
   newMessage: string;
   setNewMessage: (msg: string) => void;
   onSend: (e: React.FormEvent) => void;
+  onSendAttachment: (params: { file: File; kind: 'file' | 'audio' }) => void;
   sending: boolean;
   currentUserId: string;
+  groupId: string;
   canSend?: boolean;
-}> = ({ messages, newMessage, setNewMessage, onSend, sending, currentUserId, canSend = true }) => {
+}> = ({ messages, newMessage, setNewMessage, onSend, onSendAttachment, sending, currentUserId, groupId, canSend = true }) => {
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recorderRef = React.useRef<MediaRecorder | null>(null);
+  const chunksRef = React.useRef<BlobPart[]>([]);
+
+  const pickFile = () => {
+    if (!canSend) return;
+    fileInputRef.current?.click();
+  };
+
+  const onFilePicked: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploading(true);
+    try {
+      await onSendAttachment({ file, kind: 'file' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const startRecording = async () => {
+    if (!canSend) return;
+    if (recording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
+      };
+      recorder.onstop = async () => {
+        try {
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+          const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+          setUploading(true);
+          await onSendAttachment({ file, kind: 'audio' });
+        } finally {
+          setUploading(false);
+          // stop tracks
+          stream.getTracks().forEach((t) => t.stop());
+        }
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch (err) {
+      console.error('Mic permission/recording failed:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (!recording) return;
+    setRecording(false);
+    try {
+      recorderRef.current?.stop();
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
@@ -846,7 +1014,23 @@ const ChatView: React.FC<{
                       : 'bg-muted/40 text-foreground'
                   }`}
                 >
-                  {message.content}
+                  {message.kind === 'audio' && message.fileUrl ? (
+                    <div className="space-y-2">
+                      <div className="text-sm">{message.content || 'Voice message'}</div>
+                      <audio controls src={message.fileUrl} className="w-[240px]" />
+                    </div>
+                  ) : message.kind === 'file' && message.fileUrl ? (
+                    <a
+                      href={message.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2"
+                    >
+                      {message.fileName || message.content || 'Download file'}
+                    </a>
+                  ) : (
+                    message.content
+                  )}
                 </div>
               </div>
             </div>
@@ -857,6 +1041,29 @@ const ChatView: React.FC<{
       {/* Input */}
       <form onSubmit={onSend} className="p-4 border-t border-border">
         <div className="flex gap-2">
+          <input ref={fileInputRef} type="file" className="hidden" onChange={onFilePicked} />
+          <button
+            type="button"
+            onClick={pickFile}
+            disabled={!canSend || uploading || recording}
+            className="px-3 py-2 bg-muted/40 text-foreground rounded-lg hover:bg-muted transition-all disabled:opacity-50"
+            title="Upload file"
+            aria-label="Upload file"
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={recording ? stopRecording : startRecording}
+            disabled={!canSend || uploading}
+            className="px-3 py-2 bg-muted/40 text-foreground rounded-lg hover:bg-muted transition-all disabled:opacity-50"
+            title={recording ? 'Stop recording' : 'Record voice message'}
+            aria-label={recording ? 'Stop recording' : 'Record voice message'}
+          >
+            {recording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
+
           <input
             type="text"
             value={newMessage}
@@ -873,6 +1080,13 @@ const ChatView: React.FC<{
             <Send className="w-5 h-5" />
           </button>
         </div>
+        {!canSend ? (
+          <div className="mt-2 text-xs text-muted-foreground">Sign in to send messages.</div>
+        ) : uploading ? (
+          <div className="mt-2 text-xs text-muted-foreground">Uploading…</div>
+        ) : recording ? (
+          <div className="mt-2 text-xs text-muted-foreground">Recording… press stop to send.</div>
+        ) : null}
       </form>
     </div>
   );

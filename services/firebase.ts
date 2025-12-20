@@ -26,10 +26,10 @@ import {
   FieldValue
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
-import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit } from '../types';
+import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit, StudyGroupRequest } from '../types';
 import { env, getAuthClient, getDb, getGoogleProvider, isConfigured } from './platform/firebaseClient';
 import { stripUndefined, withTimeout } from './platform/utils';
-import { authService, moderationService, usersService } from './domains';
+import { authService, moderationService, usersService, presenceService } from './domains';
 
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
@@ -421,6 +421,111 @@ export const api = {
         return usersService.onProfileChanged(uid, cb);
     },
 
+    // --- PRESENCE ---
+    setPresenceOnline: async (uid: string, profile?: { displayName?: string | null; photoURL?: string | null }) => {
+        return presenceService.setOnline(uid, profile);
+    },
+
+    setPresenceIdle: async (uid: string, profile?: { displayName?: string | null; photoURL?: string | null }) => {
+        return presenceService.setIdle(uid, profile);
+    },
+
+    setPresenceOffline: async (uid: string) => {
+        return presenceService.setOffline(uid);
+    },
+
+    onPresenceByUserIds: (userIds: string[], cb: (records: Record<string, DocumentData>) => void) => {
+        return presenceService.onPresenceByUserIds(userIds, cb);
+    },
+
+    // --- STUDY GROUP REQUESTS (ADMIN APPROVAL FLOW) ---
+    createStudyGroupRequest: async (data: {
+        name: string;
+        purpose: string;
+        subject: string;
+        visibleToYears: string[];
+        requestedBy: string;
+        requestedByName: string;
+    }): Promise<string> => {
+        if (!db) throw new Error('Database not configured');
+        const payload = stripUndefined({
+            name: data.name,
+            purpose: data.purpose,
+            subject: data.subject,
+            visibleToYears: data.visibleToYears,
+            requestedBy: data.requestedBy,
+            requestedByName: data.requestedByName,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+        } as any);
+        const ref = await withTimeout(addDoc(collection(db, 'studyGroupRequests'), payload as any), 10000);
+        return ref.id;
+    },
+
+    onMyStudyGroupRequestsChanged: (uid: string, cb: (items: StudyGroupRequest[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(collection(db, 'studyGroupRequests'), where('requestedBy', '==', uid), limit(200));
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyGroupRequest));
+            cb(list);
+        });
+    },
+
+    onPendingStudyGroupRequestsChanged: (cb: (items: StudyGroupRequest[]) => void) => {
+        if (!db) { cb([]); return () => {}; }
+        const q = query(collection(db, 'studyGroupRequests'), where('status', '==', 'pending'), limit(200));
+        return onSnapshot(q, (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudyGroupRequest));
+            cb(list);
+        });
+    },
+
+    approveStudyGroupRequest: async (requestId: string) => {
+        if (!db) throw new Error('Database not configured');
+        const reqRef = doc(db, 'studyGroupRequests', requestId);
+        const reqSnap = await withTimeout(getDoc(reqRef), 8000);
+        if (!reqSnap.exists()) throw new Error('Request not found');
+        const req = { id: reqSnap.id, ...reqSnap.data() } as StudyGroupRequest;
+
+        // Create the actual study group (approved and joinable).
+        await withTimeout(
+            addDoc(collection(db, 'studyGroups'), {
+                name: req.name,
+                subject: req.subject,
+                description: req.purpose,
+                members: [req.requestedBy],
+                admins: [req.requestedBy],
+                createdBy: req.requestedBy,
+                createdByName: req.requestedByName,
+                isPrivate: false,
+                visibleToYears: req.visibleToYears,
+                maxMembers: 200,
+                createdAt: serverTimestamp(),
+            } as any),
+            12000
+        );
+        const reviewedBy = auth?.currentUser?.uid || 'admin';
+        await withTimeout(updateDoc(reqRef, { status: 'approved', reviewedBy, reviewedAt: serverTimestamp() } as any), 8000);
+    },
+
+    rejectStudyGroupRequest: async (requestId: string, reason?: string) => {
+        if (!db) throw new Error('Database not configured');
+        const reqRef = doc(db, 'studyGroupRequests', requestId);
+        const reviewedBy = auth?.currentUser?.uid || 'admin';
+        await withTimeout(updateDoc(reqRef, { status: 'rejected', rejectionReason: reason ?? '', reviewedBy, reviewedAt: serverTimestamp() } as any), 8000);
+    },
+
+    // --- STUDY GROUP CHAT ATTACHMENTS ---
+    uploadStudyGroupAttachment: async (groupId: string, file: File) => {
+        const safeName = sanitizeStorageFilename(file.name || 'file');
+        const folder = `study-groups/${sanitizeStorageFilename(String(groupId || 'group'))}`;
+        return uploadToCloudinaryRaw({
+            file,
+            folder,
+            publicId: `${Date.now()}-${safeName}`
+        });
+    },
+
     // --- RESOURCES (safe queries) ---
     onApprovedResourcesChanged: (cb: (resources: Resource[]) => void) => {
         if (!db) { cb([]); return () => {}; }
@@ -733,7 +838,7 @@ export const api = {
         return null;
     },
 
-    onStudyGroupsChanged: (cb: (groups: StudyGroup[]) => void, userId?: string) => {
+    onStudyGroupsChanged: (cb: (groups: StudyGroup[]) => void, userId?: string, userYear?: string) => {
         if (!db) { cb([]); return () => {}; }
         let q;
         if (userId) {
@@ -744,11 +849,16 @@ export const api = {
                 orderBy('createdAt', 'desc')
             );
         } else {
-            // Get all public groups
+            // Discover: only groups visible to the current user's year.
+            // Important: queries must not include docs that rules would reject.
+            const year = (userYear || '').trim();
+            if (!year) {
+                cb([]);
+                return () => {};
+            }
             q = query(
                 collection(db, 'studyGroups'),
-                where('isPrivate', '==', false),
-                orderBy('createdAt', 'desc')
+                where('visibleToYears', 'array-contains', year)
             );
         }
         return onSnapshot(q, (snap) => {

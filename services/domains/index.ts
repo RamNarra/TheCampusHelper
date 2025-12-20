@@ -4,3 +4,4 @@ export * as moderationService from './moderation';
 export * as coursesService from './courses';
 export * as enrollmentsService from './enrollments';
 export * as calendarService from './calendar';
+export * as presenceService from './presence';

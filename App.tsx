@@ -87,6 +87,7 @@ const AppContent: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // CONDITION: Show modal ONLY when:
@@ -189,8 +190,8 @@ const AppContent: React.FC = () => {
             </Routes>
         </ErrorBoundary>
       </main>
-      
-      <Footer />
+
+      {location.pathname === '/study-groups' ? null : <Footer />}
     </div>
   );
 };

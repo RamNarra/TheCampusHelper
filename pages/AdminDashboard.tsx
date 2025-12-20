@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
-import { UserProfile } from '../types';
+import { UserProfile, StudyGroupRequest } from '../types';
 import { Resource, UserRole } from '../types';
 import { motion } from 'framer-motion';
 import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2, ExternalLink, Mail } from 'lucide-react';
@@ -12,7 +12,7 @@ import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const role = normalizeRole(user?.role);
-  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'resources' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'resources' | 'users' | 'groupRequests'>('overview');
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -22,6 +22,8 @@ const AdminDashboard: React.FC = () => {
   const [allResources, setAllResources] = useState<Resource[]>([]);
   const [isLoadingResources, setIsLoadingResources] = useState(false);
   const [resourceSearchTerm, setResourceSearchTerm] = useState('');
+  const [groupRequests, setGroupRequests] = useState<StudyGroupRequest[]>([]);
+  const [isLoadingGroupRequests, setIsLoadingGroupRequests] = useState(false);
 
   // Fetch users for admin-only User Database (and stats)
   useEffect(() => {
@@ -57,6 +59,18 @@ const AdminDashboard: React.FC = () => {
     });
     return () => unsub();
   }, [role, user]);
+
+  // Admins: subscribe to pending study group requests
+  useEffect(() => {
+    if (!user || !isAtLeastRole(role, 'admin')) return;
+    if (activeTab !== 'groupRequests') return;
+    setIsLoadingGroupRequests(true);
+    const unsub = api.onPendingStudyGroupRequestsChanged((list) => {
+      setGroupRequests(list);
+      setIsLoadingGroupRequests(false);
+    });
+    return () => unsub();
+  }, [activeTab, role, user]);
 
   if (!user || !isAtLeastRole(role, 'moderator')) {
     return <Navigate to="/" replace />;
@@ -112,6 +126,27 @@ const AdminDashboard: React.FC = () => {
       setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, disabled } : u)));
     } catch (e) {
       console.error('Disable update failed:', e);
+    }
+  };
+
+  const handleApproveGroupRequest = async (id: string) => {
+    if (!isAtLeastRole(role, 'admin')) return;
+    try {
+      await api.approveStudyGroupRequest(id);
+      setGroupRequests(prev => prev.filter(r => r.id !== id));
+    } catch (e) {
+      console.error('Approve group request failed:', e);
+    }
+  };
+
+  const handleRejectGroupRequest = async (id: string) => {
+    if (!isAtLeastRole(role, 'admin')) return;
+    const reason = window.prompt('Rejection reason (optional):') ?? '';
+    try {
+      await api.rejectStudyGroupRequest(id, reason);
+      setGroupRequests(prev => prev.filter(r => r.id !== id));
+    } catch (e) {
+      console.error('Reject group request failed:', e);
     }
   };
 
@@ -232,6 +267,21 @@ const AdminDashboard: React.FC = () => {
         >
           Manage Resources
           {activeTab === 'resources' && (
+            <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('groupRequests')}
+          disabled={!isAtLeastRole(role, 'admin')}
+          className={`pb-3 px-4 text-sm font-medium transition-colors relative ${
+            activeTab === 'groupRequests'
+              ? 'text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          } ${!isAtLeastRole(role, 'admin') ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          Study Group Requests
+          {activeTab === 'groupRequests' && (
             <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
           )}
         </button>
@@ -559,6 +609,54 @@ const AdminDashboard: React.FC = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+          </>
+        ) : activeTab === 'groupRequests' ? (
+          <>
+            <div className="p-6 border-b border-border">
+              <h2 className="text-lg font-bold text-foreground">Study Group Requests</h2>
+              <p className="text-sm text-muted-foreground">Approve or reject new group creations.</p>
+            </div>
+
+            <div className="p-6">
+              {isLoadingGroupRequests ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : groupRequests.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No pending group requests.</div>
+              ) : (
+                <div className="space-y-4">
+                  {groupRequests.map((r) => (
+                    <div key={r.id} className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-base font-bold text-foreground truncate">{r.name}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">Subject: {r.subject}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">Requested by: {r.requestedByName}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            Visible to years: {(r.visibleToYears || []).join(', ') || 'All'}
+                          </div>
+                          <div className="mt-3 text-sm text-foreground whitespace-pre-wrap">{r.purpose}</div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <button
+                            onClick={() => handleApproveGroupRequest(r.id)}
+                            className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-medium"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectGroupRequest(r.id)}
+                            className="px-3 py-2 rounded-lg bg-muted/40 text-foreground hover:bg-muted transition-all text-sm font-medium"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : (
