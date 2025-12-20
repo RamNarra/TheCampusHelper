@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -21,6 +21,7 @@ import { api } from '../services/firebase';
 import { StudyGroup, Message, Session, CollaborativeNote } from '../types';
 import AdUnit from '../components/AdUnit';
 import { isAuthBypassed } from '../lib/dev';
+import { useNavigate } from 'react-router-dom';
 
 // Helper function to format Firestore timestamps
 const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 'datetime'): string => {
@@ -33,6 +34,7 @@ const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 
 
 const StudyGroupsPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isPreview = !user && isAuthBypassed();
   const [myGroups, setMyGroups] = useState<StudyGroup[]>([]);
   const [publicGroups, setPublicGroups] = useState<StudyGroup[]>([]);
@@ -49,6 +51,8 @@ const StudyGroupsPage: React.FC = () => {
   const [presenceByUid, setPresenceByUid] = useState<Record<string, any>>({});
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+
+  const didAutoDiscoverRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -82,6 +86,20 @@ const StudyGroupsPage: React.FC = () => {
       unsubscribePublic();
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (loading) return;
+    if (isPreview) return;
+    if (didAutoDiscoverRef.current) return;
+
+    // If the account has no joined groups, default to Discover.
+    if (myGroups.length === 0) {
+      setIsDiscover(true);
+      setSelectedGroupId(null);
+      didAutoDiscoverRef.current = true;
+    }
+  }, [user, loading, isPreview, myGroups.length]);
 
   const selectedGroup = useMemo(() => {
     if (!selectedGroupId) return null;
@@ -275,7 +293,7 @@ const StudyGroupsPage: React.FC = () => {
   const hasServers = myGroups.length > 0;
 
   return (
-    <div className="flex-1 min-h-0">
+    <div className="flex-1 min-h-0 h-[calc(100vh-4rem)]">
       <div className="h-full min-h-0 grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[320px_1fr_320px]">
         {/* Sidebar */}
         <aside className="min-h-0 border-r border-border bg-background/60 backdrop-blur">
@@ -337,6 +355,22 @@ const StudyGroupsPage: React.FC = () => {
                   <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                     Public groups
                   </div>
+                  {!user?.year ? (
+                    <div className="mb-3 rounded-2xl border border-border bg-background/60 p-4">
+                      <div className="text-sm font-semibold text-foreground">Complete your profile</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Public groups are filtered by your year. Add your year to see groups.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/profile')}
+                        className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      >
+                        <Users className="h-4 w-4" />
+                        Go to Profile
+                      </button>
+                    </div>
+                  ) : null}
                   {loading ? (
                     <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
                   ) : filteredPublicGroups.length > 0 ? (
@@ -489,7 +523,7 @@ const StudyGroupsPage: React.FC = () => {
                   </div>
                   {!user?.year ? (
                     <div className="mb-4 rounded-xl border border-border bg-background/60 p-3 text-sm text-muted-foreground">
-                      Public groups are filtered by your year. Complete your profile to see year-specific groups.
+                      Public groups are filtered by your year. Add your year in Profile to see groups.
                     </div>
                   ) : null}
                   {loading ? (
