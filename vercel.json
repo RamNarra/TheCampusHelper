@@ -1,6 +1,50 @@
 
 {
   "rewrites": [
+    { "source": "/api/bootstrapAdmin", "destination": "/api/auth?action=bootstrapAdmin" },
+
+    { "source": "/api/admin/setUserRole", "destination": "/api/admin?action=setUserRole" },
+    { "source": "/api/admin/setUserDisabled", "destination": "/api/admin?action=setUserDisabled" },
+    { "source": "/api/admin/setPhase1Toggle", "destination": "/api/admin?action=setPhase1Toggle" },
+
+    { "source": "/api/courses/createCourse", "destination": "/api/courses?action=createCourse" },
+    { "source": "/api/courses/myCourses", "destination": "/api/courses?action=myCourses" },
+    { "source": "/api/courses/setEnrollment", "destination": "/api/courses?action=setEnrollment" },
+    { "source": "/api/courses/setVisibility", "destination": "/api/courses?action=setVisibility" },
+    { "source": "/api/courses/postToStream", "destination": "/api/courses?action=postToStream" },
+
+    { "source": "/api/assignments/create", "destination": "/api/assignments?action=create" },
+    { "source": "/api/assignments/publish", "destination": "/api/assignments?action=publish" },
+    { "source": "/api/submissions/submit", "destination": "/api/assignments?action=submit" },
+    { "source": "/api/submissions/grade", "destination": "/api/assignments?action=grade" },
+
+    { "source": "/api/tests/create", "destination": "/api/tests?action=create" },
+    { "source": "/api/tests/publish", "destination": "/api/tests?action=publish" },
+    { "source": "/api/tests/startAttempt", "destination": "/api/tests?action=startAttempt" },
+    { "source": "/api/tests/submitAttempt", "destination": "/api/tests?action=submitAttempt" },
+
+    { "source": "/api/gradebook/course", "destination": "/api/gradebook?action=course" },
+    { "source": "/api/gradebook/recomputeStudent", "destination": "/api/gradebook?action=recomputeStudent" },
+
+    { "source": "/api/calendar/createEvent", "destination": "/api/calendar?action=createEvent" },
+    { "source": "/api/events/upsert", "destination": "/api/calendar?action=upsert" },
+
+    { "source": "/api/studyGroups/approveRequest", "destination": "/api/studyGroups?action=approveRequest" },
+    { "source": "/api/studyGroups/rejectRequest", "destination": "/api/studyGroups?action=rejectRequest" },
+    { "source": "/api/studyGroups/join", "destination": "/api/studyGroups?action=join" },
+    { "source": "/api/studyGroups/leave", "destination": "/api/studyGroups?action=leave" },
+    { "source": "/api/studyGroups/createSession", "destination": "/api/studyGroups?action=createSession" },
+    { "source": "/api/studyGroups/updateSession", "destination": "/api/studyGroups?action=updateSession" },
+    { "source": "/api/studyGroups/deleteSession", "destination": "/api/studyGroups?action=deleteSession" },
+
+    { "source": "/api/resources/submit", "destination": "/api/studyGroups?action=resourcesSubmit" },
+    { "source": "/api/resources/setStatus", "destination": "/api/studyGroups?action=resourcesSetStatus" },
+    { "source": "/api/resources/delete", "destination": "/api/studyGroups?action=resourcesDelete" },
+
+    { "source": "/api/generate", "destination": "/api/insights?action=generate" },
+    { "source": "/api/generateQuiz", "destination": "/api/insights?action=generateQuiz" },
+    { "source": "/api/study-assistant", "destination": "/api/insights?action=studyAssistant" },
+
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],

@@ -4,6 +4,7 @@ export interface VercelRequest {
   headers: { [key: string]: string | string[] | undefined };
   method: string;
   body: any;
+  query?: { [key: string]: string | string[] | undefined };
 }
 
 export interface VercelResponse {
