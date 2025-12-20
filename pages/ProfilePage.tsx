@@ -7,21 +7,35 @@ import { Navigate, NavLink } from 'react-router-dom';
 import GamificationCard from '../components/GamificationCard';
 import { api } from '../services/firebase';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
+import { getPreviewUserId, isAuthBypassed } from '../lib/dev';
 
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
+  const isPreview = !user && isAuthBypassed();
+  const displayUser = user ?? (isPreview
+    ? {
+        uid: getPreviewUserId(),
+        displayName: 'Preview User',
+        email: 'preview@localhost',
+        photoURL: null,
+        role: 'student',
+        branch: 'CS_IT_DS',
+        year: '2',
+        section: 'A',
+      }
+    : null);
   const [adminFixLoading, setAdminFixLoading] = useState(false);
   const [adminFixMessage, setAdminFixMessage] = useState<string | null>(null);
 
-  if (!user) {
+  if (!displayUser) {
     return <Navigate to="/login" replace />;
   }
 
-  const isOwnerEmail = (user.email || '').toLowerCase() === 'ramcharannarra8@gmail.com';
-  const canAttemptAdminFix = isOwnerEmail && !isAtLeastRole(normalizeRole(user.role), 'admin') && !adminFixLoading;
+  const isOwnerEmail = (displayUser.email || '').toLowerCase() === 'ramcharannarra8@gmail.com';
+  const canAttemptAdminFix = !!user && isOwnerEmail && !isAtLeastRole(normalizeRole(displayUser.role), 'admin') && !adminFixLoading;
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Profile Header */}
       <motion.div 
         initial={{ y: 10, opacity: 0 }}
@@ -35,33 +49,38 @@ const ProfilePage: React.FC = () => {
 
         {/* Body */}
         <div className="p-6 sm:p-8 pt-0 relative z-10">
+          {isPreview && (
+            <div className="mb-5 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              Preview mode is enabled. Sign in to edit your profile and see your real stats.
+            </div>
+          )}
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex items-start gap-4 w-full lg:w-auto -mt-10">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-card shadow-lg overflow-hidden bg-muted flex-shrink-0">
                 <img
-                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`}
+                  src={displayUser.photoURL || `https://ui-avatars.com/api/?name=${displayUser.displayName}`}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="pt-10 sm:pt-12">
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">{user.displayName}</h1>
-                <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">{displayUser.displayName}</h1>
+                <p className="text-sm text-muted-foreground mt-1">{displayUser.email}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-                    {isAtLeastRole(normalizeRole(user.role), 'admin') ? 'Administrator' : 'Student'}
+                    {isAtLeastRole(normalizeRole(displayUser.role), 'admin') ? 'Administrator' : 'Student'}
                   </span>
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20">
-                    {user.branch || 'General'}
+                    {displayUser.branch || 'General'}
                   </span>
-                  {user.year ? (
+                  {displayUser.year ? (
                     <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
-                      Year {user.year}
+                      Year {displayUser.year}
                     </span>
                   ) : null}
-                  {user.section ? (
+                  {displayUser.section ? (
                     <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
-                      Sec {user.section}
+                      Sec {displayUser.section}
                     </span>
                   ) : null}
                 </div>
@@ -81,20 +100,20 @@ const ProfilePage: React.FC = () => {
                 </div>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">Branch:</span> {user.branch || '—'}
+                    <span className="font-semibold text-foreground">Branch:</span> {displayUser.branch || '—'}
                   </div>
                   <div className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">College Email:</span> {user.collegeEmail || '—'}
+                    <span className="font-semibold text-foreground">College Email:</span> {displayUser.collegeEmail || '—'}
                   </div>
                   <div className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">DOB:</span> {user.dateOfBirth || '—'}
+                    <span className="font-semibold text-foreground">DOB:</span> {displayUser.dateOfBirth || '—'}
                   </div>
                   <div className="text-muted-foreground">
-                    <span className="font-semibold text-foreground">Role:</span> {user.role}
+                    <span className="font-semibold text-foreground">Role:</span> {displayUser.role}
                   </div>
                 </div>
 
-                {isOwnerEmail && !isAtLeastRole(normalizeRole(user.role), 'admin') ? (
+                {canAttemptAdminFix ? (
                   <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
                     <button
                       disabled={!canAttemptAdminFix}
@@ -126,13 +145,17 @@ const ProfilePage: React.FC = () => {
               </div>
 
               <div className="mt-4">
-                <button
-                  onClick={logout}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-sm font-medium"
-                >
-                  <LogOut className="w-5 h-5" />
-                  Logout
-                </button>
+                {user ? (
+                  <button
+                    onClick={logout}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-sm font-medium"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout
+                  </button>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Sign in to manage your account.</div>
+                )}
               </div>
             </div>
           </div>
@@ -146,7 +169,7 @@ const ProfilePage: React.FC = () => {
         transition={{ delay: 0.05 }}
         className="mb-8"
       >
-        <GamificationCard uid={user.uid} />
+        {user ? <GamificationCard uid={user.uid} /> : null}
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

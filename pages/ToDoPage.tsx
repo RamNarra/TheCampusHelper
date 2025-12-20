@@ -5,6 +5,7 @@ import { AlertTriangle, CalendarDays, Check, CheckCircle2, Plus, Sparkles, Trash
 import { useAuth } from '../context/AuthContext';
 import type { Habit, TodoItem } from '../types';
 import { api } from '../services/firebase';
+import { isAuthBypassed } from '../lib/dev';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const toISODate = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -82,6 +83,7 @@ const ProgressRing: React.FC<{ value: number; size?: number; stroke?: number }> 
 
 const ToDoPage: React.FC = () => {
   const { user } = useAuth();
+  const isPreview = !user && isAuthBypassed();
 
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -148,10 +150,31 @@ const ToDoPage: React.FC = () => {
     return { byDay, total, done, pct };
   }, [weekDays, todosByDate]);
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    if (!isPreview) return <Navigate to="/login" replace />;
+    return (
+      <div className="relative pt-6 pb-10 px-4 max-w-screen-2xl mx-auto sm:px-6 lg:px-8 2xl:px-10">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-secondary/10" />
+        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+            <Sparkles className="w-4 h-4" />
+            Weekly study system
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-muted-foreground">
+            <CalendarDays className="w-5 h-5" />
+            <span className="text-sm font-medium">Personalized To-Do</span>
+          </div>
+          <h1 className="text-3xl font-bold text-foreground mt-1 tracking-tight">Mega Calendar</h1>
+          <p className="text-sm text-muted-foreground mt-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+            Preview mode is enabled. Sign in to view and manage your tasks and habits.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative pt-8 pb-12 px-4 max-w-screen-2xl mx-auto sm:px-6 lg:px-8 2xl:px-10">
+    <div className="relative pt-6 pb-10 px-4 max-w-screen-2xl mx-auto sm:px-6 lg:px-8 2xl:px-10">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-secondary/10" />
       <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8">
         <div className="flex items-start justify-between gap-4">

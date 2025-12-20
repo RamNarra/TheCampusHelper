@@ -16,21 +16,21 @@ import {
 } from 'lucide-react';
 import { LearningAnalytics } from '../types';
 import { getAnalyticsForUser } from '../services/analytics';
+import { getPreviewUserId, isAuthBypassed } from '../lib/dev';
 
 const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<LearningAnalytics | null>(null);
+  const isPreview = !user && isAuthBypassed();
+  const effectiveUserId = user?.uid ?? (isPreview ? getPreviewUserId() : null);
 
   useEffect(() => {
-    if (user) {
-      const data = getAnalyticsForUser(user.uid);
-      setAnalytics(data);
-    }
-  }, [user]);
+    if (!effectiveUserId) return;
+    const data = getAnalyticsForUser(effectiveUserId);
+    setAnalytics(data);
+  }, [effectiveUserId]);
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user && !isPreview) return <Navigate to="/login" replace />;
 
   if (!analytics) {
     return (
@@ -67,7 +67,7 @@ const AnalyticsPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}
@@ -81,6 +81,11 @@ const AnalyticsPage: React.FC = () => {
         <p className="text-muted-foreground">
           Track your study patterns, performance, and get personalized insights
         </p>
+        {isPreview && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Preview mode is enabled. Analytics shown are mock data.
+          </div>
+        )}
       </motion.div>
 
       {/* Key Metrics */}

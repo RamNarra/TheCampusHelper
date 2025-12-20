@@ -188,7 +188,7 @@ const AdminDashboard: React.FC = () => {
   const totalResources = allResources.length;
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">Admin Dashboard</h1>
         <p className="text-muted-foreground">Moderate resources and manage users</p>

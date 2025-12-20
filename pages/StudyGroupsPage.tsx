@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
 import { StudyGroup, Message, Session, CollaborativeNote } from '../types';
 import AdUnit from '../components/AdUnit';
+import { isAuthBypassed } from '../lib/dev';
 
 // Helper function to format Firestore timestamps
 const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 'datetime'): string => {
@@ -17,6 +18,7 @@ const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 
 
 const StudyGroupsPage: React.FC = () => {
   const { user } = useAuth();
+  const isPreview = !user && isAuthBypassed();
   const [myGroups, setMyGroups] = useState<StudyGroup[]>([]);
   const [publicGroups, setPublicGroups] = useState<StudyGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<StudyGroup | null>(null);
@@ -26,7 +28,14 @@ const StudyGroupsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      if (isPreview) {
+        setLoading(false);
+        setMyGroups([]);
+        setPublicGroups([]);
+      }
+      return;
+    }
 
     // Subscribe to user's groups
     const unsubscribeMyGroups = api.onStudyGroupsChanged((groups) => {
@@ -46,6 +55,7 @@ const StudyGroupsPage: React.FC = () => {
   }, [user]);
 
   const handleCreateGroup = useCallback(() => {
+    if (!user) return;
     setShowCreateModal(true);
   }, []);
 
@@ -76,11 +86,11 @@ const StudyGroupsPage: React.FC = () => {
     );
   }, [publicGroups, normalizedSearch]);
 
-  if (!user) {
+  if (!user && !isPreview) {
     return (
       <div className="flex-1 px-4 py-12 flex items-center justify-center">
         <div className="text-center">
-          <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-foreground mb-2">Please Sign In</h2>
           <p className="text-muted-foreground">You need to be logged in to access study groups.</p>
         </div>
@@ -89,7 +99,7 @@ const StudyGroupsPage: React.FC = () => {
   }
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-10">
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3 flex items-center gap-3">
@@ -99,6 +109,11 @@ const StudyGroupsPage: React.FC = () => {
         <p className="text-muted-foreground text-lg">
           Collaborate with peers in real-time through study groups, chat, and video sessions.
         </p>
+        {isPreview && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Preview mode is enabled. Sign in to create/join groups and chat.
+          </div>
+        )}
       </div>
 
       <AdUnit className="mb-8" />
@@ -143,6 +158,7 @@ const StudyGroupsPage: React.FC = () => {
           </div>
           <button
             onClick={handleCreateGroup}
+            disabled={!user}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 font-medium transition-all shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -197,14 +213,16 @@ const StudyGroupsPage: React.FC = () => {
       )}
 
       {/* Create Group Modal */}
-      <CreateGroupModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        user={user}
-      />
+      {user && (
+        <CreateGroupModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          user={user}
+        />
+      )}
 
       {/* Group Details Modal */}
-      {selectedGroup && (
+      {user && selectedGroup && (
         <GroupDetailsModal
           group={selectedGroup}
           onClose={() => setSelectedGroup(null)}

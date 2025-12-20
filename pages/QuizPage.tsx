@@ -18,9 +18,11 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
 import { QuizQuestion } from '../types';
 import AdUnit from '../components/AdUnit';
+import { isAuthBypassed } from '../lib/dev';
 
 const QuizPage: React.FC = () => {
   const { user } = useAuth();
+  const isPreview = !user && isAuthBypassed();
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState<number>(2); // 1=easy, 2=medium, 3=hard
@@ -165,10 +167,10 @@ const QuizPage: React.FC = () => {
     return 'text-destructive';
   };
 
-  // Show login prompt if user is not authenticated
-  if (!user) {
+  // Show login prompt if user is not authenticated (unless preview bypass is enabled)
+  if (!user && !isPreview) {
     return (
-      <div className="flex-1 bg-background pt-8 pb-12 transition-colors duration-300">
+      <div className="flex-1 bg-background pt-6 pb-10 transition-colors duration-300">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
             <Brain className="w-8 h-8 text-primary" />
@@ -200,10 +202,10 @@ const QuizPage: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 bg-background pt-8 pb-12 transition-colors duration-300">
+    <div className="flex-1 bg-background pt-6 pb-10 transition-colors duration-300">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
             <Brain className="w-8 h-8 text-primary" />
           </div>
@@ -213,6 +215,11 @@ const QuizPage: React.FC = () => {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Generate MCQs with explanations, then review answers and performance.
           </p>
+          {isPreview && (
+            <div className="mt-5 inline-flex items-center justify-center rounded-full border border-border bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
+              Preview mode is enabled. Sign in to save attempts.
+            </div>
+          )}
         </div>
 
         {/* Ad Unit */}

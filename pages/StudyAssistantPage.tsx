@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Brain, Send, Loader2, BookOpen, GraduationCap } from 'lucide-react';
 import { StudyContext, StudyMessage } from '../types';
 import { getAuthToken } from '../services/firebase';
+import { isAuthBypassed } from '../lib/dev';
 
 // Constants
 const CONTEXT_TRUNCATE_LENGTH = 200;
@@ -20,6 +21,8 @@ const generateMessageId = () => {
 
 const StudyAssistantPage: React.FC = () => {
   const { user } = useAuth();
+  const isPreview = !user && isAuthBypassed();
+  const canSend = Boolean(user);
   const [messages, setMessages] = useState<StudyMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +60,7 @@ const StudyAssistantPage: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSend) return;
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: StudyMessage = {
@@ -160,7 +164,7 @@ const StudyAssistantPage: React.FC = () => {
     });
   };
 
-  if (!user) {
+  if (!user && !isPreview) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background text-foreground p-6">
         <div className="text-center max-w-md">
@@ -186,6 +190,11 @@ const StudyAssistantPage: React.FC = () => {
           <p className="text-muted-foreground">
             A focused tutor, tuned to your level.
           </p>
+          {isPreview && (
+            <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              Preview mode is enabled. Sign in to ask questions (sending is disabled without auth).
+            </div>
+          )}
         </div>
 
         {/* Context Form */}

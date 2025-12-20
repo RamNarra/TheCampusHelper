@@ -56,14 +56,17 @@ const AdUnit: React.FC<AdUnitProps> = ({
   // Development placeholder
   if (isDevelopment) {
     return (
-      <div className={`w-full bg-muted/10 border border-dashed border-border rounded-lg flex items-center justify-center text-muted-foreground text-xs uppercase tracking-widest py-8 my-6 ${className}`} style={{ minHeight: '100px' }}>
+      <div
+        className={`w-full bg-muted/10 border border-dashed border-border rounded-lg flex items-center justify-center text-muted-foreground text-xs uppercase tracking-widest py-3 ${className}`}
+        style={{ minHeight: '56px' }}
+      >
         Ad Space ({format}) - Dev Mode
       </div>
     );
   }
 
   return (
-    <div className={`my-6 w-full flex justify-center overflow-hidden ${className}`} style={{ minHeight: '100px' }}>
+    <div className={`my-4 w-full flex justify-center overflow-hidden ${className}`} style={{ minHeight: '100px' }}>
       <ins
         ref={adRef}
         className="adsbygoogle block"

@@ -125,7 +125,7 @@ const CompilerPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col transition-colors duration-300">
+    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col transition-colors duration-300">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">

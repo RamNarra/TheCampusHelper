@@ -7,7 +7,7 @@ import AdUnit from '../components/AdUnit';
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="bg-background pt-8 transition-colors duration-300">
+    <div className="bg-background pt-6 transition-colors duration-300">
       {/* Ambient BG */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>

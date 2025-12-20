@@ -1,5 +1,6 @@
 import React from 'react';
-import { User, Award, Link2, Briefcase, HeartHandshake, Quote } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { User, Award, Link2, Briefcase, HeartHandshake, Quote, ExternalLink } from 'lucide-react';
 import metadata from '../metadata.json';
 
 type DeveloperMeta = {
@@ -44,7 +45,7 @@ const DeveloperPage: React.FC = () => {
   const dev = (metadata as any).developer as DeveloperMeta | undefined;
 
   const name = dev?.name || 'Developer';
-  const headline = dev?.headline || 'Product engineering · React · Firebase · Vercel';
+  const headline = dev?.headline || 'Product engineering. Security-minded. Shipping with restraint.';
   const highlights = dev?.highlights || [];
   const linkedin = dev?.links?.linkedin || (dev as any)?.linkedin || '';
   const about = dev?.about || '';
@@ -58,30 +59,60 @@ const DeveloperPage: React.FC = () => {
     icon: Icon,
     children,
   }) => (
-    <div className="bg-card border border-border rounded-xl p-6">
-      <div className="flex items-center gap-2 font-semibold mb-3">
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card/60 p-6 shadow-sm backdrop-blur">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
+      <div className="flex items-center gap-2 text-sm font-semibold tracking-wide">
         <Icon className="w-5 h-5 text-primary" />
-        {title}
+        <span className="text-foreground">{title}</span>
       </div>
-      {children}
+      <div className="mt-3">{children}</div>
     </div>
   );
 
   return (
-    <div className="bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="mb-8">
-          <div className="text-center">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Developer</div>
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mt-2">{name}</h1>
-            <p className="text-muted-foreground mt-2">{headline}</p>
+    <div className="relative bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-24 left-1/2 h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-primary/15 blur-[110px]" />
+        <div className="absolute top-52 -right-44 h-[520px] w-[520px] rounded-full bg-secondary/15 blur-[110px]" />
+      </div>
+
+      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <div className="rounded-3xl border border-border bg-card/50 p-6 shadow-sm backdrop-blur">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Developer
+                </div>
+                <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+                  <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+                    {name}
+                  </span>
+                </h1>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {headline}
+                </p>
+              </div>
+
+              {linkedin ? (
+                <a
+                  href={linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  LinkedIn
+                </a>
+              ) : null}
+            </div>
           </div>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 gap-6">
           {about ? (
             <Card title="About" icon={User}>
-              <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{about}</div>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{about}</div>
             </Card>
           ) : null}
 
@@ -133,7 +164,7 @@ const DeveloperPage: React.FC = () => {
           ) : null}
 
           {projects.length > 0 ? (
-            <Card title="Projects" icon={Award}>
+            <Card title="Selected Work" icon={Award}>
               <div className="space-y-3">
                 {projects.map((p, idx) => (
                   <div key={`${p.name}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
@@ -152,7 +183,7 @@ const DeveloperPage: React.FC = () => {
           ) : null}
 
           {volunteering.length > 0 ? (
-            <Card title="Volunteering" icon={HeartHandshake}>
+            <Card title="Service" icon={HeartHandshake}>
               <div className="space-y-4">
                 {volunteering.map((v, idx) => (
                   <div key={`${v.organization}-${v.role}-${idx}`} className="border border-border/60 rounded-lg p-4 bg-background/40">
@@ -195,15 +226,22 @@ const DeveloperPage: React.FC = () => {
           ) : null}
 
           {linkedin ? (
-            <Card title="LinkedIn" icon={Link2}>
-              <div className="text-muted-foreground break-all">{linkedin}</div>
-              <div className="text-xs text-muted-foreground mt-2">Displayed for reference.</div>
+            <Card title="Link" icon={Link2}>
+              <a
+                href={linkedin}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:opacity-80"
+              >
+                {linkedin}
+                <ExternalLink className="h-4 w-4" />
+              </a>
             </Card>
           ) : null}
 
           {!highlights.length && !linkedin && !about && !experience.length && !projects.length && !volunteering.length && !recommendations.length ? (
             <div className="bg-card border border-border rounded-xl p-6 text-muted-foreground">
-              Add your details in <span className="font-semibold">metadata.json</span> under <span className="font-semibold">developer</span>.
+              Add details in <span className="font-semibold">metadata.json</span> → <span className="font-semibold">developer</span>.
             </div>
           ) : null}
         </div>

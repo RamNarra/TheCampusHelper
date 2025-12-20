@@ -152,7 +152,7 @@ const CalculatorPage: React.FC = () => {
 
 
   return (
-    <div className="pt-8 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 pb-12">
+    <div className="pt-6 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 pb-10">
       
       {/* Header */}
       <div className="text-center mb-8">

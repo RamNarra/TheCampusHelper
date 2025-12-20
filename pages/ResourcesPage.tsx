@@ -429,7 +429,7 @@ const ResourcesPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-8 pb-12 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div className="pt-6 pb-10 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8">
             <div>
                 <h1 className="text-3xl font-bold text-foreground">Resources</h1>

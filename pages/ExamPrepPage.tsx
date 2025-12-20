@@ -23,9 +23,11 @@ import {
 } from '../lib/data';
 import AdUnit from '../components/AdUnit';
 import { useAuth } from '../context/AuthContext';
+import { isAuthBypassed } from '../lib/dev';
 
 const ExamPrepPage: React.FC = () => {
   const { user } = useAuth();
+  const isPreview = !user && isAuthBypassed();
   const [exams, setExams] = useState<ExamPrep[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamPrep | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -156,12 +158,10 @@ const ExamPrepPage: React.FC = () => {
     return 'text-destructive';
   };
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user && !isPreview) return <Navigate to="/login" replace />;
 
   return (
-    <div className="pt-8 pb-12 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-3">
@@ -181,6 +181,11 @@ const ExamPrepPage: React.FC = () => {
         <p className="text-muted-foreground text-lg">
           A calm dashboard for plans, progress, and priorities.
         </p>
+        {isPreview && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Preview mode is enabled. Sign in to save your exam plan in the future.
+          </div>
+        )}
       </div>
 
       <AdUnit className="mb-8" />
