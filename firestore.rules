@@ -80,29 +80,37 @@ service cloud.firestore {
 
     function isValidMessageCreate(data, groupId) {
       // Allow text/file/audio messages with conservative limits.
-      let allowed = ['studyGroupId', 'senderId', 'senderName', 'senderPhotoURL', 'content', 'kind', 'fileUrl', 'fileName', 'mimeType', 'timestamp', 'edited', 'editedAt'];
-      let keysOk = data.keys().hasOnly(allowed);
-
-      let groupOk = ('studyGroupId' in data) && data.studyGroupId == groupId;
-      let senderOk = ('senderId' in data) && data.senderId == request.auth.uid;
-      let senderNameOk = ('senderName' in data) && data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 80;
-      let photoOk = !('senderPhotoURL' in data) || (data.senderPhotoURL is string && data.senderPhotoURL.size() > 0 && data.senderPhotoURL.size() <= 2048 && data.senderPhotoURL.matches('^https?://.*'));
-
-      let contentOk = ('content' in data) && data.content is string && data.content.size() > 0 && data.content.size() <= 10000;
-      let kindOk = !('kind' in data)
-        || data.kind == 'text'
-        || data.kind == 'file'
-        || data.kind == 'audio';
-
-      let fileUrlOk = !('fileUrl' in data) || isHttpsUrl(data.fileUrl);
-      let fileNameOk = !('fileName' in data) || (data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 200);
-      let mimeOk = !('mimeType' in data) || (data.mimeType is string && data.mimeType.size() > 0 && data.mimeType.size() <= 150);
-
-      let tsOk = ('timestamp' in data) && data.timestamp == request.time;
-      let editedOk = !('edited' in data) || data.edited is bool;
-      let editedAtOk = !('editedAt' in data) || data.editedAt == request.time;
-
-      return keysOk && groupOk && senderOk && senderNameOk && photoOk && contentOk && kindOk && fileUrlOk && fileNameOk && mimeOk && tsOk && editedOk && editedAtOk;
+      return data.keys().hasOnly([
+        'studyGroupId',
+        'senderId',
+        'senderName',
+        'senderPhotoURL',
+        'content',
+        'kind',
+        'fileUrl',
+        'fileName',
+        'mimeType',
+        'timestamp',
+        'edited',
+        'editedAt'
+      ])
+      && ('studyGroupId' in data) && data.studyGroupId == groupId
+      && ('senderId' in data) && data.senderId == request.auth.uid
+      && ('senderName' in data) && data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 80
+      && (!('senderPhotoURL' in data) || (
+        data.senderPhotoURL is string
+        && data.senderPhotoURL.size() > 0
+        && data.senderPhotoURL.size() <= 2048
+        && data.senderPhotoURL.matches('^https?://.*')
+      ))
+      && ('content' in data) && data.content is string && data.content.size() > 0 && data.content.size() <= 10000
+      && (!('kind' in data) || data.kind == 'text' || data.kind == 'file' || data.kind == 'audio')
+      && (!('fileUrl' in data) || isHttpsUrl(data.fileUrl))
+      && (!('fileName' in data) || (data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 200))
+      && (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() > 0 && data.mimeType.size() <= 150))
+      && ('timestamp' in data) && data.timestamp == request.time
+      && (!('edited' in data) || data.edited is bool)
+      && (!('editedAt' in data) || data.editedAt == request.time);
     }
 
     function isValidMessageUpdate(newData, currentData) {
@@ -626,7 +634,7 @@ service cloud.firestore {
         || (
           // Self-join
           !phase1ServerlessOnly()
-          !resource.data.isPrivate
+          && !resource.data.isPrivate
           && isAllowedYear(resource.data)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['members'])
           && request.resource.data.members.size() == resource.data.members.size() + 1
@@ -638,7 +646,7 @@ service cloud.firestore {
         || (
           // Self-leave
           !phase1ServerlessOnly()
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(['members'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['members'])
           && request.resource.data.members.size() == resource.data.members.size() - 1
           && resource.data.members.hasAll(request.resource.data.members)
           && request.auth.uid in resource.data.members
