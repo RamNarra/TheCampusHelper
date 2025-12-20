@@ -1,6 +1,18 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Search, X, MessageSquare, Video, FileText, Calendar, UserPlus, Settings, Trash2, Send, Edit2 } from 'lucide-react';
+import {
+  Users,
+  Plus,
+  Search,
+  X,
+  MessageSquare,
+  Video,
+  FileText,
+  Calendar,
+  UserPlus,
+  Send,
+  Compass,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
 import { StudyGroup, Message, Session, CollaborativeNote } from '../types';
@@ -21,11 +33,18 @@ const StudyGroupsPage: React.FC = () => {
   const isPreview = !user && isAuthBypassed();
   const [myGroups, setMyGroups] = useState<StudyGroup[]>([]);
   const [publicGroups, setPublicGroups] = useState<StudyGroup[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<StudyGroup | null>(null);
-  const [activeTab, setActiveTab] = useState<'myGroups' | 'discover'>('myGroups');
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [isDiscover, setIsDiscover] = useState(false);
+  const [activeChannel, setActiveChannel] = useState<'chat' | 'sessions' | 'notes'>('chat');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [notes, setNotes] = useState<CollaborativeNote[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -33,6 +52,8 @@ const StudyGroupsPage: React.FC = () => {
         setLoading(false);
         setMyGroups([]);
         setPublicGroups([]);
+        setSelectedGroupId(null);
+        setIsDiscover(true);
       }
       return;
     }
@@ -54,6 +75,41 @@ const StudyGroupsPage: React.FC = () => {
     };
   }, [user]);
 
+  const selectedGroup = useMemo(() => {
+    if (!selectedGroupId) return null;
+    return myGroups.find((g) => g.id === selectedGroupId) ?? null;
+  }, [myGroups, selectedGroupId]);
+
+  // Default selection when groups load
+  useEffect(() => {
+    if (isDiscover) return;
+    if (!selectedGroupId && myGroups.length > 0) {
+      setSelectedGroupId(myGroups[0].id);
+      setActiveChannel('chat');
+    }
+  }, [isDiscover, myGroups, selectedGroupId]);
+
+  // Subscribe to group content when a server is selected
+  useEffect(() => {
+    setMessages([]);
+    setSessions([]);
+    setNotes([]);
+    setNewMessage('');
+
+    if (!user) return;
+    if (!selectedGroupId) return;
+
+    const unsubMessages = api.onMessagesChanged(selectedGroupId, setMessages);
+    const unsubSessions = api.onSessionsChanged(selectedGroupId, setSessions);
+    const unsubNotes = api.onNotesChanged(selectedGroupId, setNotes);
+
+    return () => {
+      unsubMessages();
+      unsubSessions();
+      unsubNotes();
+    };
+  }, [selectedGroupId, user]);
+
   const handleCreateGroup = useCallback(() => {
     if (!user) return;
     setShowCreateModal(true);
@@ -67,6 +123,29 @@ const StudyGroupsPage: React.FC = () => {
       console.error('Error joining group:', error);
     }
   }, [user]);
+
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!selectedGroupId) return;
+    if (!newMessage.trim()) return;
+
+    setSending(true);
+    try {
+      await api.sendMessage(selectedGroupId, {
+        studyGroupId: selectedGroupId,
+        senderId: user.uid,
+        senderName: user.displayName || 'Unknown',
+        senderPhotoURL: user.photoURL || undefined,
+        content: newMessage.trim(),
+      });
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSending(false);
+    }
+  }, [newMessage, selectedGroupId, user]);
 
   const normalizedSearch = useMemo(() => searchTerm.trim().toLowerCase(), [searchTerm]);
 
@@ -98,119 +177,365 @@ const StudyGroupsPage: React.FC = () => {
     );
   }
 
+  const channels = [
+    { id: 'chat' as const, name: 'general', icon: MessageSquare },
+    { id: 'sessions' as const, name: 'sessions', icon: Video, badge: sessions.length },
+    { id: 'notes' as const, name: 'notes', icon: FileText, badge: notes.length },
+  ];
+
+  const ServerButton: React.FC<{
+    label: string;
+    active?: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+  }> = ({ label, active, onClick, children }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`group relative grid h-12 w-12 place-items-center overflow-hidden rounded-2xl border transition-all ${
+        active
+          ? 'border-primary/50 bg-primary/15'
+          : 'border-border bg-card/40 hover:bg-muted/40 hover:border-primary/30'
+      }`}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className="relative z-10">{children}</div>
+    </button>
+  );
+
+  const selectGroup = (groupId: string) => {
+    setIsDiscover(false);
+    setSelectedGroupId(groupId);
+    setActiveChannel('chat');
+  };
+
+  const openDiscover = () => {
+    setIsDiscover(true);
+    setSelectedGroupId(null);
+  };
+
   return (
-    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3 flex items-center gap-3">
-          <Users className="w-8 h-8 sm:w-10 sm:h-10 text-secondary" />
-          Study Groups
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          Collaborate with peers in real-time through study groups, chat, and video sessions.
-        </p>
-        {isPreview && (
-          <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-            Preview mode is enabled. Sign in to create/join groups and chat.
-          </div>
-        )}
-      </div>
+    <div className="flex-1 min-h-0">
+      <div className="h-full min-h-0 grid grid-cols-[72px_1fr] lg:grid-cols-[72px_260px_1fr] xl:grid-cols-[72px_260px_1fr_280px]">
+        {/* Servers */}
+        <aside className="min-h-0 border-r border-border bg-background/60 backdrop-blur">
+          <div className="h-full min-h-0 flex flex-col">
+            <div className="p-3 flex flex-col gap-3">
+              <ServerButton
+                label="Discover servers"
+                active={isDiscover}
+                onClick={openDiscover}
+              >
+                <Compass className={`h-5 w-5 ${isDiscover ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+              </ServerButton>
 
-      <AdUnit className="mb-8" />
+              <div className="h-px bg-border" />
 
-      {/* Tabs and Actions */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('myGroups')}
-            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-              activeTab === 'myGroups'
-                ? 'bg-primary text-primary-foreground font-bold shadow-sm'
-                : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted border border-border'
-            }`}
-          >
-            My Groups ({myGroups.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('discover')}
-            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-              activeTab === 'discover'
-                ? 'bg-primary text-primary-foreground font-bold shadow-sm'
-                : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted border border-border'
-            }`}
-          >
-            Discover
-          </button>
-        </div>
+              <div className="flex flex-col gap-3">
+                {myGroups.map((g) => {
+                  const isActive = !isDiscover && selectedGroupId === g.id;
+                  const letter = (g.name || 'G').trim().charAt(0).toUpperCase();
+                  return (
+                    <ServerButton
+                      key={g.id}
+                      label={g.name}
+                      active={isActive}
+                      onClick={() => selectGroup(g.id)}
+                    >
+                      <div
+                        className={`grid h-9 w-9 place-items-center rounded-xl text-sm font-bold ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/40 text-foreground'
+                        }`}
+                      >
+                        {letter}
+                      </div>
+                    </ServerButton>
+                  );
+                })}
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-muted-foreground" />
+                {myGroups.length === 0 && !loading ? (
+                  <div className="px-2 text-center text-xs text-muted-foreground">
+                    No servers
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <input
-              type="text"
-              placeholder="Search groups..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-border rounded-xl bg-card/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
-            />
-          </div>
-          <button
-            onClick={handleCreateGroup}
-            disabled={!user}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 font-medium transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Create Group</span>
-          </button>
-        </div>
-      </div>
 
-      {/* Groups Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence mode="popLayout">
-            {activeTab === 'myGroups' ? (
-              filteredMyGroups.length > 0 ? (
-                filteredMyGroups.map((group) => (
-                  <GroupCard
-                    key={group.id}
-                    group={group}
-                    onSelect={setSelectedGroup}
-                    isMember={true}
-                  />
-                ))
-              ) : (
-                <EmptyState
-                  message="You haven't joined any groups yet"
-                  action="Create or join a group to start collaborating!"
+            <div className="mt-auto p-3 flex flex-col gap-3">
+              <ServerButton
+                label="Create a server"
+                active={false}
+                onClick={handleCreateGroup}
+              >
+                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
+              </ServerButton>
+            </div>
+          </div>
+        </aside>
+
+        {/* Channels */}
+        <aside className="hidden lg:block min-h-0 border-r border-border bg-card/30">
+          <div className="h-full min-h-0 flex flex-col">
+            <div className="p-4 border-b border-border">
+              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                {isDiscover ? 'Explore' : 'Server'}
+              </div>
+              <div className="mt-1 text-base font-bold text-foreground truncate">
+                {isDiscover ? 'Discover groups' : selectedGroup?.name || 'Select a group'}
+              </div>
+              {selectedGroup?.subject ? (
+                <div className="mt-1 text-xs text-muted-foreground truncate">{selectedGroup.subject}</div>
+              ) : null}
+            </div>
+
+            <div className="p-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <input
+                  type="text"
+                  placeholder={isDiscover ? 'Search public groups…' : 'Search servers…'}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-border rounded-xl bg-background/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
                 />
-              )
+              </div>
+            </div>
+
+            {isDiscover ? (
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  Public groups
+                </div>
+                {loading ? (
+                  <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
+                ) : filteredPublicGroups.length > 0 ? (
+                  <div className="space-y-3">
+                    {filteredPublicGroups.map((group) => (
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        onJoin={() => handleJoinGroup(group.id)}
+                        isMember={false}
+                        compact
+                      />
+                    ))}
+                    <AdUnit className="mt-4" />
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-sm text-muted-foreground">
+                    No public groups found.
+                  </div>
+                )}
+              </div>
             ) : (
-              filteredPublicGroups.length > 0 ? (
-                filteredPublicGroups.map((group) => (
-                  <GroupCard
-                    key={group.id}
-                    group={group}
-                    onJoin={() => handleJoinGroup(group.id)}
-                    isMember={false}
-                  />
-                ))
-              ) : (
-                <EmptyState
-                  message="No public groups available"
-                  action="Be the first to create a public study group!"
-                />
-              )
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  Channels
+                </div>
+                {selectedGroup ? (
+                  <div className="space-y-1">
+                    {channels.map(({ id, name, icon: Icon, badge }) => {
+                      const active = activeChannel === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setActiveChannel(id)}
+                          className={`w-full flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
+                            active
+                              ? 'bg-primary/12 text-foreground border border-primary/20'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <Icon className={`h-4 w-4 ${active ? 'text-primary' : ''}`} />
+                            <span className="truncate"># {name}</span>
+                          </span>
+                          {typeof badge === 'number' ? (
+                            <span className="text-xs rounded-full border border-border bg-background/60 px-2 py-0.5 text-muted-foreground">
+                              {badge}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-sm text-muted-foreground">
+                    Select a group to see channels.
+                  </div>
+                )}
+              </div>
             )}
-          </AnimatePresence>
-        </div>
-      )}
+          </div>
+        </aside>
+
+        {/* Main */}
+        <section className="min-h-0 flex flex-col">
+          <div className="border-b border-border bg-background/60 backdrop-blur">
+            <div className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground truncate">
+                  {isDiscover
+                    ? 'Explore public groups'
+                    : selectedGroup
+                      ? `${selectedGroup.name} · # ${channels.find((c) => c.id === activeChannel)?.name || 'general'}`
+                      : 'Select a group'}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {isPreview
+                    ? 'Preview mode enabled. Sign in to create/join and chat.'
+                    : selectedGroup?.subject || 'Real-time chat, sessions, and notes.'}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openDiscover}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                    isDiscover
+                      ? 'border-primary/30 bg-primary/10 text-foreground'
+                      : 'border-border bg-card/40 text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Compass className="h-4 w-4" />
+                  Discover
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateGroup}
+                  disabled={!user}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0">
+            {isDiscover ? (
+              <div className="h-full min-h-0 overflow-y-auto p-4">
+                <div className="max-w-3xl">
+                  <div className="mb-4 text-sm text-muted-foreground">
+                    Join a group like you’d join a server.
+                  </div>
+                  {loading ? (
+                    <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+                  ) : filteredPublicGroups.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filteredPublicGroups.map((group) => (
+                        <GroupCard
+                          key={group.id}
+                          group={group}
+                          onJoin={() => handleJoinGroup(group.id)}
+                          isMember={false}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-16 text-center text-sm text-muted-foreground">No public groups found.</div>
+                  )}
+                  <div className="mt-6">
+                    <AdUnit />
+                  </div>
+                </div>
+              </div>
+            ) : selectedGroup ? (
+              <div className="h-full min-h-0">
+                {activeChannel === 'chat' && user ? (
+                  <ChatView
+                    messages={messages}
+                    newMessage={newMessage}
+                    setNewMessage={setNewMessage}
+                    onSend={handleSendMessage}
+                    sending={sending}
+                    currentUserId={user.uid}
+                    canSend={Boolean(user)}
+                  />
+                ) : activeChannel === 'chat' ? (
+                  <div className="h-full min-h-0 flex items-center justify-center p-8">
+                    <div className="text-center max-w-md">
+                      <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                      <div className="text-lg font-semibold text-foreground">Sign in to chat</div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        Preview mode lets you browse, but sending messages requires an account.
+                      </div>
+                    </div>
+                  </div>
+                ) : activeChannel === 'sessions' ? (
+                  <SessionsView sessions={sessions} group={selectedGroup} user={user} />
+                ) : (
+                  <NotesView notes={notes} group={selectedGroup} user={user} />
+                )}
+              </div>
+            ) : (
+              <div className="h-full min-h-0 flex items-center justify-center p-8">
+                <div className="text-center max-w-md">
+                  <Users className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
+                  <div className="text-lg font-semibold text-foreground">Select a group</div>
+                  <div className="mt-2 text-sm text-muted-foreground">Pick a server on the left, or discover a new one.</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Details / Members */}
+        <aside className="hidden xl:block min-h-0 border-l border-border bg-card/20">
+          <div className="h-full min-h-0 flex flex-col">
+            <div className="p-4 border-b border-border">
+              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                {isDiscover ? 'Tips' : 'About'}
+              </div>
+              <div className="mt-1 text-sm font-semibold text-foreground">
+                {isDiscover ? 'How it works' : selectedGroup?.name || 'No server selected'}
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              {isDiscover ? (
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <div className="rounded-xl border border-border bg-background/60 p-4">
+                    Browse public groups, then join to show it in your server list.
+                  </div>
+                  <div className="rounded-xl border border-border bg-background/60 p-4">
+                    Each group has channels: chat, sessions, notes.
+                  </div>
+                </div>
+              ) : selectedGroup ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">{selectedGroup.subject}</div>
+                  </div>
+                  {selectedGroup.description ? (
+                    <div className="rounded-xl border border-border bg-background/60 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</div>
+                      <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{selectedGroup.description}</div>
+                    </div>
+                  ) : null}
+                  <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</div>
+                    <div className="mt-1 text-sm font-semibold text-foreground">{selectedGroup.members.length}</div>
+                    <div className="mt-2 text-xs text-muted-foreground">Member list display will improve once profiles are wired in.</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-10 text-center text-sm text-muted-foreground">Select a server to see details.</div>
+              )}
+            </div>
+          </div>
+        </aside>
+      </div>
 
       {/* Create Group Modal */}
       {user && (
@@ -220,37 +545,29 @@ const StudyGroupsPage: React.FC = () => {
           user={user}
         />
       )}
-
-      {/* Group Details Modal */}
-      {user && selectedGroup && (
-        <GroupDetailsModal
-          group={selectedGroup}
-          onClose={() => setSelectedGroup(null)}
-          user={user}
-        />
-      )}
     </div>
   );
 };
 
 const GroupCard: React.FC<{
   group: StudyGroup;
-  onSelect?: (group: StudyGroup) => void;
   onJoin?: () => void;
   isMember: boolean;
-}> = ({ group, onSelect, onJoin, isMember }) => {
+  compact?: boolean;
+}> = ({ group, onJoin, isMember, compact = false }) => {
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-all cursor-pointer"
-      onClick={() => isMember && onSelect && onSelect(group)}
+      className={`bg-card border border-border rounded-xl hover:border-primary/50 transition-all ${
+        isMember ? '' : ''
+      } ${compact ? 'p-4' : 'p-6'}`}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-xl font-bold text-foreground mb-1">{group.name}</h3>
+          <h3 className={`${compact ? 'text-base' : 'text-xl'} font-bold text-foreground mb-1`}>{group.name}</h3>
           <p className="text-sm text-muted-foreground">{group.subject}</p>
         </div>
         {!isMember && (
@@ -478,130 +795,6 @@ const CreateGroupModal: React.FC<{
   );
 };
 
-const GroupDetailsModal: React.FC<{
-  group: StudyGroup;
-  onClose: () => void;
-  user: any;
-}> = ({ group, onClose, user }) => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'sessions' | 'notes'>('chat');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [notes, setNotes] = useState<CollaborativeNote[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [sending, setSending] = useState(false);
-
-  useEffect(() => {
-    const unsubMessages = api.onMessagesChanged(group.id, setMessages);
-    const unsubSessions = api.onSessionsChanged(group.id, setSessions);
-    const unsubNotes = api.onNotesChanged(group.id, setNotes);
-
-    return () => {
-      unsubMessages();
-      unsubSessions();
-      unsubNotes();
-    };
-  }, [group.id]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user) return;
-
-    setSending(true);
-    try {
-      await api.sendMessage(group.id, {
-        studyGroupId: group.id,
-        senderId: user.uid,
-        senderName: user.displayName || 'Unknown',
-        senderPhotoURL: user.photoURL || undefined,
-        content: newMessage.trim()
-      });
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-card border border-border rounded-xl w-full max-w-4xl h-[80vh] flex flex-col"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">{group.name}</h2>
-            <p className="text-sm text-muted-foreground">{group.subject}</p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-2 p-4 border-b border-border">
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'chat'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted/40 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Chat
-          </button>
-          <button
-            onClick={() => setActiveTab('sessions')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'sessions'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted/40 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Video className="w-4 h-4" />
-            Sessions ({sessions.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('notes')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeTab === 'notes'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted/40 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            Notes ({notes.length})
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {activeTab === 'chat' && (
-            <ChatView
-              messages={messages}
-              newMessage={newMessage}
-              setNewMessage={setNewMessage}
-              onSend={handleSendMessage}
-              sending={sending}
-              currentUserId={user.uid}
-            />
-          )}
-          {activeTab === 'sessions' && (
-            <SessionsView sessions={sessions} group={group} user={user} />
-          )}
-          {activeTab === 'notes' && (
-            <NotesView notes={notes} group={group} user={user} />
-          )}
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
 const ChatView: React.FC<{
   messages: Message[];
   newMessage: string;
@@ -609,7 +802,8 @@ const ChatView: React.FC<{
   onSend: (e: React.FormEvent) => void;
   sending: boolean;
   currentUserId: string;
-}> = ({ messages, newMessage, setNewMessage, onSend, sending, currentUserId }) => {
+  canSend?: boolean;
+}> = ({ messages, newMessage, setNewMessage, onSend, sending, currentUserId, canSend = true }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
@@ -668,11 +862,12 @@ const ChatView: React.FC<{
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+            disabled={!canSend}
+            className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 disabled:opacity-60"
           />
           <button
             type="submit"
-            disabled={sending || !newMessage.trim()}
+            disabled={!canSend || sending || !newMessage.trim()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
           >
             <Send className="w-5 h-5" />
