@@ -101,7 +101,9 @@ const ResourcesPage: React.FC = () => {
       await api.deleteResource(res.id);
       setContextMenu({ open: false, x: 0, y: 0, resource: null });
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       console.error('Delete failed:', err);
+      window.alert(message || 'Delete failed');
     }
   };
 
@@ -741,6 +743,7 @@ const ResourcesPage: React.FC = () => {
               style={{ left: contextMenu.x, top: contextMenu.y }}
               className="fixed z-[180] min-w-[200px] -translate-y-1 bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               <button
                 className="w-full text-left px-4 py-3 text-sm hover:bg-muted/60 transition-colors"

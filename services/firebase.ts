@@ -670,26 +670,34 @@ export const api = {
         const uid = auth?.currentUser?.uid;
         if (!uid) throw new Error('You must be signed in.');
         const usePhase1 = await getPhase1ServerlessOnly();
-        if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
-            const res = await withTimeout(
-                fetch('/api/resources/delete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ resourceId }),
-                }),
-                10000
-            );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Delete failed (${res.status})`);
+        const token = await getAuthToken();
+
+        // Prefer server-authoritative delete (works even when client deletes are blocked by rules).
+        if (token) {
+            try {
+                const res = await withTimeout(
+                    fetch('/api/resources/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ resourceId }),
+                    }),
+                    10000
+                );
+                if (!res.ok) {
+                    const text = await res.text().catch(() => '');
+                    throw new Error(text || `Delete failed (${res.status})`);
+                }
+                return;
+            } catch (e) {
+                // If Phase1 is on, deletion is intentionally server-only.
+                if (usePhase1) throw e;
+                // Otherwise fall back to legacy direct Firestore delete.
             }
-            return;
         }
+
         const docRef = doc(db, 'resources', resourceId);
         return withTimeout(deleteDoc(docRef), 5000);
     },
