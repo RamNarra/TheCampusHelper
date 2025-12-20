@@ -318,23 +318,15 @@ const StudyGroupsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={openDiscover}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                >
-                  <Compass className="h-4 w-4" />
-                  Discover
-                </button>
+              <div className="mt-3">
                 <button
                   type="button"
                   onClick={handleCreateGroup}
                   disabled={!user}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   <Plus className="h-4 w-4" />
-                  Create
+                  Create group
                 </button>
               </div>
             </div>
@@ -451,30 +443,6 @@ const StudyGroupsPage: React.FC = () => {
                         ? 'Browse public groups and join the ones you need.'
                         : selectedGroup?.subject || 'Select a group from the sidebar.'}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={openDiscover}
-                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
-                      isDiscover
-                        ? 'border-primary/30 bg-primary/10 text-foreground'
-                        : 'border-border bg-card/40 text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                    }`}
-                  >
-                    <Compass className="h-4 w-4" />
-                    Discover
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreateGroup}
-                    disabled={!user}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create
-                  </button>
                 </div>
               </div>
 
@@ -594,26 +562,6 @@ const StudyGroupsPage: React.FC = () => {
                             : 'Discover public groups, or create a new one for your class.'}
                         </div>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={openDiscover}
-                            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                          >
-                            <Compass className="h-4 w-4" />
-                            Discover groups
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleCreateGroup}
-                            disabled={!user}
-                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                          >
-                            <Plus className="h-4 w-4" />
-                            Create group
-                          </button>
-                        </div>
-
                         <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
                           <div className="rounded-xl border border-border bg-background/60 p-3">
                             <div className="flex items-center gap-2 text-foreground font-semibold">
@@ -730,23 +678,6 @@ const StudyGroupsPage: React.FC = () => {
                         : 'Discover public groups, join one, and it will appear in your list.'}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={openDiscover}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    <Compass className="h-4 w-4" />
-                    Discover groups
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreateGroup}
-                    disabled={!user}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create group
-                  </button>
                 </div>
               )}
             </div>
