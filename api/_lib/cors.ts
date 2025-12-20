@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from './request';
 
 function parseAllowedOrigins(): Set<string> {
-  const base = new Set<string>(['http://localhost:5173', 'http://localhost:3000']);
+  const isProd = process.env.NODE_ENV === 'production';
+  const base = new Set<string>(isProd ? [] : ['http://localhost:5173', 'http://localhost:3000']);
 
   const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
   if (vercelUrl) base.add(vercelUrl);

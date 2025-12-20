@@ -3,6 +3,8 @@ import {
   doc,
   getDocs,
   onSnapshot,
+  limit,
+  query,
   setDoc,
   type DocumentData,
 } from 'firebase/firestore';
@@ -31,9 +33,10 @@ export const onProfileChanged = (
   });
 };
 
-export const getAllUsers = async (): Promise<UserProfile[]> => {
+export const getAllUsers = async (limitCount = 200): Promise<UserProfile[]> => {
   const db = getDb();
   if (!db) return [];
-  const snap = await getDocs(collection(db, 'users'));
+  const q = query(collection(db, 'users'), limit(Math.max(1, Math.min(limitCount, 500))));
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as any) } as UserProfile));
 };

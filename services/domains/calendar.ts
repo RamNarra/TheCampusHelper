@@ -10,6 +10,7 @@ import type { CalendarEvent } from '../../types';
 import { getDb } from '../platform/firebaseClient';
 import { getAuthToken } from './auth';
 import { withTimeout } from '../platform/utils';
+import { getPhase1ServerlessOnly } from '../platform/phase1Toggle';
 
 export const onMyCalendarEventsChanged = (
   uid: string,
@@ -53,8 +54,11 @@ export const createCourseEvent = async (input: {
   const token = await getAuthToken();
   if (!token) throw new Error('Not signed in');
 
+  const usePhase1 = await getPhase1ServerlessOnly();
+  const endpoint = usePhase1 ? '/api/events/upsert' : '/api/calendar/createEvent';
+
   const res = await withTimeout(
-    fetch('/api/calendar/createEvent', {
+    fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

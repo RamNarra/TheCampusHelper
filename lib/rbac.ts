@@ -53,9 +53,11 @@ export type CourseScopedRole = 'student' | 'instructor';
 export type CoursePermission = 'enrollments.manage' | 'events.manage';
 
 export function hasCoursePermission(role: CourseScopedRole, permission: CoursePermission): boolean {
-  if (role === 'instructor') return true;
-  // Students have no course management permissions.
-  return false;
+  const COURSE_PERMISSIONS: Record<CourseScopedRole, ReadonlySet<CoursePermission>> = {
+    instructor: new Set(['enrollments.manage', 'events.manage']),
+    student: new Set([]),
+  };
+  return COURSE_PERMISSIONS[role].has(permission);
 }
 
 const ROLE_PERMISSIONS: Record<PlatformRole, ReadonlySet<Permission>> = {
@@ -99,8 +101,8 @@ export const canAssignRole = (actorRole: AnyRole | null | undefined, targetRole:
   // Cannot assign a role higher than yourself.
   if (!isAtLeastRole(actor, next)) return false;
 
-  // Cannot edit someone with higher rank.
-  if (ROLE_RANK[target] > ROLE_RANK[actor]) return false;
+  // Prevent same-rank admin sabotage: only super_admin can edit peers.
+  if (actor !== 'super_admin' && ROLE_RANK[target] >= ROLE_RANK[actor]) return false;
 
   return true;
 };

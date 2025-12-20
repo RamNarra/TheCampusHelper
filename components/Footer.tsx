@@ -25,8 +25,8 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-foreground font-semibold mb-4">Resources</h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link to="/resources" className="hover:text-primary transition-colors">Lecture Notes</Link></li>
-              <li><Link to="/resources" className="hover:text-primary transition-colors">Question Papers</Link></li>
+              <li><Link to="/courses" className="hover:text-primary transition-colors">Lecture Notes</Link></li>
+              <li><Link to="/courses" className="hover:text-primary transition-colors">Question Papers</Link></li>
               <li><Link to="/calculator" className="hover:text-primary transition-colors">CGPA Calculator</Link></li>
               <li><Link to="/login" className="hover:text-primary transition-colors">Student Login</Link></li>
             </ul>

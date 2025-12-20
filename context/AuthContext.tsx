@@ -130,25 +130,9 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
                 // Merge DB data with existing state
                 setUser(prev => prev ? ({ ...prev, ...data }) : null);
 
-                // Admin self-recovery: if this email is configured as admin in env,
-                // but Firestore role got downgraded, restore via server bootstrap.
-                // Note: We attempt once for any non-admin; the server allowlist is the real gate.
-                const dbRole = normalizeRole((data as any).role);
-                const hasAdminInDb = isAtLeastRole(dbRole, 'admin');
-                if (!hasAdminInDb && !attemptedAdminRecoveryRef.current) {
-                  attemptedAdminRecoveryRef.current = true;
-                  try {
-                    const ok = await api.bootstrapAdminAccess();
-                    if (ok) {
-                      // Force refresh so custom claims are picked up.
-                      await firebaseUser.getIdToken(true);
-                      // Optimistically reflect admin while Firestore catches up.
-                      setUser(prev => prev ? ({ ...prev, role: 'admin' as any }) : prev);
-                    }
-                  } catch {
-                    // Ignore recovery failures; user will remain non-admin.
-                  }
-                }
+                // Admin recovery is intentionally manual (see Profile page) to avoid
+                // probing the bootstrap endpoint on every login.
+                attemptedAdminRecoveryRef.current = true;
                 
                 // Only run gamification logic once per session to prevent infinite loops
                 if (!gamificationInitializedRef.current) {

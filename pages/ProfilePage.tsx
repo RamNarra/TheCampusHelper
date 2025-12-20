@@ -31,8 +31,7 @@ const ProfilePage: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const isOwnerEmail = (displayUser.email || '').toLowerCase() === 'ramcharannarra8@gmail.com';
-  const canAttemptAdminFix = !!user && isOwnerEmail && !isAtLeastRole(normalizeRole(displayUser.role), 'admin') && !adminFixLoading;
+  const canAttemptAdminFix = !!user && !isAtLeastRole(normalizeRole(displayUser.role), 'admin') && !adminFixLoading;
 
   return (
     <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">

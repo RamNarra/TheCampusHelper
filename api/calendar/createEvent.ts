@@ -18,6 +18,7 @@ type CreateEventBody = {
 export const config = { runtime: 'nodejs' };
 
 const MAX_BODY_SIZE = 30 * 1024; // 30KB
+const MAX_FANOUT_USERS = 1000; // hard cap to prevent unbounded fan-out writes
 
 function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && aEnd > bStart;
@@ -65,17 +66,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const caller = await requireUser(req);
     const body = (req.body || {}) as CreateEventBody;
 
-  const type = body.type;
-  const title = (body.title ?? '').trim();
-  const description = body.description?.trim();
-  const startMillis = Number(body.startMillis);
-  const endMillis = Number(body.endMillis);
-  const courseId = body.courseId?.trim();
+    const type = body.type;
+    const title = (body.title ?? '').trim();
+    const description = body.description?.trim();
+    const startMillis = Number(body.startMillis);
+    const endMillis = Number(body.endMillis);
+    const courseId = body.courseId?.trim();
 
-  if (!type || !title || !Number.isFinite(startMillis) || !Number.isFinite(endMillis) || endMillis <= startMillis) {
-    res.status(400).json({ error: 'Invalid payload' });
-    return;
-  }
+    if (!type || !title || !Number.isFinite(startMillis) || !Number.isFinite(endMillis) || endMillis <= startMillis) {
+      return res.status(400).json({ error: 'Invalid payload', requestId: ctx.requestId });
+    }
 
     const actorUid = caller.uid;
     const actorRole = caller.role;
@@ -83,46 +83,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const admin = ensureFirebaseAdminApp();
     const db = admin.firestore();
 
-  let courseName: string | undefined;
-  if (courseId) {
-    const allowed = await canManageCalendarForCourse(courseId, actorUid, actorRole);
-    if (!allowed) {
-      return res.status(403).json({ error: 'Forbidden', requestId: ctx.requestId });
+    let courseName: string | undefined;
+    const feedWrites: Array<{ uid: string }> = [];
+
+    if (courseId) {
+      const allowed = await canManageCalendarForCourse(courseId, actorUid, actorRole);
+      if (!allowed) {
+        return res.status(403).json({ error: 'Forbidden', requestId: ctx.requestId });
+      }
+
+      const courseSnap = await db.collection('courses').doc(courseId).get();
+      if (!courseSnap.exists) {
+        return res.status(404).json({ error: 'Course not found', requestId: ctx.requestId });
+      }
+      courseName = String((courseSnap.data() as any)?.name ?? '');
+
+      // Fan-out guard: refuse requests that would trigger unbounded writes.
+      // Preflight with a hard cap to keep costs predictable.
+      const enrollSnap = await db
+        .collection('courses')
+        .doc(courseId)
+        .collection('enrollments')
+        .where('status', '==', 'active')
+        .limit(MAX_FANOUT_USERS + 1)
+        .get();
+
+      if (enrollSnap.size > MAX_FANOUT_USERS) {
+        return res.status(413).json({
+          error: `Course has too many active members to fan out calendar events (>${MAX_FANOUT_USERS}).`,
+          requestId: ctx.requestId,
+        });
+      }
+
+      for (const doc of enrollSnap.docs) {
+        feedWrites.push({ uid: doc.id });
+      }
+    } else {
+      feedWrites.push({ uid: actorUid });
     }
 
-    const courseSnap = await db.collection('courses').doc(courseId).get();
-    if (!courseSnap.exists) {
-      return res.status(404).json({ error: 'Course not found', requestId: ctx.requestId });
-    }
-    courseName = String((courseSnap.data() as any)?.name ?? '');
-  }
-
-  // Canonical event
-  const eventRef = db.collection('events').doc();
-  await eventRef.create({
-    type,
-    title,
-    description: description || undefined,
-    startMillis,
-    endMillis,
-    courseId: courseId || undefined,
-    courseName: courseName || undefined,
-    source: courseId ? 'course' : 'personal',
-    createdBy: actorUid,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-
-  // Fan-out to user feeds (dashboard-friendly, no joins)
-  const feedWrites: Array<{ uid: string }> = [];
-  if (courseId) {
-    const enrollSnap = await db.collection('courses').doc(courseId).collection('enrollments').where('status', '==', 'active').get();
-    for (const doc of enrollSnap.docs) {
-      feedWrites.push({ uid: doc.id });
-    }
-  } else {
-    feedWrites.push({ uid: actorUid });
-  }
+    // Canonical event
+    const eventRef = db.collection('events').doc();
+    await eventRef.create({
+      type,
+      title,
+      description: description || undefined,
+      startMillis,
+      endMillis,
+      courseId: courseId || undefined,
+      courseName: courseName || undefined,
+      source: courseId ? 'course' : 'personal',
+      createdBy: actorUid,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
   const payload = {
     eventId: eventRef.id,

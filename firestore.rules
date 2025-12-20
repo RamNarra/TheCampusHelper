@@ -13,13 +13,147 @@ service cloud.firestore {
       // Bootstrap path for the very first admin: either a custom claim, or a strict allowlist.
       // NOTE: Update this allowlist for your project.
       return isAuthenticated() && (
-        request.auth.token.admin == true ||
-        request.auth.token.email in ["admin@thecampushelper.com", "ramcharannarra8@gmail.com"]
+        // IMPORTANT: Do not use email allowlists in deployed rules. Use custom claims only.
+        request.auth.token.admin == true
       );
+    }
+
+    // --- VALIDATION HELPERS ---
+
+    function isHttpsUrl(s) {
+      return s is string
+        && s.size() > 8
+        && s.size() < 2000
+        && s.matches('^https://.*');
+    }
+
+    function isSafeDisplayName(s) {
+      return (s == null) || (s is string && s.size() >= 0 && s.size() <= 80);
+    }
+
+    function isSafePhotoUrl(s) {
+      return (s == null) || (s is string && s.size() > 0 && s.size() <= 2048 && s.matches('^https?://.*'));
+    }
+
+    function isNonNegInt(n, max) {
+      return n is int && n >= 0 && n <= max;
+    }
+
+    function isValidPresenceWrite(newData, currentData) {
+      // Allow only known keys; for updates, only allow changes to known keys.
+      let allowed = ['state', 'lastSeen', 'updatedAt', 'displayName', 'photoURL', 'uid'];
+      let changedOk = newData.diff(currentData).changedKeys().hasOnly(allowed);
+      let keysOk = newData.keys().hasOnly(allowed);
+
+      let stateOk = !('state' in newData)
+        || newData.state == 'online'
+        || newData.state == 'idle'
+        || newData.state == 'offline';
+
+      let lastSeenOk = !('lastSeen' in newData) || newData.lastSeen == request.time;
+      let updatedAtOk = !('updatedAt' in newData) || newData.updatedAt == request.time;
+      let nameOk = !('displayName' in newData) || isSafeDisplayName(newData.displayName);
+      let photoOk = !('photoURL' in newData) || isSafePhotoUrl(newData.photoURL);
+      let uidOk = !('uid' in newData) || newData.uid == request.auth.uid;
+
+      return keysOk && changedOk && stateOk && lastSeenOk && updatedAtOk && nameOk && photoOk && uidOk;
+    }
+
+    function isValidLeaderboardWrite(newData, currentData, userId) {
+      // Stored fields are derived from the user's own profile.
+      // We can't fully prevent cheating without server-side XP awarding, but we can:
+      // - bound values
+      // - prevent arbitrary keys
+      // - enforce lastUpdated is server-time
+      let allowed = ['displayName', 'photoURL', 'xp', 'level', 'lastUpdated'];
+      let keysOk = newData.keys().hasOnly(allowed);
+      let changedOk = newData.diff(currentData).changedKeys().hasOnly(allowed);
+
+      let nameOk = !('displayName' in newData) || isSafeDisplayName(newData.displayName);
+      let photoOk = !('photoURL' in newData) || isSafePhotoUrl(newData.photoURL);
+      let xpOk = !('xp' in newData) || isNonNegInt(newData.xp, 1000000);
+      let levelOk = !('level' in newData) || (newData.level is int && newData.level >= 1 && newData.level <= 1000);
+      let updatedOk = ('lastUpdated' in newData) && newData.lastUpdated == request.time;
+
+      return isOwner(userId) && keysOk && changedOk && nameOk && photoOk && xpOk && levelOk && updatedOk;
+    }
+
+    function isValidMessageCreate(data, groupId) {
+      // Allow text/file/audio messages with conservative limits.
+      let allowed = ['studyGroupId', 'senderId', 'senderName', 'senderPhotoURL', 'content', 'kind', 'fileUrl', 'fileName', 'mimeType', 'timestamp', 'edited', 'editedAt'];
+      let keysOk = data.keys().hasOnly(allowed);
+
+      let groupOk = ('studyGroupId' in data) && data.studyGroupId == groupId;
+      let senderOk = ('senderId' in data) && data.senderId == request.auth.uid;
+      let senderNameOk = ('senderName' in data) && data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 80;
+      let photoOk = !('senderPhotoURL' in data) || (data.senderPhotoURL is string && data.senderPhotoURL.size() > 0 && data.senderPhotoURL.size() <= 2048 && data.senderPhotoURL.matches('^https?://.*'));
+
+      let contentOk = ('content' in data) && data.content is string && data.content.size() > 0 && data.content.size() <= 10000;
+      let kindOk = !('kind' in data)
+        || data.kind == 'text'
+        || data.kind == 'file'
+        || data.kind == 'audio';
+
+      let fileUrlOk = !('fileUrl' in data) || isHttpsUrl(data.fileUrl);
+      let fileNameOk = !('fileName' in data) || (data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 200);
+      let mimeOk = !('mimeType' in data) || (data.mimeType is string && data.mimeType.size() > 0 && data.mimeType.size() <= 150);
+
+      let tsOk = ('timestamp' in data) && data.timestamp == request.time;
+      let editedOk = !('edited' in data) || data.edited is bool;
+      let editedAtOk = !('editedAt' in data) || data.editedAt == request.time;
+
+      return keysOk && groupOk && senderOk && senderNameOk && photoOk && contentOk && kindOk && fileUrlOk && fileNameOk && mimeOk && tsOk && editedOk && editedAtOk;
+    }
+
+    function isValidMessageUpdate(newData, currentData) {
+      // Only allow editing content and edit markers.
+      let changed = newData.diff(currentData).changedKeys();
+      let changedOk = changed.hasOnly(['content', 'edited', 'editedAt']);
+      let senderImmutable = newData.senderId == currentData.senderId;
+      let tsImmutable = newData.timestamp == currentData.timestamp;
+      let contentOk = newData.content is string && newData.content.size() > 0 && newData.content.size() <= 10000;
+      let editedOk = ('edited' in newData) && newData.edited == true;
+      let editedAtOk = ('editedAt' in newData) && newData.editedAt == request.time;
+      return changedOk && senderImmutable && tsImmutable && contentOk && editedOk && editedAtOk;
+    }
+
+    function isValidNoteCreate(data, groupId) {
+      let allowed = ['studyGroupId', 'title', 'content', 'lastEditedBy', 'lastEditedByName', 'lastEditedAt', 'createdBy', 'createdAt'];
+      let keysOk = data.keys().hasOnly(allowed);
+      let groupOk = ('studyGroupId' in data) && data.studyGroupId == groupId;
+      let titleOk = ('title' in data) && data.title is string && data.title.size() > 0 && data.title.size() <= 200;
+      let contentOk = ('content' in data) && data.content is string && data.content.size() >= 0 && data.content.size() <= 50000;
+      let createdByOk = ('createdBy' in data) && data.createdBy == request.auth.uid;
+      // createdAt/lastEditedAt may be client-provided; prefer server-time.
+      let createdAtOk = !('createdAt' in data) || data.createdAt == request.time;
+      let editedByOk = !('lastEditedBy' in data) || data.lastEditedBy == request.auth.uid;
+      let editedAtOk = !('lastEditedAt' in data) || data.lastEditedAt == request.time;
+      let editorNameOk = !('lastEditedByName' in data) || (data.lastEditedByName is string && data.lastEditedByName.size() > 0 && data.lastEditedByName.size() <= 80);
+      return keysOk && groupOk && titleOk && contentOk && createdByOk && createdAtOk && editedByOk && editedAtOk && editorNameOk;
+    }
+
+    function isValidNoteUpdate(newData, currentData) {
+      let changed = newData.diff(currentData).changedKeys();
+      let changedOk = changed.hasOnly(['content', 'lastEditedBy', 'lastEditedByName', 'lastEditedAt']);
+      let createdImmutable = newData.createdBy == currentData.createdBy && newData.createdAt == currentData.createdAt;
+      let titleImmutable = newData.title == currentData.title;
+      let editorOk = ('lastEditedBy' in newData) && newData.lastEditedBy == request.auth.uid;
+      let editorNameOk = ('lastEditedByName' in newData) && newData.lastEditedByName is string && newData.lastEditedByName.size() > 0 && newData.lastEditedByName.size() <= 80;
+      let editedAtOk = ('lastEditedAt' in newData) && newData.lastEditedAt == request.time;
+      let contentOk = ('content' in newData) && newData.content is string && newData.content.size() >= 0 && newData.content.size() <= 50000;
+      return changedOk && createdImmutable && titleImmutable && editorOk && editorNameOk && editedAtOk && contentOk;
     }
 
     function myUserDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function phase1ServerlessOnly() {
+      // Single runtime toggle: /config/phase1 { serverlessOnly: true|false }
+      // - Readable by clients (non-sensitive)
+      // - Used by rules to gate legacy direct-write paths
+      return exists(/databases/$(database)/documents/config/phase1)
+        && get(/databases/$(database)/documents/config/phase1).data.serverlessOnly == true;
     }
 
     function myRole() {
@@ -40,6 +174,10 @@ service cloud.firestore {
 
     function isStaff() {
       return isAuthenticated() && (isAdmin() || myRole() == 'moderator');
+    }
+
+    function isPlatformInstructor() {
+      return isAuthenticated() && myRole() == 'instructor';
     }
 
     function isMod() {
@@ -146,7 +284,8 @@ service cloud.firestore {
     // Public to authenticated users only; only the owner can write their own doc.
     match /presence/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidPresenceWrite(request.resource.data, {});
+      allow update: if isOwner(userId) && isValidPresenceWrite(request.resource.data, resource.data);
       allow delete: if isOwner(userId) || isAdmin();
     }
 
@@ -172,10 +311,73 @@ service cloud.firestore {
       // Server-only writes (Admin SDK bypasses rules)
       allow create, update, delete: if false;
 
+      // --- PHASE-2: COURSE STREAM (server-authoritative writes) ---
+      match /stream/{postId} {
+        allow read: if isStaff() || isActiveEnrollment(courseId);
+        allow create, update, delete: if false;
+      }
+
+      // --- PHASE-2: ASSIGNMENTS + SUBMISSIONS (server-authoritative writes) ---
+      match /assignments/{assignmentId} {
+        allow read: if isStaff() || isActiveEnrollment(courseId);
+        allow create, update, delete: if false;
+
+        match /submissions/{userId} {
+          allow read: if isStaff() || isInstructor(courseId) || userId == request.auth.uid;
+          allow create, update, delete: if false;
+        }
+      }
+
+      // --- PHASE-2: TESTS (server-authoritative writes) ---
+      match /tests/{testId} {
+        allow read: if isStaff() || isActiveEnrollment(courseId);
+        allow create, update, delete: if false;
+
+        // Secure content: instructors/staff only
+        match /versions/{versionId} {
+          // Phase-2 security: version content includes answer keys; clients must never read.
+          // Only serverless functions (Admin SDK) may access versions.
+          allow read: if false;
+          allow create, update, delete: if false;
+        }
+
+        // Attempts: student can read their own attempt; instructors can read all
+        match /attempts/{attemptId} {
+          allow read: if isStaff() || isInstructor(courseId) || (isAuthenticated() && ('userId' in resource.data) && resource.data.userId == request.auth.uid);
+          allow create, update, delete: if false;
+        }
+      }
+
+      // --- PHASE-2: GRADES + GRADEBOOK (server-authoritative writes) ---
+      match /grades/{gradeId} {
+        // Students may only read their own grades while actively enrolled.
+        allow read: if isStaff()
+          || isInstructor(courseId)
+          || (isActiveEnrollment(courseId)
+            && isAuthenticated()
+            && ('studentId' in resource.data)
+            && resource.data.studentId == request.auth.uid);
+        allow create, update, delete: if false;
+      }
+
+      match /gradebook/{studentId} {
+        // Students may only read their own gradebook while actively enrolled.
+        allow read: if isStaff()
+          || isInstructor(courseId)
+          || (isActiveEnrollment(courseId) && studentId == request.auth.uid);
+        allow create, update, delete: if false;
+      }
+
       match /enrollments/{enrolledUserId} {
         allow read: if isStaff() || enrolledUserId == request.auth.uid || isInstructor(courseId);
         allow create, update, delete: if false;
       }
+    }
+
+    // --- PHASE-2: DOMAIN EVENTS (append-only, server-authoritative writes) ---
+    match /domainEvents/{eventId} {
+      allow read: if isAdmin() || isPlatformInstructor();
+      allow create, update, delete: if false;
     }
 
     // Canonical events collection (course-scoped visibility)
@@ -232,7 +434,9 @@ service cloud.firestore {
       // Anyone authenticated can read leaderboard entries (contains only public data)
       allow read: if isAuthenticated();
       // Only the user can write their own leaderboard entry (via client SDK or Cloud Functions)
-      allow write: if isOwner(userId);
+      allow create: if isValidLeaderboardWrite(request.resource.data, {}, userId);
+      allow update: if isValidLeaderboardWrite(request.resource.data, resource.data, userId);
+      allow delete: if isAdmin();
     }
 
     // RESOURCES COLLECTION
@@ -252,7 +456,8 @@ service cloud.firestore {
       
       // CREATE: Any authenticated user can submit a pending resource.
       // Admins may create approved resources.
-      allow create: if isAuthenticated()
+      allow create: if !phase1ServerlessOnly()
+            && isAuthenticated()
                     && request.resource.data.ownerId == request.auth.uid
                     && isValidResource(request.resource.data)
                     && canSetModeratedStatus(request.resource.data)
@@ -261,7 +466,8 @@ service cloud.firestore {
                     && !('isAdmin' in request.resource.data || 'role' in request.resource.data);
 
       // UPDATE: Admins can update anything (within validation). Owners can update their own pending resources.
-      allow update: if (
+      allow update: if !phase1ServerlessOnly()
+                    && (
                       isMod() ||
                       (isAuthenticated()
                         && ('ownerId' in resource.data)
@@ -278,12 +484,19 @@ service cloud.firestore {
                     && !('isAdmin' in request.resource.data || 'role' in request.resource.data);
 
       // DELETE: Admins can delete any resource. Owners can delete their pending resources.
-      allow delete: if isMod() || (
+      allow delete: if !phase1ServerlessOnly()
+                    && (isMod() || (
                       isAuthenticated()
                       && ('ownerId' in resource.data)
                       && resource.data.ownerId == request.auth.uid
                       && resource.data.status == 'pending'
-                    );
+                    ));
+    }
+
+    // RUNTIME CONFIG FLAGS
+    match /config/phase1 {
+      allow read: if true;
+      allow write: if false;
     }
 
     // TO-DO ITEMS (private per-user)
@@ -338,7 +551,20 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
                     && request.resource.data.createdBy == request.auth.uid
-                    && request.resource.data.createdAt == request.time;
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.subject is string
+                    && request.resource.data.subject.size() > 0
+                    && request.resource.data.subject.size() <= 200
+                    && request.resource.data.topic is string
+                    && request.resource.data.topic.size() > 0
+                    && request.resource.data.topic.size() <= 200
+                    && request.resource.data.difficulty in ['easy', 'medium', 'hard']
+                    && request.resource.data.questions is list
+                    && request.resource.data.questions.size() > 0
+                    && request.resource.data.questions.size() <= 50;
 
       // Allow owner or admin to update/delete quizzes
       allow update, delete: if isAdmin() || (
@@ -356,12 +582,22 @@ service cloud.firestore {
 
       allow create: if isAuthenticated()
                     && request.resource.data.userId == request.auth.uid
-                    && request.resource.data.completedAt == request.time;
+                    && request.resource.data.completedAt == request.time
+                    && request.resource.data.quizId is string
+                    && request.resource.data.quizId.size() > 0
+                    && request.resource.data.score is int
+                    && request.resource.data.score >= 0
+                    && request.resource.data.totalQuestions is int
+                    && request.resource.data.totalQuestions > 0
+                    && request.resource.data.totalQuestions <= 200
+                    && request.resource.data.score <= request.resource.data.totalQuestions
+                    && request.resource.data.timeSpent is int
+                    && request.resource.data.timeSpent >= 0
+                    && request.resource.data.timeSpent <= 60 * 60 * 6
+                    && request.resource.data.answers is map;
 
-      allow update, delete: if isAdmin() || (
-        isAuthenticated()
-        && resource.data.userId == request.auth.uid
-      );
+      // Attempts are immutable for users after submission.
+      allow update, delete: if isAdmin();
     }
 
     // STUDY GROUPS COLLECTION
@@ -379,20 +615,29 @@ service cloud.firestore {
 
       // Admins/group-admins can update; members can self-join/leave (members field only) for public groups.
       allow update: if isAuthenticated() && (
-        isAdmin()
-        || request.auth.uid in resource.data.admins
+        (isAdmin() && (!phase1ServerlessOnly() || (
+          request.resource.data.members == resource.data.members
+          && request.resource.data.admins == resource.data.admins
+        )))
+        || (request.auth.uid in resource.data.admins && (!phase1ServerlessOnly() || (
+          request.resource.data.members == resource.data.members
+          && request.resource.data.admins == resource.data.admins
+        )))
         || (
           // Self-join
+          !phase1ServerlessOnly()
           !resource.data.isPrivate
           && isAllowedYear(resource.data)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['members'])
           && request.resource.data.members.size() == resource.data.members.size() + 1
+          && request.resource.data.members.size() <= (('maxMembers' in resource.data) ? resource.data.maxMembers : 200)
           && request.resource.data.members.hasAll(resource.data.members)
           && request.auth.uid in request.resource.data.members
           && !(request.auth.uid in resource.data.members)
         )
         || (
           // Self-leave
+          !phase1ServerlessOnly()
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['members'])
           && request.resource.data.members.size() == resource.data.members.size() - 1
           && resource.data.members.hasAll(request.resource.data.members)
@@ -413,10 +658,11 @@ service cloud.firestore {
       // Members can create messages in their groups
       allow create: if isAuthenticated() && 
                     request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members &&
-                    request.resource.data.senderId == request.auth.uid;
+                    isValidMessageCreate(request.resource.data, groupId);
       
       // Only message sender can update their own messages
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.senderId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.senderId
+                    && isValidMessageUpdate(request.resource.data, resource.data);
       
       // Message sender or group admin can delete
       allow delete: if isAuthenticated() && (
@@ -432,18 +678,21 @@ service cloud.firestore {
                     request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members;
       
       // Group admins can create sessions
-      allow create: if isAuthenticated() && 
+      allow create: if !phase1ServerlessOnly()
+            && isAuthenticated() && 
                     request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins &&
                     request.resource.data.createdBy == request.auth.uid;
       
       // Group admins or session creator can update
-      allow update: if isAuthenticated() && (
+      allow update: if !phase1ServerlessOnly()
+                    && isAuthenticated() && (
         request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins ||
         request.auth.uid == resource.data.createdBy
       );
       
       // Group admins or session creator can delete
-      allow delete: if isAuthenticated() && (
+      allow delete: if !phase1ServerlessOnly()
+                    && isAuthenticated() && (
         request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.admins ||
         request.auth.uid == resource.data.createdBy
       );
@@ -458,12 +707,13 @@ service cloud.firestore {
       // Members can create notes in their groups
       allow create: if isAuthenticated() && 
                     request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members &&
-                    request.resource.data.createdBy == request.auth.uid;
+                    isValidNoteCreate(request.resource.data, groupId);
       
       // Members can update notes (collaborative editing)
       allow update: if isAuthenticated() && 
                     request.auth.uid in get(/databases/$(database)/documents/studyGroups/$(groupId)).data.members &&
-                    request.resource.data.lastEditedBy == request.auth.uid;
+                    request.resource.data.lastEditedBy == request.auth.uid
+                    && isValidNoteUpdate(request.resource.data, resource.data);
       
       // Note creator or group admin can delete
       allow delete: if isAuthenticated() && (

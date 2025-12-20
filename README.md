@@ -126,7 +126,47 @@ The PWA implements intelligent caching for:
 - **Google Fonts**: Cached for 1 year (CacheFirst)
 - **Tailwind CDN**: Cached with automatic updates (StaleWhileRevalidate)
 - **AI Studio CDN**: Cached for 1 week with updates (StaleWhileRevalidate)
-- **API Calls**: Network-first with 5-minute fallback cache
+- **API Calls**: Network-only (no CacheStorage)
+
+For security, auth-protected routes (e.g. `/admin`, `/profile`, `/quiz`) are denylisted from SPA navigation fallback so they won’t be served from offline caches.
+
+## Phase-1 Runtime Toggle (Serverless-Only Mutations)
+
+Phase-1 uses a single runtime toggle stored in Firestore:
+
+- Document: `config/phase1`
+- Field: `serverlessOnly: boolean`
+
+Behavior:
+
+- `serverlessOnly = true`: sensitive mutations route through serverless endpoints and Firestore rules disable legacy direct-write paths.
+- `serverlessOnly = false` (or doc missing): clients fall back to legacy behavior for those paths.
+
+This same toggle is read by both client code and Firestore rules to keep rollback one-switch and reversible.
+
+### Admin Endpoint (Safe Toggle Flip)
+
+To safely change the runtime toggle without using the Firebase console, use the admin-only serverless endpoint:
+
+- `POST /api/admin/setPhase1Toggle`
+- RBAC: **admin** or **super_admin** only
+- Body: `{ "serverlessOnly": boolean, "reason"?: string }`
+
+This endpoint writes `config/phase1.serverlessOnly` **atomically** and emits an audit log entry:
+
+- `action: config.phase1.toggle`
+- `metadata.before`  `metadata.after`
+- `actorUid`, `actorRole`
+- optional `metadata.reason`
+
+Example (replace `ID_TOKEN` with an admin user's Firebase ID token):
+
+```bash
+curl -s -X POST "https://<your-domain>/api/admin/setPhase1Toggle" \
+	-H "Content-Type: application/json" \
+	-H "Authorization: Bearer ID_TOKEN" \
+	-d '{"serverlessOnly":true,"reason":"Enable Phase-1 serverless-only"}'
+```
 
 ### Installation
 Users can install TheCampusHelper on:
@@ -158,6 +198,15 @@ An intelligent, context-aware tutoring system that helps students learn effectiv
 **API Endpoint**: `/api/study-assistant`
 - Secured with Firebase Authentication
 - Rate-limited (10 requests/minute per user+IP)
+
+## Phase-3 (System Brain) — Observer Only
+
+Phase-3 is a **read-only** intelligence layer:
+
+- It **must never** write data, expose mutation endpoints, or trigger workflows.
+- It may only read server-authoritative data (e.g. `domainEvents`) and render advisory insights.
+
+See [PHASE3.md](PHASE3.md) for the permanent invariant.
 - Uses Gemini AI for intelligent responses
 
 ## 🛠️ Deployment

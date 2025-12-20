@@ -16,6 +16,20 @@ export const config = { runtime: 'nodejs' };
 
 const MAX_BODY_SIZE = 20 * 1024; // 20KB
 
+function normalizeKeyPart(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function toIndexId(codeNorm: string, termNorm: string): string {
+  // Firestore doc IDs cannot contain '/', so we use encodeURIComponent.
+  // Also keep it short (limit is 1500 bytes).
+  const id = `${encodeURIComponent(codeNorm)}__${encodeURIComponent(termNorm)}`;
+  return id.length <= 1200 ? id : id.slice(0, 1200);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = getRequestContext(req);
 
@@ -52,11 +66,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const courseRef = db.collection('courses').doc();
     const enrollmentRef = courseRef.collection('enrollments').doc(caller.uid);
 
+    const codeNorm = normalizeKeyPart(code);
+    const termNorm = normalizeKeyPart(term);
+    const indexRef = db.collection('courseCodeTermIndex').doc(toIndexId(codeNorm, termNorm));
+
     await db.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
+      const existing = await tx.get(indexRef);
+      if (existing.exists) {
+        const err = new Error('Course already exists for this code and term');
+        (err as any).status = 409;
+        throw err;
+      }
+
+      tx.create(indexRef, {
+        courseId: courseRef.id,
+        code: code,
+        term: term,
+        codeNorm,
+        termNorm,
+        createdBy: caller.uid,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
       tx.create(courseRef, {
         name,
         code,
         term,
+        codeNorm,
+        termNorm,
         description: description || undefined,
         archived: false,
         createdBy: caller.uid,

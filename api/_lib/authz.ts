@@ -44,14 +44,16 @@ export async function requireUser(req: VercelRequest): Promise<AuthenticatedCall
 
   let decoded: any;
   try {
-    decoded = await admin.auth().verifyIdToken(idToken);
+    // checkRevoked=true ensures disabled/revoked sessions are rejected.
+    decoded = await admin.auth().verifyIdToken(idToken, true);
   } catch {
     const err = new Error('Forbidden: Invalid Token');
     (err as any).status = 403;
     throw err;
   }
 
-  const roleFromClaim = (decoded?.role || decoded?.['https://example.com/role']) as string | undefined;
+  // Canonical claim source: `role` (set by admin endpoints). Back-compat: `admin: true`.
+  const roleFromClaim = decoded?.role as string | undefined;
   const roleFromAdminClaim = decoded?.admin === true ? 'admin' : undefined;
   const role = normalizeRole(roleFromClaim || roleFromAdminClaim || 'student');
 

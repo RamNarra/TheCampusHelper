@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
+import { safeExternalHttpUrl } from '../lib/utils';
 import { StudyGroup, Message, Session, CollaborativeNote } from '../types';
 import AdUnit from '../components/AdUnit';
 import { isAuthBypassed } from '../lib/dev';
@@ -1007,6 +1008,7 @@ const ChatView: React.FC<{
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    if (file.size > 20 * 1024 * 1024) return; // 20MB max (silent no-op)
     setUploading(true);
     try {
       await onSendAttachment({ file, kind: 'file' });
@@ -1029,6 +1031,7 @@ const ChatView: React.FC<{
         try {
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
           const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+          if (file.size > 20 * 1024 * 1024) return;
           setUploading(true);
           await onSendAttachment({ file, kind: 'audio' });
         } finally {
@@ -1100,17 +1103,25 @@ const ChatView: React.FC<{
                   {message.kind === 'audio' && message.fileUrl ? (
                     <div className="space-y-2">
                       <div className="text-sm">{message.content || 'Voice message'}</div>
-                      <audio controls src={message.fileUrl} className="w-[240px]" />
+                      {safeExternalHttpUrl(message.fileUrl) ? (
+                        <audio controls src={safeExternalHttpUrl(message.fileUrl) as string} className="w-[240px]" />
+                      ) : (
+                        <div className="text-xs opacity-80">Attachment unavailable</div>
+                      )}
                     </div>
                   ) : message.kind === 'file' && message.fileUrl ? (
-                    <a
-                      href={message.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2"
-                    >
-                      {message.fileName || message.content || 'Download file'}
-                    </a>
+                    safeExternalHttpUrl(message.fileUrl) ? (
+                      <a
+                        href={safeExternalHttpUrl(message.fileUrl) as string}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2"
+                      >
+                        {message.fileName || message.content || 'Download file'}
+                      </a>
+                    ) : (
+                      <span className="text-xs opacity-80">Attachment unavailable</span>
+                    )
                   ) : (
                     message.content
                   )}
@@ -1203,17 +1214,19 @@ const SessionsView: React.FC<{
                     <p className="text-sm text-muted-foreground mt-1">{session.description}</p>
                   )}
                 </div>
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${
-                    session.status === 'active'
-                      ? 'bg-primary/10 text-primary'
-                      : session.status === 'scheduled'
-                      ? 'bg-secondary/10 text-secondary'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {session.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {session.videoUrl && safeExternalHttpUrl(session.videoUrl) ? (
+                    <a
+                      href={safeExternalHttpUrl(session.videoUrl) as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-primary hover:underline"
+                    >
+                      Join session
+                    </a>
+                  ) : null}
+                  <span className="text-xs font-semibold text-muted-foreground">{session.status}</span>
+                </div>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
@@ -1222,9 +1235,9 @@ const SessionsView: React.FC<{
                 </div>
                 <div>Duration: {session.duration}min</div>
               </div>
-              {session.videoUrl && (
+              {session.videoUrl && safeExternalHttpUrl(session.videoUrl) ? (
                 <a
-                  href={session.videoUrl}
+                  href={safeExternalHttpUrl(session.videoUrl) as string}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all text-sm"
@@ -1232,7 +1245,7 @@ const SessionsView: React.FC<{
                   <Video className="w-4 h-4" />
                   Join Video Call
                 </a>
-              )}
+              ) : null}
             </div>
           ))}
         </div>

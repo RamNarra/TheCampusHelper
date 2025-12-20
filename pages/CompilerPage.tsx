@@ -24,6 +24,7 @@ const CompilerPage: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const runAbortRef = useRef<AbortController | null>(null);
   const runSeqRef = useRef(0);
+  const lastRunAtRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -69,6 +70,10 @@ const CompilerPage: React.FC = () => {
   };
 
   const runCode = async () => {
+    const now = Date.now();
+    if (now - lastRunAtRef.current < 1500) return;
+    lastRunAtRef.current = now;
+
     runAbortRef.current?.abort();
     const controller = new AbortController();
     runAbortRef.current = controller;
@@ -84,6 +89,8 @@ const CompilerPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
+        referrerPolicy: 'no-referrer',
         signal: controller.signal,
         body: JSON.stringify({
           language: 'c',

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, ErrorInfo, ReactNode } from 'react';
-import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
@@ -27,6 +27,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import StudyPlusPage from './pages/StudyPlusPage';
 import DeveloperPage from './pages/DeveloperPage';
 import ToDoPage from './pages/ToDoPage';
+import InsightsPage from './pages/InsightsPage';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -170,6 +171,11 @@ const AppContent: React.FC = () => {
         <ErrorBoundary>
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              {/* Phase-1 route aliases (no removals). Keep old paths working. */}
+              <Route path="/home" element={<Navigate to="/" replace />} />
+              <Route path="/planner" element={<Navigate to="/todo" replace />} />
+              <Route path="/community" element={<Navigate to="/study-groups" replace />} />
+              <Route path="/courses" element={<Navigate to="/resources" replace />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminDashboard />} />
@@ -185,6 +191,7 @@ const AppContent: React.FC = () => {
               <Route path="/study-assistant" element={<StudyAssistantPage />} />
               <Route path="/study-plus" element={<StudyPlusPage />} />
               <Route path="/todo" element={<ToDoPage />} />
+              <Route path="/insights" element={<InsightsPage />} />
               <Route path="/developer" element={<DeveloperPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

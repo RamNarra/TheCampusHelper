@@ -16,6 +16,8 @@ const truthy = (v: string | undefined): boolean => {
  * - localStorage.setItem('thc_dev_bypass_auth', '1' | '0')
  */
 export const isAuthBypassed = (): boolean => {
+  // Defense-in-depth: never bypass in production builds.
+  if (import.meta.env.PROD) return false;
   if (!isDev) return false;
 
   const env = import.meta.env.VITE_DEV_BYPASS_AUTH as string | undefined;
@@ -33,4 +35,14 @@ export const isAuthBypassed = (): boolean => {
   return true;
 };
 
-export const getPreviewUserId = (): string => 'dev-preview';
+export const getPreviewUserId = (): string => {
+  try {
+    const existing = sessionStorage.getItem('thc_dev_preview_uid');
+    if (existing) return existing;
+    const id = `dev-preview-${(globalThis.crypto as any)?.randomUUID?.() || Math.random().toString(16).slice(2)}`;
+    sessionStorage.setItem('thc_dev_preview_uid', id);
+    return id;
+  } catch {
+    return `dev-preview-${Math.random().toString(16).slice(2)}`;
+  }
+};

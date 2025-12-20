@@ -15,10 +15,10 @@ const MAX_BODY_SIZE = 20 * 1024; // 20KB
 
 // Hard fallback allowlist so the project owner can always recover admin.
 // Prefer using ADMIN_EMAILS on Vercel for additional admins.
-const DEFAULT_ADMIN_EMAILS = ['ramcharannarra8@gmail.com'];
+const DEFAULT_ADMIN_EMAILS: string[] = [];
 
 function parseAdminAllowlist(): string[] {
-  const raw = (process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || '').trim();
+  const raw = (process.env.ADMIN_EMAILS || '').trim();
   const fromEnv = raw
     ? raw
         .split(',')
@@ -58,6 +58,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const uid = caller.uid;
 
     const allowlist = parseAdminAllowlist();
+    if (!allowlist.length) {
+      return res.status(503).json({ error: 'Admin bootstrap not configured', requestId: ctx.requestId });
+    }
     if (!email || !allowlist.includes(email)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
@@ -71,6 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await admin.auth().setCustomUserClaims(uid, nextClaims);
 
     // Keep Firestore role in sync for UI and back-compat.
+    let firestoreSyncOk = false;
     try {
       const db = admin.firestore();
       await db
@@ -83,6 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           { merge: true }
         );
+      firestoreSyncOk = true;
     } catch (e) {
       console.error(`[${ctx.requestId}] Firestore role sync failed:`, e);
       // Claim is the important part for rules; don't fail the whole request.
@@ -100,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       userAgent: ctx.userAgent,
     });
 
-    return res.status(200).json({ ok: true, role: 'super_admin' });
+    return res.status(200).json({ ok: true, role: 'super_admin', firestoreSyncOk });
   } catch (e) {
     console.error(`[${ctx.requestId}] bootstrapAdmin failed:`, e);
     return res.status(500).json({ error: 'internal_error', requestId: ctx.requestId });

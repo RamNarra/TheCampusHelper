@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/firebase';
 import { UserProfile, StudyGroupRequest } from '../types';
 import { Resource, UserRole } from '../types';
+import { safeExternalHttpUrl } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { Check, X, Eye, FileText, Users, Download, Search, Shield, Calendar, Trash2, ExternalLink, Mail } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
@@ -111,6 +112,11 @@ const AdminDashboard: React.FC = () => {
 
   const handleRoleChange = async (targetUid: string, role: UserRole) => {
     if (!isAtLeastRole(normalizeRole(user.role), 'admin')) return;
+    const dangerous = role === 'admin' || role === 'super_admin';
+    if (dangerous) {
+      const ok = window.confirm(`Change user role to ${role}? This grants elevated privileges.`);
+      if (!ok) return;
+    }
     try {
       await api.updateUserRole(targetUid, role);
       setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, role } : u)));
@@ -121,6 +127,8 @@ const AdminDashboard: React.FC = () => {
 
   const handleDisableToggle = async (targetUid: string, disabled: boolean) => {
     if (!isAtLeastRole(normalizeRole(user.role), 'admin')) return;
+    const ok = window.confirm(disabled ? 'Disable this user? They will be signed out.' : 'Re-enable this user?');
+    if (!ok) return;
     try {
       await api.setUserDisabled(targetUid, disabled);
       setUsersList(prev => prev.map(u => (u.uid === targetUid ? { ...u, disabled } : u)));
@@ -546,7 +554,11 @@ const AdminDashboard: React.FC = () => {
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => window.open(item.downloadUrl, '_blank', 'noopener,noreferrer')}
+                              onClick={() => {
+                                const safe = safeExternalHttpUrl(item.downloadUrl);
+                                if (!safe) return;
+                                window.open(safe, '_blank', 'noopener,noreferrer');
+                              }}
                               className="p-2 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
                               title="Open link"
                             >

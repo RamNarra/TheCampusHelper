@@ -250,36 +250,32 @@ export async function unlockAchievement(uid: string, achievementId: string): Pro
   if (!db) return false;
 
   try {
-    const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
-    
-    if (!userSnap.exists()) return false;
-
-    const userData = userSnap.data();
-    const achievementIds = userData.achievementIds || [];
-
-    // Check if already unlocked
-    if (achievementIds.includes(achievementId)) {
-      return false;
-    }
-
     const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
     if (!achievement) return false;
 
-    const achievementDates = userData.achievementDates || {};
-    
-    // Unlock achievement
-    await updateDoc(userRef, {
-      achievementIds: [...achievementIds, achievementId],
-      achievementDates: {
-        ...achievementDates,
-        [achievementId]: new Date().toISOString(),
-      },
+    const userRef = doc(db, 'users', uid);
+
+    const unlocked = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists()) return false;
+
+      const userData: any = snap.data();
+      const achievementIds: string[] = Array.isArray(userData.achievementIds) ? userData.achievementIds : [];
+      if (achievementIds.includes(achievementId)) return false;
+
+      const achievementDates = userData.achievementDates || {};
+      tx.update(userRef, {
+        achievementIds: [...achievementIds, achievementId],
+        achievementDates: {
+          ...achievementDates,
+          [achievementId]: new Date().toISOString(),
+        },
+      });
+      return true;
     });
 
-    // Award XP
+    if (!unlocked) return false;
     await awardXP(uid, achievement.xpReward, `Achievement: ${achievement.title}`);
-
     return true;
   } catch (error) {
     console.error('Failed to unlock achievement:', error);
@@ -346,23 +342,19 @@ export async function syncLeaderboard(uid: string): Promise<void> {
     const userData = userSnap.data();
     
     // Update leaderboard with public data only
+    // Use setDoc so first-time users can create their entry.
     const leaderboardRef = doc(db, 'leaderboard', uid);
-    await updateDoc(leaderboardRef, {
+    const payload = {
       displayName: userData.displayName || 'Anonymous',
       photoURL: userData.photoURL || null,
       xp: userData.xp || 0,
       level: userData.level || 1,
       lastUpdated: serverTimestamp(),
-    }).catch(async () => {
-      // If document doesn't exist, create it
-      await updateDoc(leaderboardRef, {
-        displayName: userData.displayName || 'Anonymous',
-        photoURL: userData.photoURL || null,
-        xp: userData.xp || 0,
-        level: userData.level || 1,
-        lastUpdated: serverTimestamp(),
-      });
-    });
+    };
+
+    // Merge keeps compatibility if new fields are added later.
+    const { setDoc } = await import('firebase/firestore');
+    await setDoc(leaderboardRef, payload, { merge: true });
   } catch (error) {
     console.error('Failed to sync leaderboard:', error);
   }

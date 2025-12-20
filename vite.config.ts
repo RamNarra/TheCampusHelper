@@ -45,7 +45,22 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // SECURITY: prevent offline/CacheStorage navigation fallback for sensitive routes.
+        // Public pages (e.g. /, /resources, /calculator) can still be served by the app shell.
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/admin(?:\/|$)/,
+          /^\/profile(?:\/|$)/,
+          /^\/analytics(?:\/|$)/,
+          /^\/quiz(?:\/|$)/,
+          /^\/study-assistant(?:\/|$)/,
+          /^\/study-plus(?:\/|$)/,
+          /^\/study-groups(?:\/|$)/,
+          /^\/todo(?:\/|$)/,
+          /^\/leaderboard(?:\/|$)/,
+          /^\/events(?:\/|$)/,
+          /^\/exam-prep(?:\/|$)/,
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

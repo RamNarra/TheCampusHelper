@@ -39,7 +39,9 @@ service firebase.storage {
       allow read: if isAuthenticated();
       allow write: if isOwner(uid)
         && isWithinSizeLimit()
-        && isAllowedContentType();
+        && isAllowedContentType()
+        // Basic filename sanitization (keeps spaces/parentheses common in uploads)
+        && filename.matches('^[a-zA-Z0-9 ._()\\-]{1,200}$');
     }
 
     // Deny everything else

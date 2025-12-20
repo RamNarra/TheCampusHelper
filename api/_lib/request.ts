@@ -26,9 +26,22 @@ export function getRequestContext(req: VercelRequest): RequestContext {
   const originHeader = req.headers.origin;
   const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader || null;
 
+  // IP: prefer explicit edge headers, then fall back to the right-most forwarded IP.
+  const xRealIp = req.headers['x-real-ip'];
+  const vercelFwd = req.headers['x-vercel-forwarded-for'];
   const xff = req.headers['x-forwarded-for'];
-  const rawIp = Array.isArray(xff) ? xff[0] : xff || '';
-  const ip = rawIp.split(',')[0].trim() || 'unknown-ip';
+
+  const first = (h: string | string[] | undefined): string => (Array.isArray(h) ? h[0] : h || '');
+  const realIp = first(xRealIp).trim();
+  const vercelIp = first(vercelFwd).trim();
+  const rawXff = first(xff);
+  const xffParts = rawXff
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const forwardedIp = xffParts.length ? xffParts[xffParts.length - 1] : '';
+
+  const ip = realIp || vercelIp || forwardedIp || 'unknown-ip';
 
   const ua = req.headers['user-agent'];
   const userAgent = Array.isArray(ua) ? ua[0] : ua || '';

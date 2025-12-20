@@ -95,3 +95,43 @@ export const setUserDisabled = async (targetUid: string, disabled: boolean) => {
     throw new Error(text || `Disable update failed (${res.status})`);
   }
 };
+
+export const approveStudyGroupRequest = async (requestId: string) => {
+  const token = await getAuthToken();
+  if (!token) throw new Error('Not signed in');
+  const res = await withTimeout(
+    fetch('/api/studyGroups/approveRequest', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ requestId }),
+    }),
+    15000
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `Approve request failed (${res.status})`);
+  }
+};
+
+export const rejectStudyGroupRequest = async (requestId: string, reason?: string) => {
+  const token = await getAuthToken();
+  if (!token) throw new Error('Not signed in');
+  const res = await withTimeout(
+    fetch('/api/studyGroups/rejectRequest', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ requestId, reason: reason || '' }),
+    }),
+    15000
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `Reject request failed (${res.status})`);
+  }
+};

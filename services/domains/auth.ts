@@ -23,7 +23,18 @@ export const signIn = async () => {
 export const signOutUser = async () => {
   const auth = getAuthClient();
   if (!auth) return;
-  return signOut(auth);
+  await signOut(auth);
+
+  // Best-effort: clear any cached app shell/content after logout.
+  // This helps avoid serving previously cached pages/assets to a signed-out user.
+  try {
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      const keys = await caches.keys();
+      await Promise.allSettled(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // Ignore cache clear failures.
+  }
 };
 
 export const onAuthChanged = (cb: (user: User | null) => void) => {

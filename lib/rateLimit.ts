@@ -22,11 +22,21 @@ const MAX_REQUESTS = 10; // 10 requests per window
  * @param key - Unique identifier for the rate limit (e.g., "uid:ip")
  * @returns true if rate limit is exceeded, false otherwise
  */
-export async function rateLimitExceeded(key: string): Promise<boolean> {
+export async function rateLimitExceeded(
+  key: string,
+  opts?: {
+    /** When true, block requests if rate limiting cannot be evaluated. */
+    failClosed?: boolean;
+  }
+): Promise<boolean> {
+  const failClosed = opts?.failClosed === true;
+
   if (!redis) {
-    // If Redis is not configured, skip rate limiting
-    console.warn('Rate limiting disabled: Redis not configured');
-    return false;
+    const isProd = process.env.NODE_ENV === 'production';
+    const msg = 'Rate limiting disabled: Redis not configured';
+    if (isProd) console.error(`CRITICAL: ${msg}`);
+    else console.warn(msg);
+    return failClosed;
   }
 
   try {
@@ -41,7 +51,7 @@ export async function rateLimitExceeded(key: string): Promise<boolean> {
     return current > MAX_REQUESTS;
   } catch (error) {
     console.error('Rate limit check failed:', error);
-    // Fail open - don't block requests if rate limiting fails
-    return false;
+    // Default is fail-open for availability, but high-cost endpoints should pass failClosed.
+    return failClosed;
   }
 }

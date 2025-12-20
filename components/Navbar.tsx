@@ -18,17 +18,23 @@ const Navbar: React.FC = () => {
   const toggleMenu = () => setIsOpen(!isOpen);
 
   const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
+  const canViewInsights = useMemo(() => {
+    const r = normalizeRole(user?.role);
+    return !!user && (r === 'instructor' || isAtLeastRole(r, 'admin'));
+  }, [user]);
 
   const primaryLinks = useMemo(() => {
     return [
-      { name: 'Home', path: '/', icon: null },
-      { name: 'Resources', path: '/resources', icon: <BookOpen className="w-4 h-4 mr-2" /> },
-      ...(user ? [{ name: 'To-Do', path: '/todo', icon: <Calendar className="w-4 h-4 mr-2" /> }] : []),
+      { name: 'Home', path: '/home', icon: null },
+      { name: 'Courses', path: '/courses', icon: <BookOpen className="w-4 h-4 mr-2" /> },
+      ...(user ? [{ name: 'Planner', path: '/planner', icon: <Calendar className="w-4 h-4 mr-2" /> }] : []),
+      { name: 'Community', path: '/community', icon: <Users className="w-4 h-4 mr-2" /> },
       { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
       { name: 'Developer', path: '/developer', icon: <User className="w-4 h-4 mr-2" /> },
+      ...(canViewInsights ? [{ name: 'Insights', path: '/insights', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
       ...(isStaff ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
     ];
-  }, [isStaff, user]);
+  }, [canViewInsights, isStaff, user]);
 
   const studyLinks = useMemo(() => {
     return [

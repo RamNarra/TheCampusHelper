@@ -4,6 +4,7 @@ import { LearningAnalytics, StudySession, QuizResult, ResourceType } from '../ty
 // In a real app, this would fetch from Firestore
 
 export const generateMockStudySessions = (userId: string): StudySession[] => {
+  if ((import.meta as any).env?.PROD) return [];
   const subjects = [
     'Matrices and Calculus',
     'Engineering Physics',
@@ -39,6 +40,7 @@ export const generateMockStudySessions = (userId: string): StudySession[] => {
 };
 
 export const generateMockQuizResults = (userId: string): QuizResult[] => {
+  if ((import.meta as any).env?.PROD) return [];
   const topics = [
     'Matrices',
     'Differential Calculus',

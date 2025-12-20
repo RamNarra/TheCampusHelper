@@ -27,8 +27,10 @@ import {
 } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit, StudyGroupRequest } from '../types';
+import { normalizeRole } from '../lib/rbac';
 import { env, getAuthClient, getDb, getGoogleProvider, isConfigured } from './platform/firebaseClient';
 import { stripUndefined, withTimeout } from './platform/utils';
+import { getPhase1ServerlessOnly } from './platform/phase1Toggle';
 import { authService, moderationService, usersService, presenceService } from './domains';
 
 // --- CONFIGURATION ---
@@ -43,8 +45,10 @@ const sanitizeStorageFilename = (name: string): string => {
     const trimmed = (name || '').trim() || 'file';
     // Prevent path traversal and keep filenames readable.
     const noSlashes = trimmed.replace(/[\\/]+/g, '_');
-    const cleaned = noSlashes.replace(/[^a-zA-Z0-9._\- ]+/g, '_');
-    return cleaned.slice(0, 120);
+    const cleaned = noSlashes.replace(/[^a-zA-Z0-9._\-]+/g, '_');
+    const noEdgeDots = cleaned.replace(/^\.+|\.+$/g, '');
+    const safe = noEdgeDots || 'file';
+    return safe.slice(0, 120);
 };
 
 const inferContentTypeFromFilename = (filename: string): string | undefined => {
@@ -72,6 +76,20 @@ const uploadToCloudinaryRaw = async (params: {
     if (!cloudName || !uploadPreset) {
         throw new Error('File upload is not configured. Missing VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET.');
     }
+
+    const file = params.file;
+    const maxBytes = 20 * 1024 * 1024; // 20MB
+    if (!file) throw new Error('Upload failed: missing file');
+    if (file.size > maxBytes) throw new Error('Upload failed: file is too large (max 20MB)');
+
+    // Accept only PDFs/PPT/PPTX for raw uploads.
+    const nameLower = (file.name || '').toLowerCase();
+    const isPdf = nameLower.endsWith('.pdf') || file.type === 'application/pdf';
+    const isPptx =
+        nameLower.endsWith('.pptx') ||
+        file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    const isPpt = nameLower.endsWith('.ppt') || file.type === 'application/vnd.ms-powerpoint';
+    if (!isPdf && !isPptx && !isPpt) throw new Error('Upload failed: unsupported file type');
 
     const url = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/raw/upload`;
 
@@ -139,7 +157,7 @@ export const api = {
     },
 
     getAllUsers: async (): Promise<UserProfile[]> => {
-        return usersService.getAllUsers();
+        return usersService.getAllUsers(200);
     },
 
     bootstrapAdminAccess: async (): Promise<boolean> => {
@@ -181,6 +199,43 @@ export const api = {
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 } as any);
+
+                const usePhase1 = await getPhase1ServerlessOnly();
+                if (usePhase1) {
+                    const token = await getAuthToken();
+                    if (!token) throw new Error('Not signed in');
+
+                    const res = await withTimeout(
+                        fetch('/api/resources/submit', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                title: payload.title,
+                                subject: payload.subject,
+                                branch: payload.branch,
+                                semester: payload.semester,
+                                unit: payload.unit,
+                                type: payload.type,
+                                downloadUrl: payload.downloadUrl,
+                                driveFileId: payload.driveFileId,
+                            }),
+                        }),
+                        15000
+                    );
+
+                    if (!res.ok) {
+                        const text = await res.text().catch(() => '');
+                        throw new Error(text || `Submit resource failed (${res.status})`);
+                    }
+
+                    const json = (await res.json().catch(() => ({}))) as any;
+                    const resourceId = String(json?.resourceId || '').trim();
+                    if (!resourceId) throw new Error('Submit resource failed: missing resourceId');
+                    return resourceId;
+                }
 
                 if (options?.id) {
                     const docRef = doc(collection(db, 'resources'), options.id);
@@ -271,6 +326,8 @@ export const api = {
     rolloverIncompleteTodosFromRange: async (uid: string, fromStartDate: string, fromEndDate: string): Promise<number> => {
         if (!db) throw new Error('Database not configured');
 
+        const MAX_ROLLOVER = 200;
+
         const toISODate = (d: Date): string => {
             const pad2 = (n: number) => String(n).padStart(2, '0');
             return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -296,7 +353,7 @@ export const api = {
         );
 
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as TodoItem));
-        const incompletes = items.filter(t => !t.completed);
+        const incompletes = items.filter(t => !t.completed).slice(0, MAX_ROLLOVER);
         if (incompletes.length === 0) return 0;
 
         let created = 0;
@@ -481,38 +538,11 @@ export const api = {
     },
 
     approveStudyGroupRequest: async (requestId: string) => {
-        if (!db) throw new Error('Database not configured');
-        const reqRef = doc(db, 'studyGroupRequests', requestId);
-        const reqSnap = await withTimeout(getDoc(reqRef), 8000);
-        if (!reqSnap.exists()) throw new Error('Request not found');
-        const req = { id: reqSnap.id, ...reqSnap.data() } as StudyGroupRequest;
-
-        // Create the actual study group (approved and joinable).
-        await withTimeout(
-            addDoc(collection(db, 'studyGroups'), {
-                name: req.name,
-                subject: req.subject,
-                description: req.purpose,
-                members: [req.requestedBy],
-                admins: [req.requestedBy],
-                createdBy: req.requestedBy,
-                createdByName: req.requestedByName,
-                isPrivate: false,
-                visibleToYears: req.visibleToYears,
-                maxMembers: 200,
-                createdAt: serverTimestamp(),
-            } as any),
-            12000
-        );
-        const reviewedBy = auth?.currentUser?.uid || 'admin';
-        await withTimeout(updateDoc(reqRef, { status: 'approved', reviewedBy, reviewedAt: serverTimestamp() } as any), 8000);
+        return moderationService.approveStudyGroupRequest(requestId);
     },
 
     rejectStudyGroupRequest: async (requestId: string, reason?: string) => {
-        if (!db) throw new Error('Database not configured');
-        const reqRef = doc(db, 'studyGroupRequests', requestId);
-        const reviewedBy = auth?.currentUser?.uid || 'admin';
-        await withTimeout(updateDoc(reqRef, { status: 'rejected', rejectionReason: reason ?? '', reviewedBy, reviewedAt: serverTimestamp() } as any), 8000);
+        return moderationService.rejectStudyGroupRequest(requestId, reason);
     },
 
     // --- STUDY GROUP CHAT ATTACHMENTS ---
@@ -590,6 +620,31 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const uid = auth?.currentUser?.uid;
         if (!uid) throw new Error('You must be signed in.');
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const res = await withTimeout(
+                fetch('/api/resources/setStatus', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        resourceId,
+                        status,
+                        rejectionReason: options?.rejectionReason ?? '',
+                    }),
+                }),
+                10000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Update status failed (${res.status})`);
+            }
+            return;
+        }
         const docRef = doc(db, 'resources', resourceId);
 
         const isModerated = status === 'approved' || status === 'rejected';
@@ -614,6 +669,27 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const uid = auth?.currentUser?.uid;
         if (!uid) throw new Error('You must be signed in.');
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const res = await withTimeout(
+                fetch('/api/resources/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ resourceId }),
+                }),
+                10000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Delete failed (${res.status})`);
+            }
+            return;
+        }
         const docRef = doc(db, 'resources', resourceId);
         return withTimeout(deleteDoc(docRef), 5000);
     },
@@ -656,13 +732,19 @@ export const api = {
         if (!db) return [];
         try {
             // Client-side code should not be pulling other users' interactions.
-            // Keep this as a safe no-op unless an admin is signed in.
-            const email = auth?.currentUser?.email?.toLowerCase() || '';
-            const adminEmails = (env.VITE_ADMIN_EMAILS || '')
-                .split(',')
-                .map((e: string) => e.trim().toLowerCase())
-                .filter(Boolean);
-            if (!email || !adminEmails.includes(email)) return [];
+            // Keep this as a safe no-op unless an authorized role is signed in.
+            const user = auth?.currentUser;
+            if (!user) return [];
+            let claims: any;
+            try {
+                const tokenResult = await user.getIdTokenResult();
+                claims = tokenResult?.claims || {};
+            } catch {
+                return [];
+            }
+
+            const role = normalizeRole(claims?.role || (claims?.admin === true ? 'admin' : undefined));
+            if (!(role === 'super_admin' || role === 'admin' || role === 'moderator')) return [];
 
             // Note: We fetch all recent interactions but filter by a reasonable window
             // The timestamp field uses serverTimestamp() which converts to milliseconds in the stored document
@@ -814,6 +896,27 @@ export const api = {
 
     joinStudyGroup: async (groupId: string, userId: string) => {
         if (!db) throw new Error("Database not configured");
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const res = await withTimeout(
+                fetch('/api/studyGroups/join', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ groupId }),
+                }),
+                15000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Join failed (${res.status})`);
+            }
+            return;
+        }
         const docRef = doc(db, 'studyGroups', groupId);
         return withTimeout(updateDoc(docRef, {
             members: arrayUnion(userId)
@@ -822,6 +925,27 @@ export const api = {
 
     leaveStudyGroup: async (groupId: string, userId: string) => {
         if (!db) throw new Error("Database not configured");
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const res = await withTimeout(
+                fetch('/api/studyGroups/leave', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ groupId }),
+                }),
+                15000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Leave failed (${res.status})`);
+            }
+            return;
+        }
         const docRef = doc(db, 'studyGroups', groupId);
         return withTimeout(updateDoc(docRef, {
             members: arrayRemove(userId)
@@ -930,6 +1054,42 @@ export const api = {
 
     createSession: async (groupId: string, sessionData: Omit<Session, 'id'>): Promise<string> => {
         if (!db) throw new Error("Database not configured");
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const toMillis = (v: any): number => {
+                if (typeof v === 'number') return v;
+                return v?.toMillis?.() ?? (v instanceof Date ? v.getTime() : 0);
+            };
+            const res = await withTimeout(
+                fetch('/api/studyGroups/createSession', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        groupId,
+                        title: (sessionData as any).title,
+                        description: (sessionData as any).description,
+                        scheduledAtMillis: toMillis((sessionData as any).scheduledAt),
+                        duration: (sessionData as any).duration,
+                        videoUrl: (sessionData as any).videoUrl,
+                        status: (sessionData as any).status,
+                    }),
+                }),
+                15000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Create session failed (${res.status})`);
+            }
+            const json = (await res.json().catch(() => ({}))) as any;
+            const sessionId = String(json?.sessionId || '').trim();
+            if (!sessionId) throw new Error('Create session failed: missing sessionId');
+            return sessionId;
+        }
         const docRef = await withTimeout(
             addDoc(collection(db, `studyGroups/${groupId}/sessions`), sessionData),
             10000
@@ -939,12 +1099,69 @@ export const api = {
 
     updateSession: async (groupId: string, sessionId: string, data: Partial<Session>) => {
         if (!db) throw new Error("Database not configured");
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const toMillis = (v: any): number | undefined => {
+                if (v === undefined) return undefined;
+                if (typeof v === 'number') return v;
+                return v?.toMillis?.() ?? (v instanceof Date ? v.getTime() : undefined);
+            };
+            const scheduledAtMillis = toMillis((data as any).scheduledAt);
+            const res = await withTimeout(
+                fetch('/api/studyGroups/updateSession', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        groupId,
+                        sessionId,
+                        title: (data as any).title,
+                        description: (data as any).description,
+                        scheduledAtMillis,
+                        duration: (data as any).duration,
+                        videoUrl: (data as any).videoUrl,
+                        status: (data as any).status,
+                    }),
+                }),
+                15000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Update session failed (${res.status})`);
+            }
+            return;
+        }
         const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
         return withTimeout(updateDoc(docRef, data), 5000);
     },
 
     deleteSession: async (groupId: string, sessionId: string) => {
         if (!db) throw new Error("Database not configured");
+        const usePhase1 = await getPhase1ServerlessOnly();
+        if (usePhase1) {
+            const token = await getAuthToken();
+            if (!token) throw new Error('Not signed in');
+            const res = await withTimeout(
+                fetch('/api/studyGroups/deleteSession', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ groupId, sessionId }),
+                }),
+                15000
+            );
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Delete session failed (${res.status})`);
+            }
+            return;
+        }
         const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
         return withTimeout(deleteDoc(docRef), 5000);
     },

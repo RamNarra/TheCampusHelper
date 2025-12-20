@@ -16,6 +16,7 @@ type SetEnrollmentBody = {
 export const config = { runtime: 'nodejs' };
 
 const MAX_BODY_SIZE = 20 * 1024; // 20KB
+const MAX_INSTRUCTOR_CHECK = 10;
 
 async function canManageCourse(courseId: string, actorUid: string, actorRole: PlatformRole) {
   // Platform-level override
@@ -68,25 +69,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const db = admin.firestore();
 
     const courseRef = db.collection('courses').doc(courseId);
-    const courseSnap = await courseRef.get();
-    if (!courseSnap.exists) {
-      return res.status(404).json({ error: 'Course not found', requestId: ctx.requestId });
-    }
-
     const enrollRef = courseRef.collection('enrollments').doc(userId);
-    await enrollRef.set(
-      {
-        courseId,
-        userId,
-        role,
-        status,
-        updatedAt: FieldValue.serverTimestamp(),
-        createdAt: FieldValue.serverTimestamp(),
-        createdBy: caller.uid,
-        updatedAtBy: caller.uid,
-      },
-      { merge: true }
-    );
+
+    await db.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
+      const courseSnap = await tx.get(courseRef);
+      if (!courseSnap.exists) {
+        const err = new Error('Course not found');
+        (err as any).status = 404;
+        throw err;
+      }
+
+      const existingSnap = await tx.get(enrollRef);
+      const existing = (existingSnap.exists ? (existingSnap.data() as any) : null) as any;
+
+      const currentlyActiveInstructor = existing?.status === 'active' && existing?.role === 'instructor';
+      const willBeActiveInstructor = status === 'active' && role === 'instructor';
+
+      if (currentlyActiveInstructor && !willBeActiveInstructor) {
+        const q = courseRef
+          .collection('enrollments')
+          .where('status', '==', 'active')
+          .where('role', '==', 'instructor')
+          .limit(MAX_INSTRUCTOR_CHECK);
+
+        const instrSnap = await tx.get(q);
+        const hasOtherInstructor = instrSnap.docs.some((d) => d.id !== userId);
+        if (!hasOtherInstructor) {
+          const err = new Error('Cannot remove or demote the last active instructor');
+          (err as any).status = 409;
+          throw err;
+        }
+      }
+
+      tx.set(
+        enrollRef,
+        {
+          courseId,
+          userId,
+          role,
+          status,
+          updatedAt: FieldValue.serverTimestamp(),
+          updatedAtBy: caller.uid,
+          // Preserve create-time metadata once set
+          createdAt: existing?.createdAt ?? FieldValue.serverTimestamp(),
+          createdBy: existing?.createdBy ?? caller.uid,
+        },
+        { merge: true }
+      );
+    });
 
     await writeAuditLog({
       action: 'enrollment.set',

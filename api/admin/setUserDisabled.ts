@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const caller = await requireUser(req);
     requirePermission(caller, 'users.manage_status');
 
-    const limiterKey = `admin:setUserDisabled:${caller.uid}:${ctx.ip}`;
+    const limiterKey = `admin:setUserDisabled:${caller.uid}`;
     if (await rateLimitExceeded(limiterKey)) {
       return res.status(429).json({ error: 'Too Many Requests' });
     }
@@ -51,6 +51,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const target = await admin.auth().getUser(targetUid);
+
+    // Enforce disable at Firebase Auth layer.
+    await admin.auth().updateUser(targetUid, { disabled });
+    // When disabling, revoke refresh tokens so `verifyIdToken(..., true)` rejects existing sessions.
+    if (disabled) {
+      try {
+        await admin.auth().revokeRefreshTokens(targetUid);
+      } catch (e) {
+        console.error(`[${ctx.requestId}] revokeRefreshTokens failed:`, e);
+      }
+    }
 
     const db = admin.firestore();
     await db

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AccessGate from '../components/AccessGate';
+import { safeExternalHttpUrl } from '../lib/utils';
 import { 
   buildUserPreferences, 
   getHybridRecommendations 
@@ -260,7 +261,7 @@ const ResourcesPage: React.FC = () => {
     const driveId = getDrivePreviewId(res);
     if (driveId) return `https://drive.google.com/file/d/${driveId}/preview`;
 
-    const url = (res.downloadUrl || '').trim();
+    const url = safeExternalHttpUrl(res.downloadUrl);
     if (!url) return null;
 
     const lower = url.toLowerCase();
@@ -284,7 +285,7 @@ const ResourcesPage: React.FC = () => {
   const getDownloadUrl = (res: Resource): string => {
     const driveId = getDrivePreviewId(res);
     if (driveId) return `https://drive.google.com/u/0/uc?id=${driveId}&export=download`;
-    return res.downloadUrl;
+    return safeExternalHttpUrl(res.downloadUrl) ?? 'about:blank';
   };
 
   // --- UPLOAD LOGIC ---
@@ -300,6 +301,11 @@ const ResourcesPage: React.FC = () => {
         if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
         if (!uploadName.trim()) throw new Error("Resource name is required.");
         if (!uploadLink.trim() && !uploadFile) throw new Error("Please paste a link or upload a file.");
+
+        const maxBytes = 20 * 1024 * 1024; // 20MB
+        if (uploadFile && uploadFile.size > maxBytes) {
+          throw new Error('File is too large (max 20MB).');
+        }
 
         const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
         const isPptx = (f: File) =>
@@ -330,6 +336,9 @@ const ResourcesPage: React.FC = () => {
           const uploaded = await api.uploadResourceFile({ uid: user.uid, resourceId, file: uploadFile });
           finalUrl = uploaded.downloadUrl;
         } else {
+          const safe = safeExternalHttpUrl(finalUrl);
+          if (!safe) throw new Error('Please provide a valid http(s) URL.');
+          finalUrl = safe;
           driveId = extractDriveId(finalUrl);
         }
 
@@ -686,6 +695,15 @@ const ResourcesPage: React.FC = () => {
                                 accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                                 onChange={(e) => {
                                   const f = e.target.files?.[0] || null;
+                                  if (f) {
+                                    const maxBytes = 20 * 1024 * 1024;
+                                    if (f.size > maxBytes) {
+                                      setUploadError('File is too large (max 20MB).');
+                                      e.target.value = '';
+                                      setUploadFile(null);
+                                      return;
+                                    }
+                                  }
                                   setUploadFile(f);
                                   if (f) setUploadLink('');
                                 }}
@@ -757,9 +775,9 @@ const ResourcesPage: React.FC = () => {
                     <button onClick={() => setSelectedResource(null)} className="flex items-center gap-2 hover:text-gray-300"><ArrowLeft className="w-4 h-4" /> Back</button>
                     <span className="font-bold truncate max-w-md">{selectedResource.title}</span>
                     <a 
-                        href={getDownloadUrl(selectedResource)} 
-                        target="_blank" 
-                        rel="noreferrer" 
+                      href={getDownloadUrl(selectedResource)} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
                         onClick={() => {
                             // Track interaction asynchronously without blocking the download
                             trackInteraction(selectedResource.id, 'download', selectedResource);

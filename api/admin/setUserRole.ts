@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     requirePermission(caller, 'users.manage_roles');
 
     // Rate limit: prevent abuse of role flips.
-    const limiterKey = `admin:setUserRole:${caller.uid}:${ctx.ip}`;
+    const limiterKey = `admin:setUserRole:${caller.uid}`;
     if (await rateLimitExceeded(limiterKey)) {
       return res.status(429).json({ error: 'Too Many Requests' });
     }
