@@ -20,6 +20,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [pendingResources, setPendingResources] = useState<Resource[]>([]);
   const [isLoadingApprovals, setIsLoadingApprovals] = useState(true);
+  const [approvalSearchTerm, setApprovalSearchTerm] = useState('');
   const [allResources, setAllResources] = useState<Resource[]>([]);
   const [isLoadingResources, setIsLoadingResources] = useState(false);
   const [resourceSearchTerm, setResourceSearchTerm] = useState('');
@@ -207,6 +208,21 @@ const AdminDashboard: React.FC = () => {
     });
   }, [allResources, resourceSearchTerm]);
 
+  const filteredPendingResources = useMemo(() => {
+    const q = approvalSearchTerm.trim().toLowerCase();
+    if (!q) return pendingResources;
+    return pendingResources.filter((r) => {
+      return (
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.subject || '').toLowerCase().includes(q) ||
+        (r.branch || '').toLowerCase().includes(q) ||
+        (r.semester || '').toLowerCase().includes(q) ||
+        (r.type || '').toLowerCase().includes(q) ||
+        (r.id || '').toLowerCase().includes(q)
+      );
+    });
+  }, [approvalSearchTerm, pendingResources]);
+
   const statusBadge = (status?: Resource['status']) => {
     const s = status || 'approved';
     if (s === 'approved') return 'bg-green-500/10 text-green-400 border-green-500/20';
@@ -233,8 +249,8 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Moderate resources and manage users</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">Admin Dashboard</h1>
+        <p className="text-muted-foreground">Moderation and operations tooling.</p>
       </div>
 
       {/* Navigation Tabs */}
@@ -389,32 +405,50 @@ const AdminDashboard: React.FC = () => {
           </>
         ) : activeTab === 'approvals' ? (
           <>
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-lg font-bold text-foreground">Pending Resource Approvals</h2>
-              <span className="px-2 py-1 bg-yellow-500/10 text-yellow-500 text-xs rounded-full border border-yellow-500/20">
-                {pendingResources.length} Pending
-              </span>
+            <div className="p-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Pending Resource Approvals</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Review new submissions. Showing {filteredPendingResources.length} items.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search pending…"
+                    value={approvalSearchTerm}
+                    onChange={(e) => setApprovalSearchTerm(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 w-full"
+                  />
+                </div>
+                <span className="inline-flex items-center justify-center px-3 py-2 bg-muted/30 text-muted-foreground text-xs rounded-lg border border-border whitespace-nowrap">
+                  {pendingResources.length} total
+                </span>
+              </div>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</th>
-                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subject</th>
-                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</th>
-                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</th>
+                  <tr className="border-b border-border bg-muted/30 sticky top-0">
+                    <th className="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</th>
+                    <th className="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subject</th>
+                    <th className="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Details</th>
+                    <th className="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {isLoadingApprovals ? (
                     <tr>
                       <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                        Loading pending resources...
+                        Loading pending resources…
                       </td>
                     </tr>
-                  ) : pendingResources.length > 0 ? (
-                    pendingResources.map((item) => (
+                  ) : filteredPendingResources.length > 0 ? (
+                    filteredPendingResources.map((item) => (
                       <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">

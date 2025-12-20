@@ -27,7 +27,10 @@ export function Modal({ isOpen, onClose, title, description, children, footer, c
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onPointerDown={onClose} />
+      <div
+        className="absolute inset-0 bg-background/70 backdrop-blur-sm backdrop-brightness-50"
+        onPointerDown={onClose}
+      />
       <div
         role="dialog"
         aria-modal="true"

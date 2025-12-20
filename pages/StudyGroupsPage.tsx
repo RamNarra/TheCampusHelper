@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import {
   Users,
   Plus,
@@ -26,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { EmptyState as UiEmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
+import { getDb } from '../services/platform/firebaseClient';
 
 // Helper function to format Firestore timestamps
 const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 'datetime'): string => {
@@ -55,6 +57,8 @@ const StudyGroupsPage: React.FC = () => {
   const [presenceByUid, setPresenceByUid] = useState<Record<string, any>>({});
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+
+  const [latestMessageByGroupId, setLatestMessageByGroupId] = useState<Record<string, number>>({});
 
   const didAutoDiscoverRef = useRef(false);
 
@@ -264,6 +268,77 @@ const StudyGroupsPage: React.FC = () => {
     );
   }, [publicGroups, normalizedSearch]);
 
+  // Lightweight unread indicators: subscribe to latest message per joined group.
+  // This is read-only (no writes) and keeps the sidebar feeling “live”.
+  useEffect(() => {
+    const db = getDb();
+    if (!db) return;
+    if (!user) return;
+    if (!myGroups.length) return;
+
+    const unsubs = myGroups.map((g) => {
+      const q = query(collection(db, `studyGroups/${g.id}/messages`), orderBy('timestamp', 'desc'), limit(1));
+      return onSnapshot(
+        q,
+        (snap) => {
+          const docSnap = snap.docs[0];
+          const data = docSnap?.data() as any;
+          const ts = data?.timestamp;
+          const ms = typeof ts?.toMillis === 'function' ? ts.toMillis() : 0;
+          if (!ms) return;
+          setLatestMessageByGroupId((prev) => (prev[g.id] === ms ? prev : { ...prev, [g.id]: ms }));
+        },
+        () => {
+          // ignore sidebar unread errors
+        }
+      );
+    });
+
+    return () => {
+      unsubs.forEach((u) => u());
+    };
+  }, [myGroups, user?.uid]);
+
+  const storageKeyForLastRead = useCallback((groupId: string) => `thc_sg_last_read_${groupId}`, []);
+  const getLastReadMs = useCallback(
+    (groupId: string): number => {
+      try {
+        const raw = sessionStorage.getItem(storageKeyForLastRead(groupId));
+        const n = raw ? Number(raw) : 0;
+        return Number.isFinite(n) ? n : 0;
+      } catch {
+        return 0;
+      }
+    },
+    [storageKeyForLastRead]
+  );
+  const setLastReadMs = useCallback(
+    (groupId: string, ms: number) => {
+      try {
+        sessionStorage.setItem(storageKeyForLastRead(groupId), String(ms));
+      } catch {
+        // ignore
+      }
+    },
+    [storageKeyForLastRead]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    if (!selectedGroupId) return;
+    // Mark as read on selection.
+    setLastReadMs(selectedGroupId, Date.now());
+  }, [selectedGroupId, setLastReadMs, user?.uid]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!selectedGroupId) return;
+    // If we're currently in the chat, keep read watermark fresh as messages arrive.
+    if (activeChannel !== 'chat') return;
+    if (!messages.length) return;
+    setLastReadMs(selectedGroupId, Date.now());
+  }, [activeChannel, messages.length, selectedGroupId, setLastReadMs, user?.uid]);
+
   if (!user && !isPreview) {
     return (
       <div className="flex-1 px-4 py-12 flex items-center justify-center">
@@ -297,10 +372,10 @@ const StudyGroupsPage: React.FC = () => {
   const hasServers = myGroups.length > 0;
 
   return (
-    <div className="flex-1 min-h-0 h-[calc(100vh-4rem)]">
-      <div className="h-full min-h-0 grid grid-cols-1 lg:grid-cols-[320px_1fr] 2xl:grid-cols-[320px_1fr_320px]">
+    <div className="flex-1 min-h-0">
+      <div className="h-full min-h-0 grid grid-cols-1 md:grid-cols-[320px_1fr] 2xl:grid-cols-[320px_1fr_320px]">
         {/* Sidebar */}
-        <aside className="min-h-0 border-r border-border bg-background/60 backdrop-blur">
+        <aside className="min-h-0 border-b md:border-b-0 md:border-r border-border bg-background/60 backdrop-blur">
           <div className="h-full min-h-0 flex flex-col">
             <div className="p-4 border-b border-border">
               <div className="flex items-start justify-between gap-3">
@@ -336,7 +411,7 @@ const StudyGroupsPage: React.FC = () => {
                   placeholder={isDiscover ? 'Search public groups…' : 'Search my groups…'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-border rounded-xl bg-background/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
+                  className="block w-full pl-10 pr-3 py-2 border border-border rounded-xl bg-background/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
                 />
               </div>
 
@@ -412,12 +487,15 @@ const StudyGroupsPage: React.FC = () => {
                     <div className="space-y-2">
                       {filteredMyGroups.map((g) => {
                         const active = selectedGroupId === g.id && !isDiscover;
+                        const latest = latestMessageByGroupId[g.id] || 0;
+                        const lastRead = getLastReadMs(g.id);
+                        const unread = !active && latest > 0 && latest > lastRead;
                         return (
                           <button
                             key={g.id}
                             type="button"
                             onClick={() => selectGroup(g.id)}
-                            className={`w-full text-left rounded-xl border px-3 py-3 transition-colors ${
+                            className={`w-full text-left rounded-xl border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                               active
                                 ? 'border-primary/30 bg-primary/10'
                                 : 'border-border bg-card/30 hover:bg-muted/40'
@@ -425,7 +503,16 @@ const StudyGroupsPage: React.FC = () => {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="font-semibold text-foreground truncate">{g.name}</div>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="font-semibold text-foreground truncate">{g.name}</div>
+                                  {unread ? (
+                                    <span
+                                      aria-label="Unread"
+                                      title="Unread"
+                                      className="shrink-0 inline-flex h-2 w-2 rounded-full bg-primary"
+                                    />
+                                  ) : null}
+                                </div>
                                 <div className="mt-1 text-xs text-muted-foreground truncate">{g.subject}</div>
                               </div>
                               <div className="shrink-0 text-[11px] text-muted-foreground">
@@ -860,7 +947,7 @@ const CreateGroupModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-background/70 backdrop-brightness-50 flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1004,10 +1091,76 @@ const ChatView: React.FC<{
   canSend?: boolean;
 }> = ({ messages, newMessage, setNewMessage, onSend, onSendAttachment, sending, currentUserId, groupId, canSend = true }) => {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const chunksRef = React.useRef<BlobPart[]>([]);
+
+  const toMs = (t: any): number => {
+    if (typeof t === 'number') return t;
+    if (typeof t?.toMillis === 'function') return t.toMillis();
+    return 0;
+  };
+
+  const formatDay = (t: any): string => {
+    const ms = toMs(t);
+    if (!ms) return '';
+    const d = new Date(ms);
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const isNearBottom = (el: HTMLDivElement): boolean => {
+    const threshold = 120;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
+
+  // Autoscroll when new messages arrive, but don't fight the user if they've scrolled up.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    if (!messages.length) return;
+    if (!isNearBottom(el)) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages.length, groupId]);
+
+  const stream = useMemo(() => {
+    type Row =
+      | { kind: 'day'; key: string; label: string }
+      | { kind: 'msg'; key: string; msg: Message; showHeader: boolean; showAvatar: boolean };
+
+    const rows: Row[] = [];
+    const fiveMin = 5 * 60 * 1000;
+
+    let lastDay = '';
+    let prev: Message | undefined;
+
+    for (const msg of messages) {
+      const day = formatDay((msg as any).timestamp);
+      if (day && day !== lastDay) {
+        rows.push({ kind: 'day', key: `day:${day}`, label: day });
+        lastDay = day;
+        prev = undefined;
+      }
+
+      const sameSender = prev && prev.senderId === msg.senderId;
+      const closeInTime =
+        prev && Math.abs(toMs((msg as any).timestamp) - toMs((prev as any).timestamp)) <= fiveMin;
+      const grouped = Boolean(sameSender && closeInTime);
+
+      rows.push({
+        kind: 'msg',
+        key: msg.id || `${msg.senderId}:${toMs((msg as any).timestamp)}:${Math.random()}`,
+        msg,
+        showHeader: !grouped,
+        showAvatar: !grouped,
+      });
+
+      prev = msg;
+    }
+
+    return rows;
+  }, [messages]);
 
   const pickFile = () => {
     if (!canSend) return;
@@ -1071,7 +1224,13 @@ const ChatView: React.FC<{
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={listRef}
+        className="flex-1 overflow-y-auto px-4 py-4"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
@@ -1080,65 +1239,100 @@ const ChatView: React.FC<{
             </div>
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.senderId === currentUserId ? 'flex-row-reverse' : ''}`}
-            >
-              {message.senderPhotoURL ? (
-                <img
-                  src={message.senderPhotoURL}
-                  alt={message.senderName}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold">
-                  {message.senderName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className={`flex-1 ${message.senderId === currentUserId ? 'text-right' : ''}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-foreground">{message.senderName}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatTimestamp(message.timestamp, 'time')}
-                  </span>
-                </div>
+          <div className="space-y-1">
+            {stream.map((row) => {
+              if (row.kind === 'day') {
+                return (
+                  <div key={row.key} className="py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" aria-hidden="true" />
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {row.label}
+                      </div>
+                      <div className="h-px flex-1 bg-border" aria-hidden="true" />
+                    </div>
+                  </div>
+                );
+              }
+
+              const message = row.msg;
+              const isMine = message.senderId === currentUserId;
+
+              return (
                 <div
-                  className={`inline-block px-4 py-2 rounded-lg ${
-                    message.senderId === currentUserId
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/40 text-foreground'
-                  }`}
+                  key={row.key}
+                  className={`group flex gap-3 px-2 py-1.5 rounded-lg hover:bg-muted/20 ${isMine ? 'justify-end' : 'justify-start'}`}
                 >
-                  {message.kind === 'audio' && message.fileUrl ? (
-                    <div className="space-y-2">
-                      <div className="text-sm">{message.content || 'Voice message'}</div>
-                      {safeExternalHttpUrl(message.fileUrl) ? (
-                        <audio controls src={safeExternalHttpUrl(message.fileUrl) as string} className="w-[240px]" />
+                  {/* Avatar */}
+                  {!isMine ? (
+                    <div className="w-9 shrink-0">
+                      {row.showAvatar ? (
+                        message.senderPhotoURL ? (
+                          <img
+                            src={message.senderPhotoURL}
+                            alt={message.senderName}
+                            className="w-9 h-9 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold">
+                            {message.senderName.charAt(0).toUpperCase()}
+                          </div>
+                        )
                       ) : (
-                        <div className="text-xs opacity-80">Attachment unavailable</div>
+                        <div className="w-9 h-9" aria-hidden="true" />
                       )}
                     </div>
-                  ) : message.kind === 'file' && message.fileUrl ? (
-                    safeExternalHttpUrl(message.fileUrl) ? (
-                      <a
-                        href={safeExternalHttpUrl(message.fileUrl) as string}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline underline-offset-2"
-                      >
-                        {message.fileName || message.content || 'Download file'}
-                      </a>
-                    ) : (
-                      <span className="text-xs opacity-80">Attachment unavailable</span>
-                    )
-                  ) : (
-                    message.content
-                  )}
+                  ) : null}
+
+                  <div className={`min-w-0 max-w-[min(720px,100%)] ${isMine ? 'text-right' : ''}`}>
+                    {row.showHeader ? (
+                      <div className={`flex items-baseline gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div className="text-sm font-semibold text-foreground truncate">{message.senderName}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formatTimestamp(message.timestamp, 'time')}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className={`mt-0.5 inline-block rounded-2xl px-4 py-2 border ${
+                      isMine
+                        ? 'bg-primary text-primary-foreground border-primary/20'
+                        : 'bg-card text-foreground border-border'
+                    }`}>
+                      {message.kind === 'audio' && message.fileUrl ? (
+                        <div className="space-y-2">
+                          <div className="text-sm">{message.content || 'Voice message'}</div>
+                          {safeExternalHttpUrl(message.fileUrl) ? (
+                            <audio controls src={safeExternalHttpUrl(message.fileUrl) as string} className="w-[260px] max-w-full" />
+                          ) : (
+                            <div className="text-xs opacity-80">Attachment unavailable</div>
+                          )}
+                        </div>
+                      ) : message.kind === 'file' && message.fileUrl ? (
+                        safeExternalHttpUrl(message.fileUrl) ? (
+                          <a
+                            href={safeExternalHttpUrl(message.fileUrl) as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline underline-offset-2"
+                          >
+                            {message.fileName || message.content || 'Download file'}
+                          </a>
+                        ) : (
+                          <span className="text-xs opacity-80">Attachment unavailable</span>
+                        )
+                      ) : (
+                        <span className="text-sm whitespace-pre-wrap break-words">{message.content}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Spacer for right-aligned messages to keep layout stable */}
+                  {isMine ? <div className="w-9 shrink-0" aria-hidden="true" /> : null}
                 </div>
-              </div>
-            </div>
-          ))
+              );
+            })}
+          </div>
         )}
       </div>
 

@@ -642,7 +642,7 @@ const ResourcesPage: React.FC = () => {
         <AnimatePresence>
             {showUploadModal && (
                 <div className="fixed inset-0 z-[150] flex items-center justify-center px-4">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isUploading && setShowUploadModal(false)} />
+                    <div className="absolute inset-0 bg-background/70 backdrop-blur-sm backdrop-brightness-50" onClick={() => !isUploading && setShowUploadModal(false)} />
                     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-card w-full max-w-md p-6 rounded-2xl border border-border shadow-2xl">
                         <h2 className="text-xl font-bold mb-4">Upload Resource</h2>
                         {uploadSuccess ? (

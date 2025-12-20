@@ -124,7 +124,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-background/70 backdrop-blur-md backdrop-brightness-50" />
 
       {/* Modal */}
       <motion.div

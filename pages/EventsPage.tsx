@@ -130,7 +130,7 @@ const EventCard: React.FC<{ event: EventItem }> = ({ event }) => {
           </span>
         </div>
         {isCompleted && (
-           <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+           <div className="absolute inset-0 bg-background/60 flex items-center justify-center backdrop-blur-sm backdrop-brightness-50">
              <span className="text-foreground bg-background/80 font-semibold px-4 py-2 border border-border rounded-lg transform -rotate-12">
                Completed
              </span>
