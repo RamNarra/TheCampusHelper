@@ -399,40 +399,40 @@ const AdminDashboard: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 bg-white/5">
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Title</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Details</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</th>
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subject</th>
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</th>
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border">
                   {isLoadingApprovals ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
                         Loading pending resources...
                       </td>
                     </tr>
                   ) : pendingResources.length > 0 ? (
                     pendingResources.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-primary/10 rounded-lg text-primary">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-white font-medium">{item.title}</p>
-                            <p className="text-xs text-gray-500">ID: {item.id}</p>
+                            <p className="text-foreground font-medium">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">ID: {item.id}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-gray-300">{item.subject}</td>
+                      <td className="p-4 text-foreground/90">{item.subject}</td>
                       <td className="p-4">
                         <div className="flex gap-2">
-                          <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.branch}</span>
-                          <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.semester}</span>
-                          <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.type}</span>
+                          <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground">{item.branch}</span>
+                          <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground">{item.semester}</span>
+                          <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground">{item.type}</span>
                         </div>
                       </td>
                       <td className="p-4 text-right">
@@ -455,7 +455,7 @@ const AdminDashboard: React.FC = () => {
                             onClick={() => {
                               if (window.confirm('Delete this resource?')) handleDelete(item.id);
                             }}
-                            className="px-3 py-2 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white rounded-lg transition-colors inline-flex items-center gap-2"
+                            className="px-3 py-2 bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-lg transition-colors inline-flex items-center gap-2"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -467,7 +467,7 @@ const AdminDashboard: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
                         No pending resources.
                       </td>
                     </tr>
@@ -478,22 +478,22 @@ const AdminDashboard: React.FC = () => {
           </>
         ) : activeTab === 'resources' ? (
           <>
-            <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="p-6 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-lg font-bold text-white">All Resources</h2>
-                <p className="text-xs text-gray-500 mt-1">
+                <h2 className="text-lg font-bold text-foreground">All Resources</h2>
+                <p className="text-xs text-muted-foreground mt-1">
                   Showing {filteredResources.length} resources
                 </p>
               </div>
 
               <div className="relative w-full sm:w-auto">
-                <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search resources..."
                   value={resourceSearchTerm}
                   onChange={(e) => setResourceSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 w-full sm:w-80"
+                  className="pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 w-full sm:w-80"
                 />
               </div>
             </div>
@@ -501,31 +501,31 @@ const AdminDashboard: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/5 bg-white/5">
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Title</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Details</th>
-                    <th className="p-4 text-xs font-medium text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</th>
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</th>
+                    <th className="p-4 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border">
                   {isLoadingResources ? (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
                         Loading resources...
                       </td>
                     </tr>
                   ) : filteredResources.length > 0 ? (
                     filteredResources.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-lg text-primary">
                               <FileText className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-white font-medium">{item.title}</p>
-                              <p className="text-xs text-gray-500">{item.subject}</p>
+                              <p className="text-foreground font-medium">{item.title}</p>
+                              <p className="text-xs text-muted-foreground">{item.subject}</p>
                             </div>
                           </div>
                         </td>
@@ -534,18 +534,18 @@ const AdminDashboard: React.FC = () => {
                             {(item.status || 'approved').toUpperCase()}
                           </span>
                           {item.status === 'rejected' && item.rejectionReason ? (
-                            <div className="text-xs text-gray-500 mt-1 line-clamp-1" title={item.rejectionReason}>
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-1" title={item.rejectionReason}>
                               {item.rejectionReason}
                             </div>
                           ) : null}
                         </td>
                         <td className="p-4">
                           <div className="flex flex-wrap gap-2">
-                            <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.branch}</span>
-                            <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">Sem {item.semester}</span>
-                            <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">{item.type}</span>
+                            <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground">{item.branch}</span>
+                            <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground">Sem {item.semester}</span>
+                            <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground">{item.type}</span>
                             {item.ownerId ? (
-                              <span className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-500" title={item.ownerId}>
+                              <span className="px-2 py-1 bg-muted/30 border border-border rounded text-xs text-muted-foreground" title={item.ownerId}>
                                 Owner: {item.ownerId.substring(0, 8)}...
                               </span>
                             ) : null}
@@ -559,7 +559,7 @@ const AdminDashboard: React.FC = () => {
                                 if (!safe) return;
                                 window.open(safe, '_blank', 'noopener,noreferrer');
                               }}
-                              className="p-2 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
+                              className="p-2 bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-lg transition-colors"
                               title="Open link"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -602,7 +602,7 @@ const AdminDashboard: React.FC = () => {
                               onClick={() => {
                                 if (window.confirm('Delete this resource?')) handleDelete(item.id);
                               }}
-                              className="px-3 py-2 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white rounded-lg transition-colors inline-flex items-center gap-2"
+                              className="px-3 py-2 bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground rounded-lg transition-colors inline-flex items-center gap-2"
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -614,7 +614,7 @@ const AdminDashboard: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
                         No resources found.
                       </td>
                     </tr>
@@ -673,33 +673,33 @@ const AdminDashboard: React.FC = () => {
           </>
         ) : (
           <>
-            <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="p-6 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-lg font-bold text-white">User Database</h2>
-                <p className="text-xs text-gray-500 mt-1">
+                <h2 className="text-lg font-bold text-foreground">User Database</h2>
+                <p className="text-xs text-muted-foreground mt-1">
                   Showing {filteredUsers.length} registered users
                 </p>
               </div>
               
               <div className="relative">
-                <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <input 
                   type="text" 
                   placeholder="Search users..." 
                   value={userSearchTerm}
                   onChange={(e) => setUserSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-primary/50 w-full sm:w-64"
+                  className="pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 w-full sm:w-64"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-0 md:gap-6">
               {/* User list */}
-              <div className="border-b border-white/10 md:border-b-0 md:border-r md:border-white/10">
+              <div className="border-b border-border md:border-b-0 md:border-r md:border-border">
                 {isLoadingUsers ? (
-                  <div className="p-8 text-center text-gray-500">Loading users...</div>
+                  <div className="p-8 text-center text-muted-foreground">Loading users...</div>
                 ) : filteredUsers.length > 0 ? (
-                  <div className="max-h-[70vh] overflow-auto divide-y divide-white/5">
+                  <div className="max-h-[70vh] overflow-auto divide-y divide-border">
                     {filteredUsers.map((u) => {
                       const isActive = u.uid === selectedUserId;
                       const subtitleParts = [u.branch, u.year, u.section].filter(Boolean);
@@ -708,28 +708,28 @@ const AdminDashboard: React.FC = () => {
                           key={u.uid}
                           onClick={() => setSelectedUserId(u.uid)}
                           className={`w-full text-left p-4 flex items-center gap-3 transition-colors ${
-                            isActive ? 'bg-white/10' : 'hover:bg-white/5'
+                            isActive ? 'bg-muted/30' : 'hover:bg-muted/30'
                           }`}
                         >
                           <img
                             src={u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName || 'User')}`}
                             alt={u.displayName || 'User'}
-                            className="w-10 h-10 rounded-full bg-white/10"
+                            className="w-10 h-10 rounded-full bg-muted/30"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-white font-medium text-sm truncate">{u.displayName || 'No Name'}</p>
+                              <p className="text-foreground font-medium text-sm truncate">{u.displayName || 'No Name'}</p>
                               {u.disabled ? (
                                 <span className="shrink-0 inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
                                   Disabled
                                 </span>
                               ) : null}
                             </div>
-                            <p className="text-xs text-gray-500 truncate">{u.email || u.collegeEmail || u.uid}</p>
+                            <p className="text-xs text-muted-foreground truncate">{u.email || u.collegeEmail || u.uid}</p>
                             {subtitleParts.length ? (
-                              <p className="text-[11px] text-gray-400 truncate">{subtitleParts.join(' • ')}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{subtitleParts.join(' • ')}</p>
                             ) : (
-                              <p className="text-[11px] text-gray-600 italic">Incomplete profile</p>
+                              <p className="text-[11px] text-muted-foreground italic">Incomplete profile</p>
                             )}
                           </div>
                         </button>
@@ -737,30 +737,30 @@ const AdminDashboard: React.FC = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-gray-500">No users found matching search.</div>
+                  <div className="p-8 text-center text-muted-foreground">No users found matching search.</div>
                 )}
               </div>
 
               {/* Detail panel */}
               <div className="md:col-span-2 p-6">
                 {!selectedUser ? (
-                  <div className="text-gray-500 text-sm">Select a user to view details.</div>
+                  <div className="text-muted-foreground text-sm">Select a user to view details.</div>
                 ) : (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                  <div className="bg-card border border-border rounded-xl p-6">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                       <img
                         src={selectedUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.displayName || 'User')}`}
                         alt={selectedUser.displayName || 'User'}
-                        className="w-16 h-16 rounded-full bg-white/10"
+                        className="w-16 h-16 rounded-full bg-muted/30"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div>
-                            <h3 className="text-white font-bold text-lg truncate">{selectedUser.displayName || 'No Name'}</h3>
-                            <p className="text-sm text-gray-400 truncate">{selectedUser.email || '-'}</p>
+                            <h3 className="text-foreground font-bold text-lg truncate">{selectedUser.displayName || 'No Name'}</h3>
+                            <p className="text-sm text-muted-foreground truncate">{selectedUser.email || '-'}</p>
                             {selectedUser.collegeEmail ? (
-                              <div className="mt-1 flex items-center gap-2 text-sm text-gray-300">
-                                <Mail className="w-4 h-4 text-gray-500" />
+                              <div className="mt-1 flex items-center gap-2 text-sm text-foreground/90">
+                                <Mail className="w-4 h-4 text-muted-foreground" />
                                 <span className="truncate">{selectedUser.collegeEmail}</span>
                               </div>
                             ) : null}
@@ -770,7 +770,7 @@ const AdminDashboard: React.FC = () => {
                             <select
                               value={selectedUser.role || 'student'}
                               onChange={(e) => handleRoleChange(selectedUser.uid, e.target.value as UserRole)}
-                              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200"
+                              className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground"
                             >
                               <option value="student">Student</option>
                               <option value="instructor">Instructor</option>
@@ -793,34 +793,34 @@ const AdminDashboard: React.FC = () => {
                         </div>
 
                         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="bg-black/20 border border-white/10 rounded-lg p-4">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Academic</p>
-                            <p className="text-sm text-gray-200">
-                              <span className="text-gray-500">Branch:</span> {selectedUser.branch || '-'}
+                          <div className="bg-muted/30 border border-border rounded-lg p-4">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Academic</p>
+                            <p className="text-sm text-foreground">
+                              <span className="text-muted-foreground">Branch:</span> {selectedUser.branch || '-'}
                             </p>
-                            <p className="text-sm text-gray-200">
-                              <span className="text-gray-500">Year:</span> {selectedUser.year || '-'}
+                            <p className="text-sm text-foreground">
+                              <span className="text-muted-foreground">Year:</span> {selectedUser.year || '-'}
                             </p>
-                            <p className="text-sm text-gray-200">
-                              <span className="text-gray-500">Section:</span> {selectedUser.section || '-'}
+                            <p className="text-sm text-foreground">
+                              <span className="text-muted-foreground">Section:</span> {selectedUser.section || '-'}
                             </p>
                           </div>
 
-                          <div className="bg-black/20 border border-white/10 rounded-lg p-4">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Verification</p>
-                            <p className="text-sm text-gray-200">
-                              <span className="text-gray-500">DOB:</span>{' '}
+                          <div className="bg-muted/30 border border-border rounded-lg p-4">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Verification</p>
+                            <p className="text-sm text-foreground">
+                              <span className="text-muted-foreground">DOB:</span>{' '}
                               {selectedUser.dateOfBirth ? (
                                 <span className="inline-flex items-center gap-1.5">
-                                  <Calendar className="w-4 h-4 text-gray-500" />
+                                  <Calendar className="w-4 h-4 text-muted-foreground" />
                                   {selectedUser.dateOfBirth}
                                 </span>
                               ) : (
                                 '-'
                               )}
                             </p>
-                            <p className="text-sm text-gray-200">
-                              <span className="text-gray-500">Profile:</span>{' '}
+                            <p className="text-sm text-foreground">
+                              <span className="text-muted-foreground">Profile:</span>{' '}
                               {selectedUser.displayName && selectedUser.dateOfBirth && selectedUser.collegeEmail && selectedUser.branch && selectedUser.year && selectedUser.section
                                 ? 'Complete'
                                 : 'Incomplete'}
@@ -829,8 +829,8 @@ const AdminDashboard: React.FC = () => {
                         </div>
 
                         <div className="mt-5">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">User ID</p>
-                          <code className="text-xs text-gray-300 bg-black/30 border border-white/10 px-2 py-1 rounded font-mono break-all inline-block">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">User ID</p>
+                          <code className="text-xs text-muted-foreground bg-muted/30 border border-border px-2 py-1 rounded font-mono break-all inline-block">
                             {selectedUser.uid}
                           </code>
                         </div>

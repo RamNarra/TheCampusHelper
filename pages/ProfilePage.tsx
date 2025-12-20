@@ -132,7 +132,7 @@ const ProfilePage: React.FC = () => {
                           setAdminFixLoading(false);
                         }
                       }}
-                      className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors text-sm font-semibold disabled:opacity-50"
+                      className="px-4 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-semibold disabled:opacity-50"
                     >
                       {adminFixLoading ? 'Restoring…' : 'Restore Admin Access'}
                     </button>

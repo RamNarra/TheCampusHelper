@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   Brain, 
-  Loader2, 
   CheckCircle2, 
   XCircle, 
   RotateCcw, 
@@ -19,6 +18,10 @@ import { api } from '../services/firebase';
 import { QuizQuestion } from '../types';
 import AdUnit from '../components/AdUnit';
 import { isAuthBypassed } from '../lib/dev';
+import { Alert } from '../components/ui/Alert';
+import { Button } from '../components/ui/Button';
+import { Page } from '../components/ui/Page';
+import { Spinner } from '../components/ui/Spinner';
 
 const QuizPage: React.FC = () => {
   const { user } = useAuth();
@@ -170,8 +173,8 @@ const QuizPage: React.FC = () => {
   // Show login prompt if user is not authenticated (unless preview bypass is enabled)
   if (!user && !isPreview) {
     return (
-      <div className="flex-1 bg-background pt-6 pb-10 transition-colors duration-300">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <Page className="bg-background transition-colors duration-300">
+        <div className="max-w-2xl mx-auto text-center">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
             <Brain className="w-8 h-8 text-primary" />
           </div>
@@ -197,13 +200,13 @@ const QuizPage: React.FC = () => {
             </Link>
           </div>
         </div>
-      </div>
+      </Page>
     );
   }
 
   return (
-    <div className="flex-1 bg-background pt-6 pb-10 transition-colors duration-300">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <Page className="bg-background transition-colors duration-300">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
@@ -330,20 +333,19 @@ const QuizPage: React.FC = () => {
 
                   {/* Error Message */}
                   {error && (
-                    <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-                      <p className="text-destructive text-sm">{error}</p>
-                    </div>
+                    <Alert variant="destructive" description={error} />
                   )}
 
                   {/* Submit Button */}
-                  <button
+                  <Button
                     type="submit"
                     disabled={isGenerating}
-                    className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center gap-2"
+                    size="lg"
+                    className="w-full rounded-xl text-lg h-12"
                   >
                     {isGenerating ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Spinner size="md" className="border-t-primary-foreground" />
                         Generating Quiz...
                       </>
                     ) : (
@@ -352,7 +354,7 @@ const QuizPage: React.FC = () => {
                         Generate Quiz
                       </>
                     )}
-                  </button>
+                  </Button>
                 </form>
               </div>
 
@@ -573,7 +575,7 @@ const QuizPage: React.FC = () => {
             </motion.div>
           )}
       </div>
-    </div>
+    </Page>
   );
 };
 

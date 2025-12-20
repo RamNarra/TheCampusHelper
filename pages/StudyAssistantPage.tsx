@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Brain, Send, Loader2, BookOpen, GraduationCap } from 'lucide-react';
+import { Brain, Send, BookOpen, GraduationCap } from 'lucide-react';
 import { StudyContext, StudyMessage } from '../types';
 import { getAuthToken } from '../services/firebase';
 import { isAuthBypassed } from '../lib/dev';
+import { Page, PageHeader } from '../components/ui/Page';
+import { Card, CardContent } from '../components/ui/Card';
+import { Alert } from '../components/ui/Alert';
+import { Button } from '../components/ui/Button';
+import { Spinner } from '../components/ui/Spinner';
+import { EmptyState } from '../components/ui/EmptyState';
 
 // Constants
 const CONTEXT_TRUNCATE_LENGTH = 200;
@@ -166,44 +172,36 @@ const StudyAssistantPage: React.FC = () => {
 
   if (!user && !isPreview) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background text-foreground p-6">
-        <div className="text-center max-w-md">
-          <Brain className="w-16 h-16 mx-auto mb-4 text-primary" />
-          <h2 className="text-2xl font-bold mb-2">AI Study Assistant</h2>
-          <p className="text-muted-foreground mb-6">
-            Sign in to use the study assistant.
-          </p>
-        </div>
-      </div>
+      <Page className="flex items-center justify-center">
+        <EmptyState
+          icon={<Brain className="h-6 w-6 text-primary" />}
+          title="AI Study Assistant"
+          description="Sign in to use the study assistant."
+        />
+      </Page>
     );
   }
 
   return (
-    <div className="bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Brain className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl sm:text-4xl font-bold">AI Study Assistant</h1>
-          </div>
-          <p className="text-muted-foreground">
-            A focused tutor, tuned to your level.
-          </p>
-          {isPreview && (
-            <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-              Preview mode is enabled. Sign in to ask questions (sending is disabled without auth).
-            </div>
-          )}
-        </div>
+    <Page>
+      <PageHeader
+        title="AI Study Assistant"
+        description="A focused tutor, tuned to your level."
+        actions={<Brain className="h-6 w-6 text-primary" aria-hidden="true" />}
+      />
+
+      {isPreview ? (
+        <Alert description="Preview mode is enabled. Sign in to ask questions (sending is disabled without auth)." />
+      ) : null}
 
         {/* Context Form */}
         {showContextForm && (
-          <div className="bg-card border border-border rounded-xl p-6 mb-6 shadow-sm">
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-primary" />
-              Study context
-            </h2>
+          <Card className="mb-6 shadow-sm">
+            <CardContent>
+              <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                <BookOpen className="w-6 h-6 text-primary" />
+                Study context
+              </h2>
             <form onSubmit={handleContextSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Subject</label>
@@ -250,20 +248,18 @@ const StudyAssistantPage: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <button
-                type="submit"
-                className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-              >
+              <Button type="submit" className="w-full" size="lg">
                 <GraduationCap className="w-5 h-5" />
                 Start Learning
-              </button>
+              </Button>
             </form>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Chat Interface */}
         {!showContextForm && (
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <Card className="shadow-sm overflow-hidden">
             {/* Context Info Bar */}
             <div className="bg-muted px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -280,12 +276,9 @@ const StudyAssistantPage: React.FC = () => {
                   <span className="ml-2 font-semibold capitalize">{context.difficultyLevel}</span>
                 </div>
               </div>
-              <button
-                onClick={resetContext}
-                className="text-sm px-4 py-2 bg-background hover:bg-muted rounded-lg transition-colors"
-              >
+              <Button onClick={resetContext} variant="outline" size="sm">
                 Change Context
-              </button>
+              </Button>
             </div>
 
             {/* Messages */}
@@ -312,7 +305,7 @@ const StudyAssistantPage: React.FC = () => {
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-muted px-4 py-3 rounded-lg flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Spinner size="sm" />
                     <span>Thinking...</span>
                   </div>
                 </div>
@@ -331,20 +324,19 @@ const StudyAssistantPage: React.FC = () => {
                   className="flex-1 px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   disabled={isLoading}
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={isLoading || !inputMessage.trim()}
-                  className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6"
                 >
                   <Send className="w-5 h-5" />
                   Send
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         )}
-      </div>
-    </div>
+    </Page>
   );
 };
 

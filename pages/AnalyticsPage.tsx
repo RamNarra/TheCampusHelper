@@ -17,6 +17,8 @@ import {
 import { LearningAnalytics } from '../types';
 import { getAnalyticsForUser } from '../services/analytics';
 import { getPreviewUserId, isAuthBypassed } from '../lib/dev';
+import { Page } from '../components/ui/Page';
+import { Spinner } from '../components/ui/Spinner';
 
 const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
@@ -34,9 +36,9 @@ const AnalyticsPage: React.FC = () => {
 
   if (!analytics) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      <Page className="flex items-center justify-center">
+        <Spinner size="lg" />
+      </Page>
     );
   }
 
@@ -67,7 +69,7 @@ const AnalyticsPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <Page>
       {/* Header */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}
@@ -442,7 +444,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
-    </div>
+    </Page>
   );
 };
 

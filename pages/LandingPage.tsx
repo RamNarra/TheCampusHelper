@@ -33,7 +33,7 @@ const LandingPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link 
               to="/courses"
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 group"
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 group"
             >
               Explore Resources
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />

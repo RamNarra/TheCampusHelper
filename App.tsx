@@ -19,7 +19,8 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { Loader2 } from 'lucide-react';
+import { Button } from './components/ui/Button';
+import { Spinner } from './components/ui/Spinner';
 import EventsPage from './pages/EventsPage';
 import ExamPrepPage from './pages/ExamPrepPage';
 import StudyGroupsPage from './pages/StudyGroupsPage';
@@ -61,12 +62,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           <div className="max-w-md">
             <h1 className="text-2xl font-bold text-destructive mb-4">Something went wrong</h1>
             <p className="text-muted-foreground mb-6">The application encountered an unexpected error.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-6 py-2 bg-primary text-primary-foreground rounded font-bold hover:bg-primary/90"
-            >
+            <Button onClick={() => window.location.reload()} className="px-6">
               Reload Application
-            </button>
+            </Button>
           </div>
         </div>
       );
@@ -148,7 +146,7 @@ const AppContent: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Spinner size="lg" />
       </div>
     );
   }

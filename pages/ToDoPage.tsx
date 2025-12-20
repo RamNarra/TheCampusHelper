@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import type { Habit, TodoItem } from '../types';
 import { api } from '../services/firebase';
 import { isAuthBypassed } from '../lib/dev';
+import { Alert } from '../components/ui/Alert';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const toISODate = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -251,18 +252,17 @@ const ToDoPage: React.FC = () => {
         <motion.div
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mb-8 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm"
+          className="mb-8"
         >
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 w-4 h-4 text-destructive" />
-            <div>
-              <div className="font-semibold text-foreground">To-Do data error</div>
-              <div className="mt-1 text-muted-foreground break-words">{error}</div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                If you see <span className="font-medium">Missing or insufficient permissions</span>, publish the updated Firestore rules.
-              </div>
+          <Alert
+            variant="destructive"
+            title="To-Do data error"
+            description={error}
+          >
+            <div className="text-xs text-muted-foreground">
+              If you see <span className="font-medium">Missing or insufficient permissions</span>, publish the updated Firestore rules.
             </div>
-          </div>
+          </Alert>
         </motion.div>
       )}
 

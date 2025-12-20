@@ -8,11 +8,15 @@ import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { 
   Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
   FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
-  Lock, Plus, Loader2, TrendingUp
+  Lock, Plus, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AccessGate from '../components/AccessGate';
 import { safeExternalHttpUrl } from '../lib/utils';
+import { Alert } from '../components/ui/Alert';
+import { Button } from '../components/ui/Button';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Spinner } from '../components/ui/Spinner';
 import { 
   buildUserPreferences, 
   getHybridRecommendations 
@@ -523,7 +527,7 @@ const ResourcesPage: React.FC = () => {
 
                     {isLoadingRecommendations && user && (
                         <div className="flex items-center gap-2 text-muted-foreground mb-8">
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                        <Spinner size="sm" />
                             <span className="text-sm">Loading personalized recommendations...</span>
                         </div>
                     )}
@@ -581,22 +585,22 @@ const ResourcesPage: React.FC = () => {
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold">Files</h2>
                       {user && (
-                            <button
+                            <Button
                               onClick={() => {
                                 setUploadError('');
                                 setUploadSuccess(null);
                                 setLastSubmittedResource(null);
                                 setShowUploadModal(true);
                               }}
-                              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
+                              size="md"
                             >
                                 <Plus className="w-4 h-4" /> Add Resource
-                            </button>
+                            </Button>
                         )}
                     </div>
 
                     {isResourcesLoading ? (
-                        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+                        <div className="flex justify-center py-10"><Spinner size="lg" /></div>
                     ) : filteredResources.length > 0 ? (
                         <div className="grid gap-3">
                         {filteredResources.map(res => (
@@ -625,10 +629,10 @@ const ResourcesPage: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-20 text-muted-foreground">
-                            <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                            <p>No resources found here yet.</p>
-                        </div>
+                      <EmptyState
+                        icon={<Sparkles className="h-6 w-6 text-primary" />}
+                        title="No resources found here yet."
+                      />
                     )}
                 </motion.div>
             )}
@@ -643,28 +647,29 @@ const ResourcesPage: React.FC = () => {
                         <h2 className="text-xl font-bold mb-4">Upload Resource</h2>
                         {uploadSuccess ? (
                           <div className="space-y-4">
-                            <div className="p-3 rounded-xl border border-border bg-muted/50 text-sm text-foreground">
-                              {uploadSuccess}
-                            </div>
+                            <Alert description={uploadSuccess} />
                             {lastSubmittedResource ? (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => {
                                   setShowUploadModal(false);
                                   handleResourceClick(lastSubmittedResource);
                                 }}
-                                className="w-full bg-muted text-foreground py-3 rounded-lg font-bold hover:bg-muted/80"
+                                variant="secondary"
+                                className="w-full"
+                                size="lg"
                               >
                                 Preview my upload
-                              </button>
+                              </Button>
                             ) : null}
-                            <button
+                            <Button
                               type="button"
                               onClick={() => setShowUploadModal(false)}
-                              className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90"
+                              className="w-full"
+                              size="lg"
                             >
                               Done
-                            </button>
+                            </Button>
                           </div>
                         ) : (
                           <form onSubmit={handleUploadSubmit} className="space-y-4">
@@ -720,11 +725,18 @@ const ResourcesPage: React.FC = () => {
                                   Target: {selectedFolder} {selectedCategory ? `> ${selectedCategory}` : ''}
                               </div>
 
-                              {uploadError && <div className="text-red-500 text-sm">{uploadError}</div>}
+                              {uploadError ? <Alert variant="destructive" description={uploadError} /> : null}
 
-                                <button disabled={isUploading} className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2">
-                                  {isUploading ? (<><Loader2 className="w-5 h-5 animate-spin" /><span>Uploading…</span></>) : "Upload"}
-                              </button>
+                                <Button disabled={isUploading} className="w-full" size="lg">
+                                  {isUploading ? (
+                                    <>
+                                      <Spinner size="md" className="border-t-primary-foreground" />
+                                      <span>Uploading…</span>
+                                    </>
+                                  ) : (
+                                    'Upload'
+                                  )}
+                              </Button>
                           </form>
                         )}
                     </motion.div>
@@ -757,7 +769,7 @@ const ResourcesPage: React.FC = () => {
               </button>
               {canDeleteResource(contextMenu.resource) ? (
                 <button
-                  className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="w-full text-left px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                   onClick={() => {
                     const r = contextMenu.resource;
                     if (r) deleteResourceFromMenu(r);
@@ -773,10 +785,12 @@ const ResourcesPage: React.FC = () => {
         <AccessGate isOpen={showAccessGate} onClose={() => setShowAccessGate(false)} resourceTitle={pendingResource?.title} />
 
         {selectedResource && (
-             <div className="fixed inset-0 z-[200] bg-black flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900 text-white">
-                    <button onClick={() => setSelectedResource(null)} className="flex items-center gap-2 hover:text-gray-300"><ArrowLeft className="w-4 h-4" /> Back</button>
-                    <span className="font-bold truncate max-w-md">{selectedResource.title}</span>
+             <div className="fixed inset-0 z-[200] bg-background flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-border bg-card text-foreground">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedResource(null)} className="gap-2">
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </Button>
+                    <span className="font-semibold truncate max-w-md">{selectedResource.title}</span>
                     <a 
                       href={getDownloadUrl(selectedResource)} 
                       target="_blank" 
@@ -785,20 +799,20 @@ const ResourcesPage: React.FC = () => {
                             // Track interaction asynchronously without blocking the download
                             trackInteraction(selectedResource.id, 'download', selectedResource);
                         }}
-                        className="bg-primary px-4 py-2 rounded-lg text-sm hover:bg-primary/90"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                     >
                         Download
                     </a>
                 </div>
-                <div className="flex-1 bg-zinc-900">
+                <div className="flex-1 bg-background">
                     {(() => {
                       const src = getPreviewIframeSrc(selectedResource);
                       if (!src) {
                         return (
-                          <div className="w-full h-full flex items-center justify-center p-8 text-center text-zinc-300">
+                          <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
                             <div className="max-w-lg">
                               <div className="font-semibold">Preview unavailable</div>
-                              <div className="text-sm text-zinc-400 mt-2">
+                              <div className="text-sm text-muted-foreground mt-2">
                                 This resource doesn’t have a preview link. Use Download to open it.
                               </div>
                             </div>

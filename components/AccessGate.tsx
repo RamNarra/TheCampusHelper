@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Button } from './ui/Button';
 
 interface AccessGateProps {
   isOpen: boolean;
@@ -35,34 +36,38 @@ const AccessGate: React.FC<AccessGateProps> = ({ isOpen, onClose, resourceTitle 
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-md bg-[#18181b] border border-white/10 rounded-2xl p-8 shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-2xl overflow-hidden"
           >
             {/* Background Effects */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[50px] -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary/10 rounded-full blur-[50px] translate-y-1/2 -translate-x-1/2"></div>
 
-            <button 
+            <Button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+              variant="ghost"
+              size="sm"
+              className="absolute right-4 top-4 h-9 w-9 px-0 text-muted-foreground hover:text-foreground"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
 
             <div className="relative z-10 text-center">
-              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 ring-1 ring-white/10">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-muted/30 ring-1 ring-border">
                 <Lock className="w-8 h-8 text-primary" />
               </div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
-              <p className="text-gray-400 text-sm mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Access Restricted</h2>
+              <p className="text-muted-foreground text-sm mb-6">
                 You must be signed in to view or download <br/>
-                <span className="text-white font-medium">"{resourceTitle || 'this file'}"</span>.
+                <span className="text-foreground font-medium">"{resourceTitle || 'this file'}"</span>.
               </p>
 
               <div className="space-y-4">
-                <button
+                <Button
                   onClick={handleLogin}
-                  className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white text-black font-semibold rounded-xl hover:bg-gray-200 transition-all group shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                  className="w-full group"
+                  size="lg"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
@@ -84,10 +89,10 @@ const AccessGate: React.FC<AccessGateProps> = ({ isOpen, onClose, resourceTitle 
                   </svg>
                   Continue with Google
                   <ArrowRight className="w-4 h-4 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all" />
-                </button>
+                </Button>
               </div>
 
-              <div className="mt-6 flex items-center justify-center gap-2 text-[10px] text-gray-500 uppercase tracking-widest">
+              <div className="mt-6 flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest">
                 <ShieldCheck className="w-3 h-3" />
                 <span>Secure Student Access</span>
               </div>

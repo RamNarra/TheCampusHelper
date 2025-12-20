@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Calculator, Terminal, User, X, ArrowRight, Check, Sparkles } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface OnboardingTourProps {
   isOpen: boolean;
@@ -94,12 +95,15 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ isOpen, onClose }) => {
           />
         </div>
 
-        <button 
+        <Button
           onClick={handleSkip}
-          className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors z-10"
+          variant="ghost"
+          size="sm"
+          className="absolute top-4 right-4 h-9 w-9 px-0 text-muted-foreground hover:text-foreground transition-colors z-10"
+          aria-label="Skip tour"
         >
           <X className="w-5 h-5" />
-        </button>
+        </Button>
 
         <div className="p-8 pt-12 text-center">
           <motion.div 
@@ -117,23 +121,26 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ isOpen, onClose }) => {
 
           <div className="flex items-center gap-3">
             {currentStep > 0 && (
-                <button
-                    onClick={() => setCurrentStep(currentStep - 1)}
-                    className="px-6 py-3 rounded-xl font-semibold text-muted-foreground hover:bg-muted transition-colors"
-                >
-                    Back
-                </button>
+              <Button
+                onClick={() => setCurrentStep(currentStep - 1)}
+                variant="outline"
+                size="lg"
+                className="rounded-xl text-muted-foreground hover:text-foreground"
+              >
+                Back
+              </Button>
             )}
-            <button
+            <Button
               onClick={handleNext}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25"
+              size="lg"
+              className="flex-1 rounded-xl shadow-lg shadow-primary/25"
             >
               {currentStep === steps.length - 1 ? (
                 <>Get Started <Check className="w-4 h-4" /></>
               ) : (
                 <>Next <ArrowRight className="w-4 h-4" /></>
               )}
-            </button>
+            </Button>
           </div>
           
           <div className="mt-6 flex justify-center gap-1.5">

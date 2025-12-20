@@ -4,6 +4,7 @@ import { Trophy, Medal, Crown, TrendingUp } from 'lucide-react';
 import { getLeaderboard, calculateLevel } from '../services/gamification';
 import { useAuth } from '../context/AuthContext';
 import type { LeaderboardEntry } from '../types';
+import { Page } from '../components/ui/Page';
 
 const LeaderboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -29,7 +30,7 @@ const LeaderboardPage: React.FC = () => {
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-5 h-5 text-yellow-400" />;
-    if (rank === 2) return <Medal className="w-5 h-5 text-gray-400" />;
+    if (rank === 2) return <Medal className="w-5 h-5 text-muted-foreground" />;
     if (rank === 3) return <Medal className="w-5 h-5 text-orange-600" />;
     return null;
   };
@@ -42,7 +43,7 @@ const LeaderboardPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <Page>
       {/* Header */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}
@@ -71,7 +72,7 @@ const LeaderboardPage: React.FC = () => {
             onClick={() => setSelectedPeriod(period)}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
               selectedPeriod === period
-                ? 'bg-primary text-white shadow-lg'
+                ? 'bg-primary text-primary-foreground shadow-lg'
                 : 'bg-card border border-border text-muted-foreground hover:bg-muted'
             }`}
           >
@@ -139,7 +140,7 @@ const LeaderboardPage: React.FC = () => {
                       className="w-12 h-12 rounded-full border-2 border-background"
                     />
                     {isCurrentUser && (
-                      <div className="absolute -bottom-1 -right-1 bg-primary text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                      <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full font-bold">
                         You
                       </div>
                     )}
@@ -182,7 +183,7 @@ const LeaderboardPage: React.FC = () => {
           </p>
         </motion.div>
       )}
-    </div>
+    </Page>
   );
 };
 

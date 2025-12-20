@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, RotateCcw, Terminal, Loader2, Code2, Copy, Check } from 'lucide-react';
+import { Play, RotateCcw, Terminal, Code2, Copy, Check } from 'lucide-react';
 import AdUnit from '../components/AdUnit';
+import { Page } from '../components/ui/Page';
+import { Button } from '../components/ui/Button';
+import { Spinner } from '../components/ui/Spinner';
 
 const DEFAULT_CODE = `#include <stdio.h>
 
@@ -132,7 +135,7 @@ const CompilerPage: React.FC = () => {
   };
 
   return (
-    <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col transition-colors duration-300">
+    <Page className="flex flex-col transition-colors duration-300">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
@@ -145,21 +148,22 @@ const CompilerPage: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3 w-full md:w-auto">
-           <button
+          <Button
             onClick={resetCode}
-            className="flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 bg-card hover:bg-muted border border-border text-muted-foreground hover:text-foreground rounded-lg transition-all text-sm font-medium"
+            variant="outline"
+            className="flex-1 md:flex-none text-muted-foreground hover:text-foreground"
           >
             <RotateCcw className="w-4 h-4" />
             Reset
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={runCode}
             disabled={isLoading}
-            className="flex-1 md:flex-none items-center justify-center gap-2 px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors shadow-sm text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 md:flex-none px-6"
           >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+            {isLoading ? <Spinner size="sm" className="border-t-primary-foreground" /> : <Play className="w-4 h-4 fill-current" />}
             Run Code
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -177,13 +181,15 @@ const CompilerPage: React.FC = () => {
               <Code2 className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">main.c</span>
             </div>
-            <button 
+            <Button
               onClick={copyCode}
-              className="p-1.5 hover:bg-background rounded-md transition-colors text-muted-foreground hover:text-foreground"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 px-0 text-muted-foreground hover:text-foreground"
               title="Copy Code"
             >
               {copied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
-            </button>
+            </Button>
           </div>
 
           <div className="relative flex-1 bg-card">
@@ -226,12 +232,14 @@ const CompilerPage: React.FC = () => {
           <div className="flex flex-col bg-card border border-border rounded-xl overflow-hidden flex-1 min-h-[200px] transition-colors">
              <div className="px-4 py-2 bg-muted border-b border-border flex justify-between items-center transition-colors">
               <h3 className="text-sm font-bold text-foreground">Output</h3>
-              <button 
-                onClick={() => setOutput('')}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Clear
-              </button>
+                <Button
+                  onClick={() => setOutput('')}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </Button>
             </div>
             <div className="flex-1 bg-muted/30 p-4 overflow-auto font-mono text-lg">
               {output ? (
@@ -244,7 +252,7 @@ const CompilerPage: React.FC = () => {
 
         </div>
       </div>
-    </div>
+    </Page>
   );
 };
 

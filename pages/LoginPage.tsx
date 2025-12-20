@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ArrowRight, Info } from 'lucide-react';
+import { Button } from '../components/ui/Button';
 
 const LoginPage: React.FC = () => {
   const { signInWithGoogle, signInAsAdmin, user } = useAuth();
@@ -38,9 +39,10 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          <button
+          <Button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-foreground text-background font-semibold rounded-lg hover:opacity-90 transition-all group text-sm shadow-lg"
+            className="w-full bg-foreground text-background hover:opacity-90 group shadow-lg"
+            size="lg"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -50,7 +52,7 @@ const LoginPage: React.FC = () => {
             </svg>
             Sign in with Google
             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-          </button>
+          </Button>
           
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
@@ -61,12 +63,14 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          <button
+          <Button
             onClick={signInAsAdmin}
-             className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-transparent border border-border text-muted-foreground hover:text-foreground font-medium rounded-lg hover:bg-muted/50 transition-colors text-xs"
+            variant="outline"
+            className="w-full text-muted-foreground hover:text-foreground"
+            size="md"
           >
             Admin Demo
-          </button>
+          </Button>
         </div>
         
         <p className="mt-6 text-center text-[10px] text-muted-foreground/60">

@@ -172,7 +172,7 @@ const Navbar: React.FC = () => {
               ) : (
                 <NavLink
                   to="/login"
-                  className="ml-2 px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-full transition-all shadow-sm hover:shadow-md"
+                  className="ml-2 px-4 py-2 text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-full transition-all shadow-sm hover:shadow-md"
                 >
                   Sign In
                 </NavLink>
@@ -271,7 +271,7 @@ const Navbar: React.FC = () => {
                 <NavLink
                   to="/login"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center px-4 py-3 rounded-lg text-base font-medium text-white bg-primary hover:bg-primary/90 mt-4 justify-center shadow-sm"
+                  className="flex items-center px-4 py-3 rounded-lg text-base font-medium text-primary-foreground bg-primary hover:bg-primary/90 mt-4 justify-center shadow-sm"
                 >
                   <LogIn className="w-4 h-4 mr-2"/>
                   Sign In

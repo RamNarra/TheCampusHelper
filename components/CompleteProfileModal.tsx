@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { User, Calendar, BookOpen, GraduationCap, ArrowRight, Loader2, Mail, Users } from 'lucide-react';
+import { User, Calendar, BookOpen, GraduationCap, ArrowRight, Mail, Users } from 'lucide-react';
 import { awardXP, XP_REWARDS } from '../services/gamification';
+import { Alert } from './ui/Alert';
+import { Button } from './ui/Button';
+import { Spinner } from './ui/Spinner';
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
@@ -245,16 +248,21 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                   </div>
 
                 {error && (
-                    <p className="text-red-500 text-sm text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">{error}</p>
+                    <Alert variant="destructive" title={error} />
                 )}
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-                >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Save & Continue <ArrowRight className="w-4 h-4" /></>}
-                </button>
+                <Button type="submit" disabled={loading} className="w-full mt-2" size="lg">
+                    {loading ? (
+                      <>
+                        <Spinner size="md" className="border-t-primary-foreground" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        Save & Continue <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                </Button>
             </form>
         </div>
       </motion.div>

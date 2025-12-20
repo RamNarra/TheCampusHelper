@@ -61,7 +61,7 @@ const GamificationCard: React.FC<GamificationCardProps> = ({ uid }) => {
           <Trophy className="w-5 h-5 text-primary" />
           Your Progress
         </h3>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${tierColors[tier as keyof typeof tierColors]} text-white`}>
+         <div className={`px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${tierColors[tier as keyof typeof tierColors]} text-primary-foreground`}>
           Level {level} - {tier}
         </div>
       </div>

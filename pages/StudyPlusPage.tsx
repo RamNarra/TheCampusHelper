@@ -9,6 +9,9 @@ import {
   Youtube,
 } from 'lucide-react';
 import { getSubjects } from '../lib/data';
+import { Page } from '../components/ui/Page';
+import { Card, CardContent } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 
 type BranchKey = 'CS_IT_DS' | 'AIML_ECE_CYS';
 
@@ -166,45 +169,39 @@ const StudyPlusPage: React.FC = () => {
   );
 
   return (
-    <div className="bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="mb-8">
-          <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Study+</h1>
-            <p className="text-muted-foreground text-base sm:text-lg mt-2">
-              A quiet toolkit for focused study.
-            </p>
-          </div>
-        </div>
+    <Page>
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Study+</h1>
+        <p className="text-muted-foreground text-base sm:text-lg mt-2">A quiet toolkit for focused study.</p>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
-          <div className="bg-card border border-border rounded-xl p-2">
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Tools
-            </div>
-            <div className="space-y-1">
-              {tools.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setActiveTool(t.id)}
-                  className={
-                    activeTool === t.id
-                      ? 'w-full flex items-start gap-3 rounded-lg px-3 py-2 text-left bg-muted/60 text-foreground'
-                      : 'w-full flex items-start gap-3 rounded-lg px-3 py-2 text-left text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors'
-                  }
-                >
-                  <div className="mt-0.5">{t.icon}</div>
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{t.title}</div>
-                    <div className="text-xs text-muted-foreground/90 truncate">{t.description}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
+        <Card className="p-2">
+          <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tools</div>
+          <div className="space-y-1">
+            {tools.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTool(t.id)}
+                className={
+                  activeTool === t.id
+                    ? 'w-full flex items-start gap-3 rounded-lg px-3 py-2 text-left bg-muted/60 text-foreground'
+                    : 'w-full flex items-start gap-3 rounded-lg px-3 py-2 text-left text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors'
+                }
+              >
+                <div className="mt-0.5">{t.icon}</div>
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{t.title}</div>
+                  <div className="text-xs text-muted-foreground/90 truncate">{t.description}</div>
+                </div>
+              </button>
+            ))}
           </div>
+        </Card>
 
-          <div className="bg-card border border-border rounded-xl p-6">
+        <Card>
+          <CardContent>
             {activeTool === 'branch_subjects' && <BranchWiseSubjects />}
             {activeTool === 'semester_reference' && <SemesterWiseReference />}
             {activeTool === 'study_timer' && <PomodoroTimer />}
@@ -213,10 +210,10 @@ const StudyPlusPage: React.FC = () => {
             {activeTool === 'number_converter' && <NumberConverter />}
             {activeTool === 'logic_gate_sim' && <LogicGateSimulator />}
             {activeTool === 'binary_operations' && <BinaryOperations />}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </Page>
   );
 };
 
@@ -392,20 +389,12 @@ const PomodoroTimer: React.FC = () => {
         <div className="text-5xl font-bold tracking-tight mb-6">{formatMmSs(secondsLeft)}</div>
 
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={toggle}
-            className="px-5 py-2.5 rounded-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
+          <Button type="button" onClick={toggle} className="px-5">
             {running ? 'Pause' : 'Start'}
-          </button>
-          <button
-            type="button"
-            onClick={reset}
-            className="px-5 py-2.5 rounded-lg font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors"
-          >
+          </Button>
+          <Button type="button" onClick={reset} variant="secondary" className="px-5">
             Reset
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -23,6 +23,9 @@ import { StudyGroup, Message, Session, CollaborativeNote } from '../types';
 import AdUnit from '../components/AdUnit';
 import { isAuthBypassed } from '../lib/dev';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
+import { EmptyState as UiEmptyState } from '../components/ui/EmptyState';
+import { Spinner } from '../components/ui/Spinner';
 
 // Helper function to format Firestore timestamps
 const formatTimestamp = (timestamp: any, format: 'time' | 'date' | 'datetime' = 'datetime'): string => {
@@ -338,15 +341,16 @@ const StudyGroupsPage: React.FC = () => {
               </div>
 
               <div className="mt-3">
-                <button
+                <Button
                   type="button"
                   onClick={handleCreateGroup}
                   disabled={!user}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  className="w-full rounded-xl"
+                  size="sm"
                 >
                   <Plus className="h-4 w-4" />
                   Create group
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -373,7 +377,10 @@ const StudyGroupsPage: React.FC = () => {
                     </div>
                   ) : null}
                   {loading ? (
-                    <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+                    <div className="py-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Spinner size="sm" />
+                      <span>Loading…</span>
+                    </div>
                   ) : filteredPublicGroups.length > 0 ? (
                     <div className="space-y-3">
                       {filteredPublicGroups.map((group) => (
@@ -388,7 +395,7 @@ const StudyGroupsPage: React.FC = () => {
                       <AdUnit className="mt-4" />
                     </div>
                   ) : (
-                    <div className="py-10 text-center text-sm text-muted-foreground">No public groups found.</div>
+                    <UiEmptyState title="No public groups found." />
                   )}
                 </div>
               ) : (
@@ -397,7 +404,10 @@ const StudyGroupsPage: React.FC = () => {
                     My groups
                   </div>
                   {loading ? (
-                    <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+                    <div className="py-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Spinner size="sm" />
+                      <span>Loading…</span>
+                    </div>
                   ) : filteredMyGroups.length > 0 ? (
                     <div className="space-y-2">
                       {filteredMyGroups.map((g) => {
