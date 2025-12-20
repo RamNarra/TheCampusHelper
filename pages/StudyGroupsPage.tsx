@@ -517,7 +517,7 @@ const StudyGroupsPage: React.FC = () => {
           <div className="flex-1 min-h-0">
             {isDiscover ? (
               <div className="h-full min-h-0 overflow-y-auto p-4">
-                <div className="max-w-3xl">
+                <div className="w-full">
                   <div className="mb-4 text-sm text-muted-foreground">
                     Join a group like you’d join a server.
                   </div>
@@ -540,7 +540,7 @@ const StudyGroupsPage: React.FC = () => {
                   {loading ? (
                     <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
                   ) : filteredPublicGroups.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {filteredPublicGroups.map((group) => (
                         <GroupCard
                           key={group.id}
