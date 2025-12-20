@@ -167,7 +167,7 @@ const StudyAssistantPage: React.FC = () => {
           <Brain className="w-16 h-16 mx-auto mb-4 text-primary" />
           <h2 className="text-2xl font-bold mb-2">AI Study Assistant</h2>
           <p className="text-muted-foreground mb-6">
-            Please log in to access the AI-powered study assistant
+            Sign in to use the study assistant.
           </p>
         </div>
       </div>
@@ -178,22 +178,22 @@ const StudyAssistantPage: React.FC = () => {
     <div className="bg-background text-foreground">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Brain className="w-10 h-10 text-primary" />
-            <h1 className="text-4xl font-bold">AI Study Assistant</h1>
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Brain className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl sm:text-4xl font-bold">AI Study Assistant</h1>
           </div>
-          <p className="text-muted-foreground text-lg">
-            Your personalized JNTUH tutor, adapting to your learning level
+          <p className="text-muted-foreground">
+            A focused tutor, tuned to your level.
           </p>
         </div>
 
         {/* Context Form */}
         {showContextForm && (
-          <div className="bg-card border border-border rounded-xl p-6 mb-6 shadow-lg">
+          <div className="bg-card border border-border rounded-xl p-6 mb-6 shadow-sm">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-primary" />
-              Set Study Context
+              Study context
             </h2>
             <form onSubmit={handleContextSubmit} className="space-y-4">
               <div>
@@ -254,7 +254,7 @@ const StudyAssistantPage: React.FC = () => {
 
         {/* Chat Interface */}
         {!showContextForm && (
-          <div className="bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
             {/* Context Info Bar */}
             <div className="bg-muted px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -273,7 +273,7 @@ const StudyAssistantPage: React.FC = () => {
               </div>
               <button
                 onClick={resetContext}
-                className="text-sm px-4 py-2 bg-background hover:bg-accent rounded-lg transition-colors"
+                className="text-sm px-4 py-2 bg-background hover:bg-muted rounded-lg transition-colors"
               >
                 Change Context
               </button>

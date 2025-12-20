@@ -97,6 +97,17 @@ const EventsPage: React.FC = () => {
 const EventCard: React.FC<{ event: EventItem }> = ({ event }) => {
   const isCompleted = event.status === 'completed';
 
+  const categoryClassName = (() => {
+    switch (event.category) {
+      case 'Hackathon':
+        return 'bg-primary/10 text-primary border-primary/20';
+      case 'Workshop':
+        return 'bg-secondary/10 text-secondary border-secondary/20';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  })();
+
   return (
     <motion.div
       layout
@@ -114,17 +125,15 @@ const EventCard: React.FC<{ event: EventItem }> = ({ event }) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-4 left-4">
-          <span className={`px-3 py-1 text-xs font-bold rounded-full border backdrop-blur-md ${
-            event.category === 'Hackathon' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-            event.category === 'Workshop' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-            'bg-orange-500/20 text-orange-300 border-orange-500/30'
-          }`}>
+          <span className={`px-3 py-1 text-xs font-semibold rounded-full border backdrop-blur-md ${categoryClassName}`}>
             {event.category}
           </span>
         </div>
         {isCompleted && (
            <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-             <span className="text-white font-bold px-4 py-2 border-2 border-white rounded-lg transform -rotate-12">COMPLETED</span>
+             <span className="text-foreground bg-background/80 font-semibold px-4 py-2 border border-border rounded-lg transform -rotate-12">
+               Completed
+             </span>
            </div>
         )}
       </div>

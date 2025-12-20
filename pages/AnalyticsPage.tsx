@@ -55,9 +55,9 @@ const AnalyticsPage: React.FC = () => {
   const maxWeekly = Math.max(...analytics.studyTime.weekly, 1);
 
   const getReadinessColor = (score: number) => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
+    if (score >= 80) return 'text-primary';
+    if (score >= 60) return 'text-secondary';
+    return 'text-destructive';
   };
 
   const getReadinessLabel = (score: number) => {
@@ -108,7 +108,7 @@ const AnalyticsPage: React.FC = () => {
           className="bg-card border border-border rounded-xl p-6 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <Award className="w-8 h-8 text-yellow-500" />
+            <Award className="w-8 h-8 text-secondary" />
             <span className="text-xs font-medium text-muted-foreground">Average</span>
           </div>
           <h3 className="text-3xl font-bold text-foreground mb-1">
@@ -130,7 +130,7 @@ const AnalyticsPage: React.FC = () => {
           className="bg-card border border-border rounded-xl p-6 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-8 h-8 text-green-500" />
+            <TrendingUp className="w-8 h-8 text-primary" />
             <span className="text-xs font-medium text-muted-foreground">Progress</span>
           </div>
           <h3 className="text-3xl font-bold text-foreground mb-1">
@@ -147,7 +147,7 @@ const AnalyticsPage: React.FC = () => {
           className="bg-card border border-border rounded-xl p-6 shadow-sm"
         >
           <div className="flex items-center justify-between mb-2">
-            <Zap className="w-8 h-8 text-orange-500" />
+            <Zap className="w-8 h-8 text-secondary" />
             <span className="text-xs font-medium text-muted-foreground">Sessions</span>
           </div>
           <h3 className="text-3xl font-bold text-foreground mb-1">
@@ -183,7 +183,7 @@ const AnalyticsPage: React.FC = () => {
                     className="h-full bg-gradient-to-r from-primary to-primary/70 flex items-center justify-end pr-3"
                   >
                     {minutes > 0 && (
-                      <span className="text-xs font-semibold text-white">
+                      <span className="text-xs font-semibold text-primary-foreground">
                         {Math.round(minutes)}m
                       </span>
                     )}
@@ -219,7 +219,7 @@ const AnalyticsPage: React.FC = () => {
                     className="h-full bg-gradient-to-r from-secondary to-secondary/70 flex items-center justify-end pr-3"
                   >
                     {minutes > 0 && (
-                      <span className="text-xs font-semibold text-white">
+                      <span className="text-xs font-semibold text-primary-foreground">
                         {Math.round(minutes / 60)}h
                       </span>
                     )}
@@ -274,7 +274,7 @@ const AnalyticsPage: React.FC = () => {
           className="bg-card border border-border rounded-xl p-6 shadow-sm"
         >
           <div className="flex items-center gap-2 mb-6">
-            <Award className="w-5 h-5 text-yellow-500" />
+            <Award className="w-5 h-5 text-secondary" />
             <h2 className="text-xl font-bold text-foreground">Performance Analysis</h2>
           </div>
 
@@ -282,7 +282,7 @@ const AnalyticsPage: React.FC = () => {
             {/* Strong Topics */}
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-green-500" />
+                <TrendingUp className="w-4 h-4 text-primary" />
                 Strong Topics
               </h3>
               <div className="space-y-2">
@@ -290,7 +290,7 @@ const AnalyticsPage: React.FC = () => {
                   analytics.performance.strongTopics.map((topic) => (
                     <div
                       key={topic}
-                      className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2 text-sm text-foreground"
+                      className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 text-sm text-foreground"
                     >
                       {topic}
                     </div>
@@ -306,7 +306,7 @@ const AnalyticsPage: React.FC = () => {
             {/* Weak Topics */}
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-500" />
+                <AlertCircle className="w-4 h-4 text-destructive" />
                 Areas for Improvement
               </h3>
               <div className="space-y-2">
@@ -314,7 +314,7 @@ const AnalyticsPage: React.FC = () => {
                   analytics.performance.weakTopics.map((topic) => (
                     <div
                       key={topic}
-                      className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-sm text-foreground"
+                      className="bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2 text-sm text-foreground"
                     >
                       {topic}
                     </div>
@@ -337,7 +337,7 @@ const AnalyticsPage: React.FC = () => {
           className="bg-card border border-border rounded-xl p-6 shadow-sm"
         >
           <div className="flex items-center gap-2 mb-6">
-            <Brain className="w-5 h-5 text-purple-500" />
+            <Brain className="w-5 h-5 text-primary" />
             <h2 className="text-xl font-bold text-foreground">Study Habits</h2>
           </div>
 
@@ -427,7 +427,7 @@ const AnalyticsPage: React.FC = () => {
                   key={index}
                   className="flex items-center gap-3 bg-background/80 border border-border rounded-lg px-4 py-3"
                 >
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                     {index + 1}
                   </span>
                   <span className="text-sm font-medium text-foreground">{area}</span>

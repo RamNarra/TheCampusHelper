@@ -696,10 +696,10 @@ const SessionsView: React.FC<{
                 <span
                   className={`px-2 py-1 rounded text-xs font-medium ${
                     session.status === 'active'
-                      ? 'bg-green-500/20 text-green-400'
+                      ? 'bg-primary/10 text-primary'
                       : session.status === 'scheduled'
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'bg-gray-500/20 text-gray-400'
+                      ? 'bg-secondary/10 text-secondary'
+                      : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {session.status}

@@ -160,39 +160,27 @@ const QuizPage: React.FC = () => {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
-  };
-
-  const getScoreEmoji = (score: number) => {
-    if (score >= 90) return '🏆';
-    if (score >= 80) return '🌟';
-    if (score >= 70) return '😊';
-    if (score >= 60) return '👍';
-    return '📚';
+    if (score >= 80) return 'text-primary';
+    if (score >= 60) return 'text-secondary';
+    return 'text-destructive';
   };
 
   // Show login prompt if user is not authenticated
   if (!user) {
     return (
       <div className="flex-1 bg-background pt-8 pb-12 transition-colors duration-300">
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>
-        </div>
-        
-        <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
             <Brain className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-4">
-            AI-Generated <span className="text-primary">Quizzes</span>
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+            AI Quizzes
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Test your knowledge with adaptive MCQ quizzes
+            Generate focused MCQ quizzes and track attempts.
           </p>
           
-          <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+          <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
             <LogIn className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-4">Login Required</h2>
             <p className="text-muted-foreground mb-6">
@@ -200,7 +188,7 @@ const QuizPage: React.FC = () => {
             </p>
             <Link
               to="/login"
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
             >
               <LogIn className="w-5 h-5 mr-2" />
               Sign In to Continue
@@ -213,22 +201,17 @@ const QuizPage: React.FC = () => {
 
   return (
     <div className="flex-1 bg-background pt-8 pb-12 transition-colors duration-300">
-      {/* Ambient Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4">
             <Brain className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-foreground mb-4">
-            AI-Generated <span className="text-primary">Quizzes</span>
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+            AI Quizzes
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Test your knowledge with adaptive MCQ quizzes. Instant feedback, explanations, and performance tracking.
+            Generate MCQs with explanations, then review answers and performance.
           </p>
         </div>
 
@@ -244,7 +227,7 @@ const QuizPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="max-w-2xl mx-auto"
             >
-              <div className="bg-card border border-border rounded-2xl shadow-xl p-8">
+              <div className="bg-card border border-border rounded-2xl shadow-sm p-8">
                 <h2 className="text-2xl font-bold text-foreground mb-6">Generate Your Quiz</h2>
                 
                 <form onSubmit={handleGenerateQuiz} className="space-y-6">
@@ -299,9 +282,9 @@ const QuizPage: React.FC = () => {
                     </label>
                     <div className="grid grid-cols-3 gap-3">
                       {[
-                        { value: 1, label: 'Easy', color: 'text-green-500' },
-                        { value: 2, label: 'Medium', color: 'text-yellow-500' },
-                        { value: 3, label: 'Hard', color: 'text-red-500' }
+                        { value: 1, label: 'Easy' },
+                        { value: 2, label: 'Medium' },
+                        { value: 3, label: 'Hard' }
                       ].map((level) => (
                         <button
                           key={level.value}
@@ -340,8 +323,8 @@ const QuizPage: React.FC = () => {
 
                   {/* Error Message */}
                   {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                      <p className="text-red-500 text-sm">{error}</p>
+                    <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                      <p className="text-destructive text-sm">{error}</p>
                     </div>
                   )}
 
@@ -349,7 +332,7 @@ const QuizPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isGenerating}
-                    className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+                    className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center gap-2"
                   >
                     {isGenerating ? (
                       <>
@@ -419,7 +402,7 @@ const QuizPage: React.FC = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="bg-card border border-border rounded-2xl shadow-xl p-8 mb-6"
+                  className="bg-card border border-border rounded-2xl shadow-sm p-8 mb-6"
                 >
                   <div className="flex items-start gap-4 mb-6">
                     <div className="flex-shrink-0 w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold">
@@ -475,7 +458,7 @@ const QuizPage: React.FC = () => {
                 <button
                   onClick={handleNext}
                   disabled={!selectedAnswers[currentQuestion.id]}
-                  className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30"
+                  className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                 >
                   {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
                 </button>
@@ -491,10 +474,9 @@ const QuizPage: React.FC = () => {
               className="max-w-4xl mx-auto"
             >
               {/* Score Card */}
-              <div className="bg-card border border-border rounded-2xl shadow-xl p-8 mb-8 text-center">
-                <div className="text-6xl mb-4">{getScoreEmoji(calculateScore())}</div>
-                <h2 className="text-3xl font-bold text-foreground mb-2">Quiz Complete!</h2>
-                <div className={`text-6xl font-extrabold ${getScoreColor(calculateScore())} mb-4`}>
+              <div className="bg-card border border-border rounded-2xl shadow-sm p-8 mb-8 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Quiz complete</h2>
+                <div className={`text-5xl sm:text-6xl font-bold ${getScoreColor(calculateScore())} mb-4`}>
                   {calculateScore()}%
                 </div>
                 <p className="text-xl text-muted-foreground mb-6">
@@ -521,7 +503,7 @@ const QuizPage: React.FC = () => {
 
                 <button
                   onClick={handleRestart}
-                  className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 inline-flex items-center gap-2"
+                  className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors shadow-sm inline-flex items-center gap-2"
                 >
                   <RotateCcw className="w-5 h-5" />
                   Take Another Quiz
@@ -539,15 +521,13 @@ const QuizPage: React.FC = () => {
                   return (
                     <div
                       key={question.id}
-                      className={`bg-card border-2 rounded-xl p-6 ${
-                        isCorrect ? 'border-green-500/20' : 'border-red-500/20'
-                      }`}
+                      className={`bg-card border rounded-xl p-6 ${isCorrect ? 'border-primary/30' : 'border-destructive/30'}`}
                     >
                       <div className="flex items-start gap-3 mb-4">
                         {isCorrect ? (
-                          <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-1" />
+                          <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                         ) : (
-                          <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
+                          <XCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-1" />
                         )}
                         <div className="flex-1">
                           <h4 className="font-bold text-foreground mb-3">
@@ -556,8 +536,8 @@ const QuizPage: React.FC = () => {
                           
                           {/* Show user's answer if wrong */}
                           {!isCorrect && userAnswer && (
-                            <div className="mb-2 p-3 bg-red-500/10 rounded-lg">
-                              <span className="text-red-500 font-semibold">Your answer: </span>
+                            <div className="mb-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30">
+                              <span className="text-destructive font-semibold">Your answer: </span>
                               <span className="text-foreground">
                                 {question.options.find(o => o.id === userAnswer)?.text}
                               </span>
@@ -565,8 +545,8 @@ const QuizPage: React.FC = () => {
                           )}
                           
                           {/* Show correct answer */}
-                          <div className="mb-3 p-3 bg-green-500/10 rounded-lg">
-                            <span className="text-green-500 font-semibold">Correct answer: </span>
+                          <div className="mb-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                            <span className="text-primary font-semibold">Correct answer: </span>
                             <span className="text-foreground">
                               {question.options.find(o => o.id === question.correctAnswer)?.text}
                             </span>

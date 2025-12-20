@@ -143,17 +143,17 @@ const ExamPrepPage: React.FC = () => {
 
   const getStressColor = (level?: 'low' | 'medium' | 'high') => {
     switch (level) {
-      case 'high': return 'text-red-500';
-      case 'medium': return 'text-yellow-500';
-      case 'low': return 'text-green-500';
-      default: return 'text-gray-500';
+      case 'high': return 'text-destructive';
+      case 'medium': return 'text-secondary';
+      case 'low': return 'text-primary';
+      default: return 'text-muted-foreground';
     }
   };
 
   const getReadinessColor = (readiness: number) => {
-    if (readiness >= 75) return 'text-green-500';
-    if (readiness >= 50) return 'text-yellow-500';
-    return 'text-red-500';
+    if (readiness >= 75) return 'text-primary';
+    if (readiness >= 50) return 'text-secondary';
+    return 'text-destructive';
   };
 
   if (!user) {
@@ -167,7 +167,7 @@ const ExamPrepPage: React.FC = () => {
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground flex items-center gap-3">
             <Brain className="w-10 h-10 text-primary" />
-            Exam Preparation Dashboard
+            Exam Preparation
           </h1>
           <button
             disabled
@@ -179,7 +179,7 @@ const ExamPrepPage: React.FC = () => {
           </button>
         </div>
         <p className="text-muted-foreground text-lg">
-          AI-powered tracking, personalized plans, and analytics for focused exam preparation.
+          A calm dashboard for plans, progress, and priorities.
         </p>
       </div>
 
@@ -220,7 +220,7 @@ const ExamPrepPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-primary to-secondary p-6 rounded-2xl text-white"
+              className="bg-card border border-border p-6 rounded-2xl"
             >
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-5 h-5" />
@@ -232,14 +232,14 @@ const ExamPrepPage: React.FC = () => {
                   <div className="space-y-1">
                     {isPast ? (
                       <>
-                        <div className="text-xl font-bold">Completed</div>
-                        <div className="text-sm opacity-90">Exam has passed</div>
+                        <div className="text-xl font-bold text-foreground">Completed</div>
+                        <div className="text-sm text-muted-foreground">Exam date has passed</div>
                       </>
                     ) : (
                       <>
-                        <div className="text-3xl font-bold">{days}</div>
-                        <div className="text-sm opacity-90">days</div>
-                        <div className="text-xs opacity-75">{hours}h {minutes}m</div>
+                        <div className="text-3xl font-bold text-foreground">{days}</div>
+                        <div className="text-sm text-muted-foreground">days</div>
+                        <div className="text-xs text-muted-foreground">{hours}h {minutes}m</div>
                       </>
                     )}
                   </div>
@@ -261,7 +261,7 @@ const ExamPrepPage: React.FC = () => {
               <div className={`text-3xl font-bold ${getReadinessColor(selectedExam.progress.predictedReadiness)}`}>
                 {selectedExam.progress.predictedReadiness}%
               </div>
-              <div className="text-xs text-gray-500 mt-1">Predicted Score Range</div>
+              <div className="text-xs text-muted-foreground mt-1">Predicted score range</div>
             </motion.div>
 
             {/* Completed Tasks */}
@@ -272,13 +272,13 @@ const ExamPrepPage: React.FC = () => {
               className="bg-card border border-border p-6 rounded-2xl"
             >
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <CheckCircle2 className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium text-muted-foreground">Completed</span>
               </div>
-              <div className="text-3xl font-bold text-white">
+              <div className="text-3xl font-bold text-foreground">
                 {selectedExam.progress.completed}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 of {selectedExam.studyPlan.length} tasks
               </div>
             </motion.div>
@@ -291,19 +291,19 @@ const ExamPrepPage: React.FC = () => {
               className="bg-card border border-border p-6 rounded-2xl"
             >
               <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-5 h-5 text-pink-500" />
+                <Heart className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium text-muted-foreground">Stress Level</span>
               </div>
               <div className={`text-3xl font-bold capitalize ${getStressColor(selectedExam.stressLevel)}`}>
                 {selectedExam.stressLevel || 'Low'}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Wellness Check</div>
+              <div className="text-xs text-muted-foreground mt-1">Wellness check</div>
             </motion.div>
           </div>
 
           {/* Subject Progress */}
           <div className="bg-card border border-border rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-primary" />
               Subject Progress
             </h2>
@@ -314,8 +314,8 @@ const ExamPrepPage: React.FC = () => {
                   <div key={subject.id} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-white font-medium">{subject.name}</span>
-                        <span className="text-sm text-gray-500 ml-2">
+                        <span className="text-foreground font-medium">{subject.name}</span>
+                        <span className="text-sm text-muted-foreground ml-2">
                           {subject.completedTopics}/{subject.totalTopics} topics
                         </span>
                       </div>
@@ -323,7 +323,7 @@ const ExamPrepPage: React.FC = () => {
                         {Math.round(progress)}%
                       </span>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full transition-all duration-300"
                         style={{ width: `${progress}%` }}
@@ -331,10 +331,10 @@ const ExamPrepPage: React.FC = () => {
                     </div>
                     {subject.weakTopics.length > 0 && (
                       <div className="flex items-start gap-2 text-sm">
-                        <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <AlertCircle className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
                         <div>
                           <span className="text-muted-foreground">Weak Topics: </span>
-                          <span className="text-yellow-500">{subject.weakTopics.join(', ')}</span>
+                          <span className="text-secondary">{subject.weakTopics.join(', ')}</span>
                         </div>
                       </div>
                     )}
@@ -348,7 +348,7 @@ const ExamPrepPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Today's Tasks */}
             <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                 <Calendar className="w-6 h-6 text-primary" />
                 Study Schedule (Next 7 Days)
               </h2>
@@ -364,9 +364,9 @@ const ExamPrepPage: React.FC = () => {
                     const subject = selectedExam.subjects.find(s => s.id === task.subjectId);
                     const isToday = new Date(task.scheduledDate).toDateString() === new Date().toDateString();
                     const priorityColors = {
-                      high: 'border-red-500 bg-red-500/10',
-                      medium: 'border-yellow-500 bg-yellow-500/10',
-                      low: 'border-green-500 bg-green-500/10'
+                      high: 'border-destructive/30 bg-destructive/10',
+                      medium: 'border-secondary/30 bg-secondary/10',
+                      low: 'border-primary/30 bg-primary/10'
                     };
 
                     return (
@@ -374,7 +374,7 @@ const ExamPrepPage: React.FC = () => {
                         key={task.id}
                         className={`flex items-center gap-3 p-3 rounded-lg border ${
                           task.completed
-                            ? 'bg-green-500/5 border-green-500/20'
+                            ? 'bg-muted/40 border-border'
                             : priorityColors[task.priority]
                         } transition-all`}
                       >
@@ -383,24 +383,24 @@ const ExamPrepPage: React.FC = () => {
                           aria-label={`Mark ${task.topic} as ${task.completed ? 'incomplete' : 'complete'}`}
                           className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                             task.completed
-                              ? 'bg-green-500 border-green-500'
-                              : 'border-gray-600 hover:border-primary'
+                              ? 'bg-primary border-primary'
+                              : 'border-border hover:border-primary'
                           }`}
                         >
-                          {task.completed && <CheckCircle2 className="w-4 h-4 text-white" />}
+                          {task.completed && <CheckCircle2 className="w-4 h-4 text-primary-foreground" />}
                         </button>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`font-medium ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                            <span className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                               {task.topic}
                             </span>
                             {isToday && (
-                              <span className="text-xs bg-primary px-2 py-0.5 rounded-full text-white font-medium">
+                              <span className="text-xs bg-primary px-2 py-0.5 rounded-full text-primary-foreground font-medium">
                                 Today
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                             <span>{subject?.name}</span>
                             <span>•</span>
                             <span>{task.duration} min</span>
@@ -416,7 +416,7 @@ const ExamPrepPage: React.FC = () => {
 
             {/* Mock Tests & Recommendations */}
             <div className="bg-card border border-border rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                 <Target className="w-6 h-6 text-secondary" />
                 Recommendations
               </h2>
@@ -430,11 +430,11 @@ const ExamPrepPage: React.FC = () => {
                   </div>
                 ))}
                 {selectedExam.stressLevel === 'high' && (
-                  <div className="p-3 bg-pink-500/10 border border-pink-500/20 rounded-lg">
+                  <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
                     <div className="flex items-start gap-2">
-                      <Heart className="w-4 h-4 text-pink-500 mt-0.5 flex-shrink-0" />
+                      <Heart className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-muted-foreground">
-                        <p className="font-medium text-pink-500 mb-1">High Stress Detected</p>
+                        <p className="font-medium text-destructive mb-1">High stress detected</p>
                         <p className="text-xs">Take regular breaks, practice deep breathing, and maintain a healthy sleep schedule.</p>
                       </div>
                     </div>
@@ -446,9 +446,9 @@ const ExamPrepPage: React.FC = () => {
         </div>
       ) : (
         <div className="text-center py-20">
-          <Brain className="w-20 h-20 text-gray-600 mx-auto mb-4" />
+          <Brain className="w-20 h-20 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-xl font-bold text-foreground mb-2">No Exams Added</h3>
-          <p className="text-gray-500 mb-6">Start by adding your first exam to begin tracking.</p>
+          <p className="text-muted-foreground mb-6">Add an exam to begin tracking.</p>
           <button
             disabled
             className="px-6 py-3 bg-primary/50 text-primary-foreground rounded-lg cursor-not-allowed transition-all font-medium"

@@ -148,7 +148,7 @@ const CompilerPage: React.FC = () => {
           <button
             onClick={runCode}
             disabled={isLoading}
-            className="flex-1 md:flex-none items-center justify-center gap-2 px-6 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 md:flex-none items-center justify-center gap-2 px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors shadow-sm text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
             Run Code
@@ -167,7 +167,7 @@ const CompilerPage: React.FC = () => {
           {/* Editor Header */}
           <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border transition-colors">
             <div className="flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-blue-500" />
+              <Code2 className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">main.c</span>
             </div>
             <button 
@@ -175,7 +175,7 @@ const CompilerPage: React.FC = () => {
               className="p-1.5 hover:bg-background rounded-md transition-colors text-muted-foreground hover:text-foreground"
               title="Copy Code"
             >
-              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
 
@@ -226,12 +226,11 @@ const CompilerPage: React.FC = () => {
                 Clear
               </button>
             </div>
-            {/* Terminal output stays dark (classic look) but adapts border/container */}
-            <div className="flex-1 bg-zinc-950 p-4 overflow-auto font-mono text-lg">
+            <div className="flex-1 bg-muted/30 p-4 overflow-auto font-mono text-lg">
               {output ? (
-                <pre className="whitespace-pre-wrap text-green-400 font-medium">{output}</pre>
+                <pre className="whitespace-pre-wrap text-foreground font-medium">{output}</pre>
               ) : (
-                <span className="text-zinc-500 italic">Run the code to see output...</span>
+                <span className="text-muted-foreground italic">Run the code to see output...</span>
               )}
             </div>
           </div>

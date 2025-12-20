@@ -214,7 +214,7 @@ const CalculatorPage: React.FC = () => {
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Current CGPA</label>
+                                    <label className="block text-xs text-muted-foreground mb-1.5">Current CGPA</label>
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 7.5" 
@@ -224,7 +224,7 @@ const CalculatorPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Completed Credits</label>
+                                    <label className="block text-xs text-muted-foreground mb-1.5">Completed Credits</label>
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 60" 
@@ -234,7 +234,7 @@ const CalculatorPage: React.FC = () => {
                                     />
                                 </div>
                                  <div>
-                                    <label className="block text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Next Sem Credits</label>
+                                    <label className="block text-xs text-muted-foreground mb-1.5">Next Sem Credits</label>
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 21" 
@@ -244,7 +244,7 @@ const CalculatorPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-primary mb-1.5 uppercase font-bold tracking-wider">Goal CGPA</label>
+                                    <label className="block text-xs text-muted-foreground mb-1.5">Goal CGPA</label>
                                     <input 
                                         type="number" 
                                         placeholder="e.g. 8.0" 
@@ -262,12 +262,12 @@ const CalculatorPage: React.FC = () => {
                             
                             {requiredSGPA !== null ? (
                                 <>
-                                    <div className={`text-6xl font-bold mb-2 ${requiredSGPA > 10 ? 'text-red-500' : requiredSGPA <= 0 ? 'text-green-500' : 'text-primary'}`}>
+                                    <div className={`text-6xl font-bold mb-2 ${requiredSGPA > 10 ? 'text-destructive' : requiredSGPA <= 0 ? 'text-primary' : 'text-primary'}`}>
                                         {requiredSGPA > 10 ? ">10" : requiredSGPA <= 0 ? "0" : requiredSGPA}
                                     </div>
                                     
                                     {requiredSGPA > 10 && (
-                                        <div className="flex items-center gap-2 text-red-500 text-xs mt-2 bg-red-500/10 px-3 py-1.5 rounded-full">
+                                        <div className="flex items-center gap-2 text-destructive text-xs mt-2 bg-destructive/10 border border-destructive/30 px-3 py-1.5 rounded-full">
                                             <AlertTriangle className="w-3.5 h-3.5" />
                                             <span>Mathematically Impossible</span>
                                         </div>
@@ -355,7 +355,7 @@ const CalculatorPage: React.FC = () => {
                               max="40"
                               value={sub.internal}
                               onChange={(e) => updateSubject(sub.id, 'internal', parseFloat(e.target.value))}
-                              className={`w-full text-center bg-muted/50 border rounded-lg py-1.5 text-foreground focus:outline-none ${sub.internal > 40 || sub.internal < 0 ? 'border-red-500' : 'border-transparent focus:border-secondary'}`}
+                              className={`w-full text-center bg-muted/50 border rounded-lg py-1.5 text-foreground focus:outline-none ${sub.internal > 40 || sub.internal < 0 ? 'border-destructive' : 'border-transparent focus:border-secondary'}`}
                             />
                           </td>
                           <td className="p-4">
@@ -365,7 +365,7 @@ const CalculatorPage: React.FC = () => {
                               max="60"
                               value={sub.external}
                               onChange={(e) => updateSubject(sub.id, 'external', parseFloat(e.target.value))}
-                              className={`w-full text-center bg-muted/50 border rounded-lg py-1.5 text-foreground focus:outline-none ${sub.external > 60 || sub.external < 0 ? 'border-red-500' : 'border-transparent focus:border-secondary'}`}
+                              className={`w-full text-center bg-muted/50 border rounded-lg py-1.5 text-foreground focus:outline-none ${sub.external > 60 || sub.external < 0 ? 'border-destructive' : 'border-transparent focus:border-secondary'}`}
                             />
                           </td>
                           <td className={`p-4 text-center font-bold text-base ${gradeInfo.color}`}>
@@ -374,7 +374,7 @@ const CalculatorPage: React.FC = () => {
                           <td className="p-4 text-center">
                             <button 
                               onClick={() => removeSubject(sub.id)}
-                              className="text-muted-foreground hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-500/10"
+                              className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-lg hover:bg-destructive/10"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
@@ -397,13 +397,13 @@ const CalculatorPage: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={resetSubjects}
-                        className="text-sm text-muted-foreground hover:text-red-500 px-3 py-2"
+                        className="text-sm text-muted-foreground hover:text-destructive px-3 py-2"
                     >
                         Reset All
                     </button>
                      <button
                         onClick={importCurrentSgpa}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-all shadow-md"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
                     >
                         <Save className="w-4 h-4" />
                         Save to CGPA
@@ -486,7 +486,7 @@ const CalculatorPage: React.FC = () => {
                         <td className="p-4 text-center">
                             <button 
                               onClick={() => removeSemester(sem.id)}
-                              className="text-muted-foreground hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-500/10"
+                              className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded-lg hover:bg-destructive/10"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
@@ -508,7 +508,7 @@ const CalculatorPage: React.FC = () => {
                  {semesters.length > 0 && (
                     <button
                         onClick={resetSemesters}
-                        className="text-sm text-red-500 hover:text-red-600 transition-colors px-3 py-2"
+                      className="text-sm text-destructive hover:text-destructive/90 transition-colors px-3 py-2"
                     >
                         Clear All
                     </button>
