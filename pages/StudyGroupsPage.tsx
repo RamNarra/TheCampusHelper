@@ -294,7 +294,7 @@ const StudyGroupsPage: React.FC = () => {
 
   return (
     <div className="flex-1 min-h-0 h-[calc(100vh-4rem)]">
-      <div className="h-full min-h-0 grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[320px_1fr_320px]">
+      <div className="h-full min-h-0 grid grid-cols-1 lg:grid-cols-[320px_1fr] 2xl:grid-cols-[320px_1fr_320px]">
         {/* Sidebar */}
         <aside className="min-h-0 border-r border-border bg-background/60 backdrop-blur">
           <div className="h-full min-h-0 flex flex-col">
@@ -522,8 +522,19 @@ const StudyGroupsPage: React.FC = () => {
                     Join a group like you’d join a server.
                   </div>
                   {!user?.year ? (
-                    <div className="mb-4 rounded-xl border border-border bg-background/60 p-3 text-sm text-muted-foreground">
-                      Public groups are filtered by your year. Add your year in Profile to see groups.
+                    <div className="mb-4 rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+                      <div className="font-semibold text-foreground">Complete your profile</div>
+                      <div className="mt-1">
+                        Public groups are filtered by your year. Add your year in Profile to see groups.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/profile')}
+                        className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      >
+                        <Users className="h-4 w-4" />
+                        Go to Profile
+                      </button>
                     </div>
                   ) : null}
                   {loading ? (
@@ -635,7 +646,7 @@ const StudyGroupsPage: React.FC = () => {
         </section>
 
         {/* Details / Members */}
-        <aside className="hidden xl:block min-h-0 border-l border-border bg-card/20">
+        <aside className="hidden 2xl:block min-h-0 border-l border-border bg-card/20">
           <div className="h-full min-h-0 flex flex-col">
             <div className="p-4 border-b border-border">
               <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
