@@ -44,7 +44,7 @@ const DeveloperPage: React.FC = () => {
   const dev = (metadata as any).developer as DeveloperMeta | undefined;
 
   const name = dev?.name || 'Developer';
-  const headline = dev?.headline || 'Built with React + Firebase + Vercel.';
+  const headline = dev?.headline || 'Product engineering · React · Firebase · Vercel';
   const highlights = dev?.highlights || [];
   const linkedin = dev?.links?.linkedin || (dev as any)?.linkedin || '';
   const about = dev?.about || '';
@@ -58,7 +58,7 @@ const DeveloperPage: React.FC = () => {
     icon: Icon,
     children,
   }) => (
-    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6">
       <div className="flex items-center gap-2 font-semibold mb-3">
         <Icon className="w-5 h-5 text-primary" />
         {title}
@@ -70,15 +70,12 @@ const DeveloperPage: React.FC = () => {
   return (
     <div className="bg-background text-foreground">
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <User className="w-10 h-10 text-primary" />
-            <h1 className="text-4xl font-bold">Developer</h1>
+        <div className="mb-8">
+          <div className="text-center">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Developer</div>
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mt-2">{name}</h1>
+            <p className="text-muted-foreground mt-2">{headline}</p>
           </div>
-          <p className="text-muted-foreground text-lg">
-            {name}
-          </p>
-          <p className="text-muted-foreground mt-2">{headline}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
@@ -200,13 +197,13 @@ const DeveloperPage: React.FC = () => {
           {linkedin ? (
             <Card title="LinkedIn" icon={Link2}>
               <div className="text-muted-foreground break-all">{linkedin}</div>
-              <div className="text-xs text-muted-foreground mt-2">(Displayed for reference — not opened automatically.)</div>
+              <div className="text-xs text-muted-foreground mt-2">Displayed for reference.</div>
             </Card>
           ) : null}
 
           {!highlights.length && !linkedin && !about && !experience.length && !projects.length && !volunteering.length && !recommendations.length ? (
-            <div className="bg-card border border-border rounded-xl p-6 shadow-lg text-muted-foreground">
-              Add your details in <span className="font-semibold">metadata.json</span> under the <span className="font-semibold">developer</span> key.
+            <div className="bg-card border border-border rounded-xl p-6 text-muted-foreground">
+              Add your details in <span className="font-semibold">metadata.json</span> under <span className="font-semibold">developer</span>.
             </div>
           ) : null}
         </div>

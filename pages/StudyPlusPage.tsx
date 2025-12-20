@@ -168,45 +168,52 @@ const StudyPlusPage: React.FC = () => {
   return (
     <div className="bg-background text-foreground">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold">Helper Study Plus</h1>
-          <p className="text-muted-foreground text-lg mt-2">
-            Select a tool below to enhance your study session
-          </p>
+        <div className="mb-8">
+          <div className="text-center">
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Study+</h1>
+            <p className="text-muted-foreground text-base sm:text-lg mt-2">
+              A quiet toolkit for focused study.
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {tools.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTool(t.id)}
-              className={
-                activeTool === t.id
-                  ? 'bg-card border border-primary/40 rounded-xl p-4 text-left shadow-lg'
-                  : 'bg-card border border-border rounded-xl p-4 text-left hover:border-primary/40 transition-colors'
-              }
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5">{t.icon}</div>
-                <div>
-                  <div className="font-semibold">{t.title}</div>
-                  <div className="text-sm text-muted-foreground">{t.description}</div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
+          <div className="bg-card border border-border rounded-xl p-2">
+            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Tools
+            </div>
+            <div className="space-y-1">
+              {tools.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTool(t.id)}
+                  className={
+                    activeTool === t.id
+                      ? 'w-full flex items-start gap-3 rounded-lg px-3 py-2 text-left bg-muted/60 text-foreground'
+                      : 'w-full flex items-start gap-3 rounded-lg px-3 py-2 text-left text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors'
+                  }
+                >
+                  <div className="mt-0.5">{t.icon}</div>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{t.title}</div>
+                    <div className="text-xs text-muted-foreground/90 truncate">{t.description}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
-          {activeTool === 'branch_subjects' && <BranchWiseSubjects />}
-          {activeTool === 'semester_reference' && <SemesterWiseReference />}
-          {activeTool === 'study_timer' && <PomodoroTimer />}
-          {activeTool === 'focus_youtube' && <FocusYouTube />}
-          {activeTool === 'quick_notes' && <QuickNotes />}
-          {activeTool === 'number_converter' && <NumberConverter />}
-          {activeTool === 'logic_gate_sim' && <LogicGateSimulator />}
-          {activeTool === 'binary_operations' && <BinaryOperations />}
+          <div className="bg-card border border-border rounded-xl p-6">
+            {activeTool === 'branch_subjects' && <BranchWiseSubjects />}
+            {activeTool === 'semester_reference' && <SemesterWiseReference />}
+            {activeTool === 'study_timer' && <PomodoroTimer />}
+            {activeTool === 'focus_youtube' && <FocusYouTube />}
+            {activeTool === 'quick_notes' && <QuickNotes />}
+            {activeTool === 'number_converter' && <NumberConverter />}
+            {activeTool === 'logic_gate_sim' && <LogicGateSimulator />}
+            {activeTool === 'binary_operations' && <BinaryOperations />}
+          </div>
         </div>
       </div>
     </div>
