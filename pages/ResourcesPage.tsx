@@ -452,7 +452,7 @@ const ResourcesPage: React.FC = () => {
             </div>
             <div className="flex bg-muted p-1 rounded-xl h-fit">
                 <button onClick={() => setBranch('CS_IT_DS')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${branch === 'CS_IT_DS' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>CS / IT / DS</button>
-                <button onClick={() => setBranch('AIML_ECE_CYS')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${branch === 'AIML_ECE_CYS' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>AIML / ECE</button>
+                {/* AIML/ECE coming soon */}
             </div>
         </div>
 

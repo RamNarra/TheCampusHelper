@@ -17,111 +17,107 @@ export interface EventItem {
 
 // Subject Lists defined by specific Cycle Logic
 
-// List A: CS/IT/DS Sem 1 | AIML/ECE/CYS Sem 2
+// List A: CS/IT/DS Sem 1 | AIML/ECE/CYS Sem 2 (R25 Regulations)
 const listA = [
   'Matrices and Calculus',
-  'Engineering Physics',
+  'Advanced Engineering Physics',
   'English for Skill Enhancement',
   'Electronic Devices and Circuits',
   'Programming for Problem Solving',
-  'Engineering Physics Lab',
+  'Advanced Engineering Physics Lab',
   'Programming for Problem Solving Lab',
-  'English Language and Communication Skills Lab',
+  'English Language Communication Skills Lab',
   'Engineering Workshop',
-  'Induction Program'
+  'Environmental Science'
 ];
 
-// List B: CS/IT/DS Sem 2 | AIML/ECE/CYS Sem 1
+// List B: CS/IT/DS Sem 2 | AIML/ECE/CYS Sem 1 (R25 Regulations)
 const listB = [
   'Ordinary Differential Equations and Vector Calculus',
-  'Advanced Engineering Chemistry',
+  'Engineering Chemistry',
   'Engineering Drawing and Computer Aided Drafting',
   'Basic Electrical Engineering',
   'Data Structures',
-  'Advanced Engineering Chemistry Lab',
+  'Engineering Chemistry Lab',
   'Data Structures Lab',
   'Python Programming Lab',
   'Basic Electrical Engineering Lab',
   'IT Workshop'
 ];
 
-// Sem 3 Base
+// Sem 3 Base (R25 Regulations - II Year I Semester)
 const sem3Base = [
   'Discrete Mathematics',
   'Computer Organization and Architecture',
   'Object Oriented Programming through java',
   'Software Engineering',
   'Database Management Systems',
-  'Innovation and Entrepreneurship',
+  'Universal Human Values',
   'Object Oriented Programming through java Lab',
   'Software Engineering Lab',
   'Database Management Systems Lab',
-  'Node Js/React JS/ Django',
-  'Environmental Science'
+  'Coding Skills',
+  'Innovation and Entrepreneurship-I (Engineering Exploration)'
 ];
 
-// Sem 4 Base
+// Sem 4 Base (R25 Regulations - II Year II Semester)
 const sem4Base = [
   'Computer oriented Statistical Methods',
-  'Operating Systems',
-  'Algorithm design and Analysis',
   'Computer Networks',
-  'Machine Learning',
+  'Operating Systems',
+  'Design and Analysis of Algorithms',
+  'Business Economics and Financial Analysis',
   'Computational Mathematics Lab',
-  'Operating Systems Lab',
   'Computer Networks Lab',
-  'Machine Learning Lab',
-  'Data Visualization- R/ Python/ Power BI'
+  'Operating Systems Lab',
+  'React JS, Node JS, Express JS, Mongo DB',
+  'Innovation and Entrepreneurship-II (Prototype Realization)'
 ];
 
-// Sem 5 Base
+// Sem 5 Base (R25 Regulations - III Year I Semester)
 const sem5Base = [
-  'Automata Theory and Compiler Design',
-  'Artificial Intelligence',
-  'DevOps',
+  'Web Technologies',
   'Professional Elective-I',
   'Open Elective-I',
-  'Compiler Design Lab',
-  'Artificial Intelligence with Python Lab',
-  'DevOps Lab',
-  'Field-Based Research Project',
-  'UI Design – Flutter/ Android Studio',
+  'Professional Elective-II',
+  'Web Technologies Lab',
+  'Professional Elective-I Lab',
+  'Professional Elective-II Lab',
+  'Industry Internship / Field Project',
+  'Advanced Programming Skills',
   'Indian Knowledge System'
 ];
 
-// Sem 6 Base
+// Sem 6 Base (R25 Regulations - III Year II Semester)
 const sem6Base = [
-  'Cryptography and Networks Security',
-  'Deep Learning',
-  'Business Economics and Financial Analysis',
-  'Professional Elective-II',
-  'Open Elective – II',
-  'Cryptography and Networks Security Lab',
-  'Deep Learning Lab',
-  'Advanced Data Structures using Python Lab',
-  'Advanced English Communication Skills Laboratory',
-  'Prompt Engineering',
+  'Cloud Computing',
+  'Professional Elective-III',
+  'Open Elective-II',
+  'Professional Elective-IV',
+  'Cloud Computing Lab',
+  'Professional Elective-III Lab',
+  'Professional Elective-IV Lab',
+  'Advanced English Communication Skills Lab',
+  'Emerging Technologies',
   'Gender Sensitization Lab'
 ];
 
-// Sem 7 Base
+// Sem 7 Base (R25 Regulations - IV Year I Semester)
 const sem7Base = [
-  'Natural Language Processing',
-  'Cyber Security',
-  'Fundamentals of Management',
-  'Professional Elective-III',
-  'Professional Elective – IV',
-  'Open Elective – III',
-  'Natural Language Processing Lab',
-  'Cyber Security Lab',
-  'Industry Oriented Mini Project/ Internship'
+  'Professional Elective-V',
+  'Professional Elective-VI',
+  'Open Elective-III',
+  'Professional Elective-V Lab',
+  'Professional Elective-VI Lab',
+  'Comprehensive Viva/Seminar',
+  'Industry Mentoring Project'
 ];
 
-// Sem 8 Base
+// Sem 8 Base (R25 Regulations - IV Year II Semester)
 const sem8Base = [
-  'Professional Elective – V',
-  'Professional Elective – VI',
-  'Project Work'
+  'Project Work / Capstone Project',
+  'Industry Internship / Apprenticeship',
+  'Comprehensive Viva'
 ];
 
 export const getSubjects = (branch: string, semester: string): string[] => {
