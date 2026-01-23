@@ -3,6 +3,7 @@ import { rateLimitExceeded } from '../lib/rateLimit';
 import { applyCors, isOriginAllowed } from './_lib/cors';
 import { assertBodySize, assertJson, requireUser } from './_lib/authz';
 import { getRequestContext, type VercelRequest, type VercelResponse } from './_lib/request';
+import { aiGatewayGenerateText, getAiGatewayConfig } from './_lib/aiGateway';
 
 export const config = {
   runtime: "nodejs",
@@ -71,28 +72,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { subject, topic, difficulty, questionCount } = req.body || {};
 
     if (!subject || typeof subject !== 'string' || subject.length > 200) {
-        return res.status(400).json({ error: "Invalid subject. Must be a string < 200 chars." });
+      return res.status(400).json({ error: "Invalid subject. Must be a string < 200 chars.", requestId: ctx.requestId });
     }
 
     if (!topic || typeof topic !== 'string' || topic.length > 200) {
-        return res.status(400).json({ error: "Invalid topic. Must be a string < 200 chars." });
+      return res.status(400).json({ error: "Invalid topic. Must be a string < 200 chars.", requestId: ctx.requestId });
     }
 
     const difficultyNum = parseInt(difficulty);
     if (isNaN(difficultyNum) || difficultyNum < 1 || difficultyNum > 3) {
-        return res.status(400).json({ error: "Invalid difficulty. Must be 1 (easy), 2 (medium), or 3 (hard)." });
+      return res.status(400).json({ error: "Invalid difficulty. Must be 1 (easy), 2 (medium), or 3 (hard).", requestId: ctx.requestId });
     }
 
     const count = parseInt(questionCount) || 10;
     if (count < 5 || count > 20) {
-        return res.status(400).json({ error: "Invalid question count. Must be between 5 and 20." });
-    }
-
-    // 8. GEMINI CALL
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY) {
-      console.error(`[${ctx.requestId}] Server Misconfiguration: Missing API Key`);
-      return res.status(500).json({ error: 'Internal Server Error', requestId: ctx.requestId });
+      return res.status(400).json({ error: "Invalid question count. Must be between 5 and 20.", requestId: ctx.requestId });
     }
 
     const difficultyLabel: 'easy' | 'medium' | 'hard' = ['easy', 'medium', 'hard'][difficultyNum - 1] as 'easy' | 'medium' | 'hard';
@@ -121,21 +115,46 @@ Requirements:
 
 Return ONLY the JSON array, no additional text or markdown formatting.`;
 
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
     let aiText = '';
-    
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
+
+    // Prefer AI Gateway when configured.
+    const gateway = getAiGatewayConfig();
+    if (gateway.enabled) {
+      try {
+        // Strongly bias for valid JSON output.
+        aiText = await aiGatewayGenerateText({
+          system: 'Return ONLY valid JSON. Do not wrap in markdown. Do not include commentary.',
+          prompt,
+          temperature: 0.2,
+          maxTokens: 2200,
         });
-        
+      } catch (e: any) {
+        console.error(`[${ctx.requestId}] AI Gateway Error:`, e?.message || e);
+      }
+    }
+
+    // Fall back to Gemini.
+    if (!aiText) {
+      const API_KEY = process.env.GEMINI_API_KEY;
+      if (!API_KEY) {
+        console.error(`[${ctx.requestId}] Server Misconfiguration: Missing AI keys (AI_GATEWAY_API_KEY or GEMINI_API_KEY)`);
+        return res.status(500).json({ error: 'Internal Server Error', requestId: ctx.requestId });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: API_KEY });
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+        });
+
         // Extract response text defensively
         aiText = (response as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
         if (!aiText) console.warn(`[${ctx.requestId}] Unexpected response structure`);
-    } catch (aiError: any) {
-         console.error(`[${ctx.requestId}] AI Service Error:`, aiError.message);
-         return res.status(502).json({ error: 'AI Service Unavailable', requestId: ctx.requestId });
+      } catch (aiError: any) {
+        console.error(`[${ctx.requestId}] Gemini AI Service Error:`, aiError.message);
+        return res.status(502).json({ error: 'AI Service Unavailable', requestId: ctx.requestId });
+      }
     }
 
     if (!aiText) {

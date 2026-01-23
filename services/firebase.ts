@@ -788,6 +788,33 @@ export const api = {
        const token = await getAuthToken();
        if (!token) throw new Error("User must be logged in to use AI features.");
 
+             const parseApiError = async (response: Response): Promise<{ message: string; requestId?: string }> => {
+                 const status = response.status;
+
+                 // Common dev pitfall: Vite-only dev server.
+                 if (status === 404) {
+                     return {
+                         message:
+                             'AI backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.',
+                     };
+                 }
+
+                 if (status === 429) {
+                     return { message: 'You are sending requests too quickly. Please wait a minute and try again.' };
+                 }
+
+                 try {
+                     const err = (await response.json().catch(() => null)) as any;
+                     const requestId = typeof err?.requestId === 'string' ? err.requestId : undefined;
+                     const message = (err?.error || err?.message || '').toString().trim();
+                     if (message) return { message, requestId };
+                     return { message: `Request failed (${status})`, requestId };
+                 } catch {
+                     // Non-JSON error body.
+                     return { message: `Request failed (${status})` };
+                 }
+             };
+
        // Direct call to our secure proxy
        const response = await fetch('/api/generate', {
           method: 'POST',
@@ -799,8 +826,9 @@ export const api = {
        });
 
        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || "Generation failed");
+                    const err = await parseApiError(response);
+                    const suffix = err.requestId ? ` (requestId: ${err.requestId})` : '';
+                    throw new Error(`${err.message || 'Generation failed'}${suffix}`);
        }
 
        const data = await response.json();
@@ -824,8 +852,26 @@ export const api = {
        });
 
        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || "Quiz generation failed");
+                    // Keep error messaging consistent with generateContent.
+                    let message = 'Quiz generation failed';
+                    let requestId: string | undefined;
+
+                    if (response.status === 404) {
+                        message = 'Quiz backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.';
+                    } else if (response.status === 429) {
+                        message = 'You are sending requests too quickly. Please wait a minute and try again.';
+                    } else {
+                        try {
+                            const err = (await response.json().catch(() => null)) as any;
+                            requestId = typeof err?.requestId === 'string' ? err.requestId : undefined;
+                            message = (err?.error || err?.message || message).toString();
+                        } catch {
+                            // ignore
+                        }
+                    }
+
+                    const suffix = requestId ? ` (requestId: ${requestId})` : '';
+                    throw new Error(`${message}${suffix}`);
        }
 
        return await response.json();

@@ -17,6 +17,38 @@ const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_RE
 const RATE_LIMIT_WINDOW = 60; // 60 seconds
 const MAX_REQUESTS = 10; // 10 requests per window
 
+type LocalBucket = {
+  count: number;
+  resetAtMs: number;
+};
+
+// Best-effort fallback when Redis is unavailable.
+// Note: in serverless, this is per-instance and not globally consistent.
+const LOCAL_BUCKETS = new Map<string, LocalBucket>();
+const LOCAL_MAX_KEYS = 5000;
+
+function localRateLimitExceeded(key: string): boolean {
+  const now = Date.now();
+  const windowMs = RATE_LIMIT_WINDOW * 1000;
+  const resetAtMs = now + windowMs;
+
+  const existing = LOCAL_BUCKETS.get(key);
+  if (!existing || now >= existing.resetAtMs) {
+    // Opportunistic cleanup when map gets large.
+    if (LOCAL_BUCKETS.size >= LOCAL_MAX_KEYS) {
+      for (const [k, v] of LOCAL_BUCKETS) {
+        if (Date.now() >= v.resetAtMs) LOCAL_BUCKETS.delete(k);
+        if (LOCAL_BUCKETS.size < LOCAL_MAX_KEYS) break;
+      }
+    }
+    LOCAL_BUCKETS.set(key, { count: 1, resetAtMs });
+    return false;
+  }
+
+  existing.count += 1;
+  return existing.count > MAX_REQUESTS;
+}
+
 /**
  * Check if a rate limit has been exceeded for a given key
  * @param key - Unique identifier for the rate limit (e.g., "uid:ip")
@@ -33,10 +65,14 @@ export async function rateLimitExceeded(
 
   if (!redis) {
     const isProd = process.env.NODE_ENV === 'production';
-    const msg = 'Rate limiting disabled: Redis not configured';
+    const msg = 'Rate limiting unavailable: Redis not configured';
     if (isProd) console.error(`CRITICAL: ${msg}`);
     else console.warn(msg);
-    return failClosed;
+
+    // Preserve prior semantics:
+    // - failClosed=false => allow
+    // - failClosed=true  => enforce best-effort local limiter
+    return failClosed ? localRateLimitExceeded(key) : false;
   }
 
   try {
@@ -52,6 +88,7 @@ export async function rateLimitExceeded(
   } catch (error) {
     console.error('Rate limit check failed:', error);
     // Default is fail-open for availability, but high-cost endpoints should pass failClosed.
-    return failClosed;
+    // When failClosed is enabled, fall back to a best-effort local limiter instead of hard-blocking.
+    return failClosed ? localRateLimitExceeded(key) : false;
   }
 }

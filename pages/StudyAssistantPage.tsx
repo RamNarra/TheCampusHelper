@@ -112,14 +112,25 @@ const StudyAssistantPage: React.FC = () => {
           throw new Error('Study Assistant backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.');
         }
 
+        if (response.status === 429) {
+          throw new Error('You are sending requests too quickly. Please wait a minute and try again.');
+        }
+
+        if (response.status === 502) {
+          throw new Error('AI service is temporarily unavailable. Please try again in a moment.');
+        }
+
         let message = 'Failed to get response';
+        let requestId: string | undefined;
         try {
           const error = await response.json();
           message = error?.error || error?.message || message;
+          requestId = typeof error?.requestId === 'string' ? error.requestId : undefined;
         } catch {
           // ignore JSON parse errors
         }
-        throw new Error(message);
+        const suffix = requestId ? ` (requestId: ${requestId})` : '';
+        throw new Error(`${message}${suffix}`);
       }
 
       const data = await response.json();
