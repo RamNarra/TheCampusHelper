@@ -157,13 +157,19 @@ const ToDoPage: React.FC = () => {
       <div className="relative pt-6 pb-10 px-4 max-w-screen-2xl mx-auto sm:px-6 lg:px-8 2xl:px-10">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-secondary/10" />
         <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-            <Sparkles className="w-4 h-4" />
-            Weekly study system
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-muted-foreground">
-            <CalendarDays className="w-5 h-5" />
-            <span className="text-sm font-medium">Personalized To-Do</span>
+          <div className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="w-5 h-5" />
+              <span className="text-sm font-medium">Personalized To-Do</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button className={btnTonal} title="Copy last week's unfinished tasks into this week" disabled>
+                Rollover unfinished
+              </button>
+              <button className={btnTonal} title="Start fresh" disabled>
+                Clear everything
+              </button>
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-foreground mt-1 tracking-tight">Mega Calendar</h1>
           <p className="text-sm text-muted-foreground mt-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
@@ -178,63 +184,58 @@ const ToDoPage: React.FC = () => {
     <div className="relative pt-6 pb-10 px-4 max-w-screen-2xl mx-auto sm:px-6 lg:px-8 2xl:px-10">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-background to-secondary/10" />
       <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-              <Sparkles className="w-4 h-4" />
-              Weekly study system
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-muted-foreground">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <CalendarDays className="w-5 h-5" />
               <span className="text-sm font-medium">Personalized To-Do</span>
             </div>
-            <h1 className="text-3xl font-bold text-foreground mt-1 tracking-tight">Mega Calendar</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Week of {formatShortDate(weekStart)} — {formatShortDate(addDays(weekStart, 6))}
-            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                className={btnTonal}
+                onClick={async () => {
+                  try {
+                    setError(null);
+                    setNotice(null);
+                    const prevStart = toISODate(addDays(weekStart, -7));
+                    const prevEnd = toISODate(addDays(weekStart, -1));
+                    const created = await api.rolloverIncompleteTodosFromRange(user.uid, prevStart, prevEnd);
+                    setNotice(created > 0 ? `Rolled over ${created} unfinished task(s) from last week.` : 'No unfinished tasks to roll over.');
+                  } catch (e: any) {
+                    setError(e?.message || 'Rollover failed');
+                  }
+                }}
+                title="Copy last week's unfinished tasks into this week"
+              >
+                Rollover unfinished
+              </button>
+              <button
+                className={btnTonal}
+                onClick={async () => {
+                  const ok = window.confirm('Clear ALL your tasks and habits? This cannot be undone.');
+                  if (!ok) return;
+                  try {
+                    setError(null);
+                    setNotice(null);
+                    const [deletedTodos, deletedHabits] = await Promise.all([
+                      api.clearAllTodos(user.uid),
+                      api.clearAllHabits(user.uid),
+                    ]);
+                    setNotice(`Cleared ${deletedTodos} task(s) and ${deletedHabits} habit(s). Fresh start.`);
+                  } catch (e: any) {
+                    setError(e?.message || 'Clear failed');
+                  }
+                }}
+                title="Start fresh"
+              >
+                Clear everything
+              </button>
+            </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              className={btnTonal}
-              onClick={async () => {
-                try {
-                  setError(null);
-                  setNotice(null);
-                  const prevStart = toISODate(addDays(weekStart, -7));
-                  const prevEnd = toISODate(addDays(weekStart, -1));
-                  const created = await api.rolloverIncompleteTodosFromRange(user.uid, prevStart, prevEnd);
-                  setNotice(created > 0 ? `Rolled over ${created} unfinished task(s) from last week.` : 'No unfinished tasks to roll over.');
-                } catch (e: any) {
-                  setError(e?.message || 'Rollover failed');
-                }
-              }}
-              title="Copy last week's unfinished tasks into this week"
-            >
-              Rollover unfinished
-            </button>
-            <button
-              className={btnTonal}
-              onClick={async () => {
-                const ok = window.confirm('Clear ALL your tasks and habits? This cannot be undone.');
-                if (!ok) return;
-                try {
-                  setError(null);
-                  setNotice(null);
-                  const [deletedTodos, deletedHabits] = await Promise.all([
-                    api.clearAllTodos(user.uid),
-                    api.clearAllHabits(user.uid),
-                  ]);
-                  setNotice(`Cleared ${deletedTodos} task(s) and ${deletedHabits} habit(s). Fresh start.`);
-                } catch (e: any) {
-                  setError(e?.message || 'Clear failed');
-                }
-              }}
-              title="Start fresh"
-            >
-              Clear everything
-            </button>
-          </div>
+          <h1 className="text-3xl font-bold text-foreground mt-1 tracking-tight">Mega Calendar</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Week of {formatShortDate(weekStart)} — {formatShortDate(addDays(weekStart, 6))}
+          </p>
         </div>
       </motion.div>
 
