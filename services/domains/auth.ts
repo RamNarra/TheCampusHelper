@@ -1,5 +1,25 @@
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import {
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import { getAuthClient, getGoogleProvider } from '../platform/firebaseClient';
+
+const getAuthErrorCode = (err: unknown): string | null => {
+  if (!err || typeof err !== 'object') return null;
+  const code = (err as any).code;
+  return typeof code === 'string' ? code : null;
+};
+
+export const consumeRedirectResult = async (): Promise<void> => {
+  const auth = getAuthClient();
+  if (!auth) return;
+  // Ensures any pending redirect flow is finalized and errors surface.
+  await getRedirectResult(auth);
+};
 
 export const getAuthToken = async (): Promise<string | null> => {
   const auth = getAuthClient();
@@ -13,11 +33,22 @@ export const forceRefreshAuthToken = async (): Promise<string | null> => {
   return auth.currentUser.getIdToken(true);
 };
 
-export const signIn = async () => {
+export const signIn = async (): Promise<void> => {
   const auth = getAuthClient();
   const provider = getGoogleProvider();
   if (!auth || !provider) throw new Error('Auth not configured');
-  return signInWithPopup(auth, provider);
+
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (err) {
+    const code = getAuthErrorCode(err);
+    // Common mobile/Safari/embedded-webview failure: popup blocked.
+    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+    throw err;
+  }
 };
 
 export const signOutUser = async () => {

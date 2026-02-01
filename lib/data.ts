@@ -17,43 +17,126 @@ export interface EventItem {
 
 // Subject Lists defined by specific Cycle Logic
 
-// List A: CS/IT/DS Sem 1 | AIML/ECE/CYS Sem 2 (R25 Regulations)
-const listA = [
+// --- Sem 1 / Sem 2 (2025-26) from provided semwise CSVs ---
+// We keep these per-branch because Sem 1/2 differ across departments.
+
+const sem1CommonCore = [
+  'Engineering Chemistry',
   'Matrices and Calculus',
-  'Advanced Engineering Physics',
-  'English for Skill Enhancement',
-  'Electronic Devices and Circuits',
   'Programming for Problem Solving',
-  'Advanced Engineering Physics Lab',
+  'English for Skill Enhancement',
+  'Language Proficiency Evaluation',
+  'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
-  'English Language Communication Skills Lab',
-  'Engineering Workshop',
-  'Environmental Science'
 ];
 
-// List B: CS/IT/DS Sem 2 | AIML/ECE/CYS Sem 1 (R25 Regulations)
-const listB = [
-  'Ordinary Differential Equations and Vector Calculus',
-  'Engineering Chemistry',
+const sem1Civil = [
+  ...sem1CommonCore,
+  'Computer Aided Engineering Graphics',
+];
+
+const sem1EEE = [
+  ...sem1CommonCore,
+  'Electrical Circuits-I',
   'Engineering Drawing and Computer Aided Drafting',
-  'Basic Electrical Engineering',
+];
+
+const sem1Mech = [
+  ...sem1CommonCore,
+  'Elements of Electrical and Electronics Engineering',
+  'Basic Electrical and Electronics Engineering',
+  'Engineering Graphics and Computer Aided Drafting',
+];
+
+const sem1ECE = [
+  ...sem1CommonCore,
+  'Introduction to Electrical Engineering',
+  'Python Programming',
+  'Applied Python Programming Lab',
+  'Computer Aided Engineering Graphics',
+];
+
+const sem2Civil = [
+  'Advanced Engineering Physics',
+  'Ordinary Differential Equations and Vector Calculus',
+  'Elements of Electrical and Electronics Engineering',
+  'Engineering Mechanics for Civil',
+  'Python Programming',
+  'Quantitative Aptitude and Logical Reasoning',
+  'Language Proficiency Evaluation',
+  'English Language and Communication Skills Lab',
+  'Advanced Engineering Physics Lab',
+  'Python Programming Lab',
+  'Elements of Electrical and Electronics Engineering Lab',
+];
+
+const sem2EEE = [
+  'Advanced Engineering Physics',
+  'Ordinary Differential Equations and Vector Calculus',
+  'Environmental Science',
+  'Electrical Circuits-II',
   'Data Structures',
-  'Engineering Chemistry Lab',
+  'Principles of Python Programming',
+  'Language Proficiency Evaluation',
+  'English Language and Communication Skills Lab',
+  'Advanced Engineering Physics Lab',
   'Data Structures Lab',
   'Python Programming Lab',
-  'Basic Electrical Engineering Lab',
-  'IT Workshop'
+  'Electrical Circuits Lab',
+  'Engineering Workshop',
+];
+
+const sem2Mech = [
+  'Advanced Engineering Physics',
+  'Ordinary Differential Equations and Vector Calculus',
+  'Engineering Mechanics',
+  'Data Structures',
+  'Python Programming',
+  'Language Proficiency Evaluation',
+  'English Language and Communication Skills Lab',
+  'Advanced Engineering Physics Lab',
+  'Data Structures Lab',
+  'Engineering Workshop',
+  'Universal Human Values',
+];
+
+const sem2ECE = [
+  'Advanced Engineering Physics',
+  'Ordinary Differential Equations and Vector Calculus',
+  'Data Structures',
+  'English for Skill Enhancement',
+  'Network Analysis and Synthesis',
+  'Language Proficiency Evaluation',
+  'English Language and Communication Skills Lab',
+  'Advanced Engineering Physics Lab',
+  'Data Structures Lab',
+  'Electrical Engineering Lab',
+  'Engineering Workshop',
+  'Universal Human Values',
+];
+
+// List A: Legacy grouped key (kept for backwards compatibility)
+const listA = [
+  // Fall back to the most common Sem 1 core.
+  ...sem1CommonCore,
+  'Computer Aided Engineering Graphics',
+];
+
+// List B: Legacy grouped key (kept for backwards compatibility)
+const listB = [
+  // A reasonable Sem 2 default for the legacy grouped keys.
+  ...sem2ECE,
 ];
 
 // Sem 3 Base (R25 Regulations - II Year I Semester)
 const sem3Base = [
   'Discrete Mathematics',
   'Computer Organization and Architecture',
-  'Object Oriented Programming through java',
+  'Object Oriented Programming through Java',
   'Software Engineering',
   'Database Management Systems',
   'Universal Human Values',
-  'Object Oriented Programming through java Lab',
+  'Object Oriented Programming through Java Lab',
   'Software Engineering Lab',
   'Database Management Systems Lab',
   'Coding Skills',
@@ -62,7 +145,7 @@ const sem3Base = [
 
 // Sem 4 Base (R25 Regulations - II Year II Semester)
 const sem4Base = [
-  'Computer oriented Statistical Methods',
+  'Computer Oriented Statistical Methods',
   'Computer Networks',
   'Operating Systems',
   'Design and Analysis of Algorithms',
@@ -121,13 +204,23 @@ const sem8Base = [
 ];
 
 export const getSubjects = (branch: string, semester: string): string[] => {
-  const isGroupA = branch === 'CS_IT_DS'; // Group A: CS/IT/DS
-  // isGroupB: AIML/ECE/CYS
+  // Branch-specific Sem 1/2 (from CSV)
+  if (semester === '1') {
+    if (branch === 'CIVIL') return sem1Civil;
+    if (branch === 'EEE') return sem1EEE;
+    if (branch === 'MECH') return sem1Mech;
+    if (branch === 'ECE') return sem1ECE;
+  }
 
-  // Logic: 
-  // Group A follows sequential order (1->A, 2->B, 3->3, 4->4...)
-  // Group B follows swapped order (1->B, 2->A, 3->4, 4->3...)
-  
+  if (semester === '2') {
+    if (branch === 'CIVIL') return sem2Civil;
+    if (branch === 'EEE') return sem2EEE;
+    if (branch === 'MECH') return sem2Mech;
+    if (branch === 'ECE') return sem2ECE;
+  }
+
+  // Legacy grouped-key logic (kept for existing users)
+  const isGroupA = branch === 'CS_IT_DS'; // Group A: CS/IT/DS
   if (isGroupA) {
     switch (semester) {
       case '1': return listA;
@@ -140,19 +233,19 @@ export const getSubjects = (branch: string, semester: string): string[] => {
       case '8': return sem8Base;
       default: return [];
     }
-  } else {
-    // Group B (Swapped)
-    switch (semester) {
-      case '1': return listB;
-      case '2': return listA;
-      case '3': return sem4Base;
-      case '4': return sem3Base;
-      case '5': return sem6Base;
-      case '6': return sem5Base;
-      case '7': return sem8Base;
-      case '8': return sem7Base;
-      default: return [];
-    }
+  }
+
+  // Default: use Group B swap mapping (best-effort)
+  switch (semester) {
+    case '1': return listB;
+    case '2': return listA;
+    case '3': return sem4Base;
+    case '4': return sem3Base;
+    case '5': return sem6Base;
+    case '6': return sem5Base;
+    case '7': return sem8Base;
+    case '8': return sem7Base;
+    default: return [];
   }
 };
 
@@ -162,9 +255,9 @@ export const resources: Resource[] = [
   {
     id: 'res-ep-u2-ppt',
     title: 'Unit 2: Fiber Optics',
-    subject: 'Engineering Physics',
+    subject: 'Advanced Engineering Physics',
     branch: 'CS_IT_DS', 
-    semester: '1',
+    semester: '2',
     unit: '2',
     type: 'PPT',
     downloadUrl: 'https://docs.google.com/presentation/d/1--fcBt0glKsOPnxbhWMZ9BoXZ_4EAKKZ/edit?usp=sharing',

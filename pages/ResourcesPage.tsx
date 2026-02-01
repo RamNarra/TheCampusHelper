@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
-import { Resource, ResourceType, RecommendationResult } from '../types';
+import { BranchKey, Resource, ResourceType, RecommendationResult } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api, extractDriveId } from '../services/firebase';
 import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
@@ -28,7 +28,7 @@ const ResourcesPage: React.FC = () => {
   const { user } = useAuth();
   
   // Navigation State
-  const [branch, setBranch] = useState<'CS_IT_DS' | 'AIML_ECE_CYS'>('CS_IT_DS');
+  const [branch, setBranch] = useState<BranchKey>('CS_IT_DS');
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -65,6 +65,27 @@ const ResourcesPage: React.FC = () => {
   }>({ open: false, x: 0, y: 0, resource: null });
 
   const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
+
+  const branchLabel = (b: BranchKey): string => {
+    switch (b) {
+      case 'CS_IT_DS':
+        return 'CS / IT / DS';
+      case 'ECE':
+        return 'ECE';
+      case 'EEE':
+        return 'EEE';
+      case 'MECH':
+        return 'Mechanical';
+      case 'CIVIL':
+        return 'Civil';
+      case 'AIML_ECE_CYS':
+        return 'AIML / CYS';
+      default:
+        return String(b);
+    }
+  };
+
+  const BRANCH_OPTIONS: BranchKey[] = ['CS_IT_DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'AIML_ECE_CYS'];
 
   useEffect(() => {
     if (!contextMenu.open) return;
@@ -450,14 +471,27 @@ const ResourcesPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-foreground">Resources</h1>
                 <p className="text-muted-foreground">Select branch and semester</p>
             </div>
-            <div className="flex bg-muted p-1 rounded-xl h-fit">
-                <button onClick={() => setBranch('CS_IT_DS')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${branch === 'CS_IT_DS' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>CS / IT / DS</button>
-                {/* AIML/ECE coming soon */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="resources-branch" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Branch
+              </label>
+              <select
+                id="resources-branch"
+                value={branch}
+                onChange={(e) => setBranch(e.target.value as BranchKey)}
+                className="bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              >
+                {BRANCH_OPTIONS.map((b) => (
+                  <option key={b} value={b} className="bg-card">
+                    {branchLabel(b)}
+                  </option>
+                ))}
+              </select>
             </div>
         </div>
 
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 pb-2 border-b border-border/50 overflow-x-auto">
-            <button onClick={resetToHome}><Home className="w-4 h-4" /></button>
+          <button onClick={resetToHome} aria-label="Home" title="Home"><Home className="w-4 h-4" /></button>
             {semester && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSemester}>Sem {semester}</button></>}
             {subject && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSubject} className="truncate max-w-[150px]">{subject}</button></>}
             {selectedFolder && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToFolder}>{getFolderLabel(selectedFolder)}</button></>}
@@ -700,6 +734,8 @@ const ResourcesPage: React.FC = () => {
                               <input
                                 type="file"
                                 accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                                aria-label="Upload file"
+                                title="Upload file"
                                 onChange={(e) => {
                                   const f = e.target.files?.[0] || null;
                                   if (f) {

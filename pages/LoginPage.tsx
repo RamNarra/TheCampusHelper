@@ -3,11 +3,12 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ArrowRight, Info } from 'lucide-react';
+import { ShieldCheck, ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Alert } from '../components/ui/Alert';
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, signInAsAdmin, user } = useAuth();
+  const { signInWithGoogle, user, authError, clearAuthError } = useAuth();
   const navigate = useNavigate();
 
   React.useEffect(() => {
@@ -39,8 +40,17 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div className="space-y-3">
+          {authError ? (
+            <div onClick={clearAuthError} className="cursor-pointer">
+              <Alert variant="destructive" title={authError} />
+            </div>
+          ) : null}
+
           <Button
-            onClick={signInWithGoogle}
+            onClick={() => {
+              clearAuthError();
+              void signInWithGoogle();
+            }}
             className="w-full bg-foreground text-background hover:opacity-90 group shadow-lg"
             size="lg"
           >
@@ -52,24 +62,6 @@ const LoginPage: React.FC = () => {
             </svg>
             Sign in with Google
             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-          </Button>
-          
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-card text-muted-foreground">Dev Access</span>
-            </div>
-          </div>
-
-          <Button
-            onClick={signInAsAdmin}
-            variant="outline"
-            className="w-full text-muted-foreground hover:text-foreground"
-            size="md"
-          >
-            Admin Demo
           </Button>
         </div>
         

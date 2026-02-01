@@ -147,6 +147,10 @@ export const api = {
         return authService.signIn();
     },
 
+    consumeRedirectResult: async () => {
+        return authService.consumeRedirectResult();
+    },
+
     signOut: async () => {
         return authService.signOutUser();
     },

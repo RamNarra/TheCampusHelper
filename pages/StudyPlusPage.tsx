@@ -9,11 +9,10 @@ import {
   Youtube,
 } from 'lucide-react';
 import { getSubjects } from '../lib/data';
+import type { BranchKey } from '../types';
 import { Page } from '../components/ui/Page';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-
-type BranchKey = 'CS_IT_DS' | 'AIML_ECE_CYS';
 
 type StudyPlusToolId =
   | 'branch_subjects'
@@ -29,7 +28,11 @@ const SEMESTERS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const;
 
 const branchLabel = (b: BranchKey): string => {
   if (b === 'CS_IT_DS') return 'CS / IT / DS';
-  return 'AIML / ECE';
+  if (b === 'ECE') return 'ECE';
+  if (b === 'EEE') return 'EEE';
+  if (b === 'MECH') return 'Mechanical';
+  if (b === 'CIVIL') return 'Civil';
+  return 'AIML / CYS';
 };
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -229,7 +232,7 @@ const BranchWiseSubjects: React.FC = () => {
       <p className="text-muted-foreground mb-4">Pick a branch and semester to view subjects.</p>
 
       <div className="flex flex-wrap gap-2 mb-4 bg-background p-2 rounded-lg border border-border">
-        {(['CS_IT_DS', 'AIML_ECE_CYS'] as BranchKey[]).map((b) => (
+        {(['CS_IT_DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'AIML_ECE_CYS'] as BranchKey[]).map((b) => (
           <button
             key={b}
             type="button"
@@ -580,8 +583,9 @@ const LogicGateSimulator: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-background border border-border rounded-xl p-4">
-          <label className="block text-sm font-medium mb-2">Gate</label>
+          <label htmlFor="logic-gate" className="block text-sm font-medium mb-2">Gate</label>
           <select
+            id="logic-gate"
             value={gate}
             onChange={(e) => setGate(e.target.value as any)}
             className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -693,8 +697,9 @@ const BinaryOperations: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Operation</label>
+          <label htmlFor="binary-op" className="block text-sm font-medium mb-2">Operation</label>
           <select
+            id="binary-op"
             value={op}
             onChange={(e) => setOp(e.target.value as any)}
             className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"

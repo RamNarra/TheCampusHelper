@@ -12,13 +12,22 @@ const MAX_BODY_SIZE = 25 * 1024; // 25KB
 type SubmitBody = {
   title: string;
   subject: string;
-  branch: 'CS_IT_DS' | 'AIML_ECE_CYS';
+  branch: 'CS_IT_DS' | 'AIML_ECE_CYS' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL';
   semester: string;
   unit?: string;
   type: string;
   downloadUrl: string;
   driveFileId?: string;
 };
+
+const ALLOWED_BRANCHES = new Set<SubmitBody['branch']>([
+  'CS_IT_DS',
+  'AIML_ECE_CYS',
+  'ECE',
+  'EEE',
+  'MECH',
+  'CIVIL',
+]);
 
 function isHttpUrl(raw: string): boolean {
   try {
@@ -59,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!title || title.length > 200) return res.status(400).json({ error: 'Invalid title', requestId: ctx.requestId });
     if (!subject || subject.length > 200) return res.status(400).json({ error: 'Invalid subject', requestId: ctx.requestId });
-    if (branch !== 'CS_IT_DS' && branch !== 'AIML_ECE_CYS') {
+    if (!ALLOWED_BRANCHES.has(branch)) {
       return res.status(400).json({ error: 'Invalid branch', requestId: ctx.requestId });
     }
     if (!semester || semester.length > 10) return res.status(400).json({ error: 'Invalid semester', requestId: ctx.requestId });

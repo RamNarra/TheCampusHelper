@@ -8,6 +8,8 @@ interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;        // Layer 1: Is Firebase Auth initialized?
   profileLoaded: boolean;  // Layer 2: Is Firestore profile data fetched?
+  authError: string | null;
+  clearAuthError: () => void;
   signInWithGoogle: () => Promise<void>;
   signInAsAdmin: () => Promise<void>; // Kept for interface compatibility
   logout: () => Promise<void>;
@@ -20,10 +22,46 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const gamificationInitializedRef = useRef(false);
   const attemptedAdminRecoveryRef = useRef(false);
 
+  const clearAuthError = () => setAuthError(null);
+
+  const formatAuthError = (error: unknown): string => {
+    const code = (error as any)?.code;
+    const message = error instanceof Error ? error.message : String(error || '');
+
+    if (typeof code === 'string') {
+      switch (code) {
+        case 'auth/unauthorized-domain':
+          return 'Google sign-in is blocked for this domain. Add your deployed domain to Firebase Auth → Settings → Authorized domains.';
+        case 'auth/invalid-api-key':
+          return 'Firebase configuration is invalid (check VITE_FIREBASE_* env vars on the deployment).';
+        case 'auth/network-request-failed':
+          return 'Network error during sign-in. Check your connection and try again.';
+        case 'auth/popup-closed-by-user':
+          return 'Sign-in popup was closed before completing.';
+        case 'auth/popup-blocked':
+          return 'Sign-in popup was blocked by the browser. Please allow popups or try again.';
+        default:
+          return `Sign-in failed (${code}). ${message}`.trim();
+      }
+    }
+
+    if (message.includes('Auth not configured')) {
+      return 'Auth is not configured (missing VITE_FIREBASE_* env vars).';
+    }
+
+    return message || 'Sign-in failed. Please try again.';
+  };
+
   useEffect(() => {
+    // Finalize any pending redirect-based sign-in and surface errors.
+    api.consumeRedirectResult?.().catch((e: unknown) => {
+      setAuthError(formatAuthError(e));
+    });
+
     let unsubscribeProfile: (() => void) | null = null;
     let stopPresence: (() => void) | null = null;
     let presenceUid: string | null = null;
@@ -82,6 +120,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
       }
 
       if (firebaseUser) {
+        setAuthError(null);
         // 1. Immediate: Map basic data from Google Token
         const basicProfile = mapAuthToProfile(firebaseUser);
 
@@ -159,6 +198,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         setUser(null);
         setLoading(false);
         setProfileLoaded(false);
+        setAuthError(null);
         gamificationInitializedRef.current = false;
         attemptedAdminRecoveryRef.current = false;
 
@@ -181,14 +221,17 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const signInWithGoogle = async () => {
     try {
       await api.signIn();
+      setAuthError(null);
     } catch (error) {
       console.error("Login Error:", error);
+      setAuthError(formatAuthError(error));
     }
   };
 
   const logout = async () => {
     try {
       await api.signOut();
+      setAuthError(null);
     } catch (error) {
       console.error("Logout Error:", error);
     }
@@ -219,6 +262,8 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         user, 
         loading, 
         profileLoaded, 
+        authError,
+        clearAuthError,
         signInWithGoogle, 
         signInAsAdmin, 
         logout, 

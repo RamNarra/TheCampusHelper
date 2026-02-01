@@ -98,7 +98,6 @@ const AppContent: React.FC = () => {
         !user.dateOfBirth ||
         !user.collegeEmail ||
         !user.branch ||
-        !user.year ||
         !user.section
       );
 
