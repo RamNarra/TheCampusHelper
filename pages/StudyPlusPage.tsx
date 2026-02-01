@@ -26,13 +26,18 @@ type StudyPlusToolId =
 
 const SEMESTERS = ['1', '2', '3', '4', '5', '6', '7', '8'] as const;
 
+const BRANCHES: BranchKey[] = ['CSE', 'IT', 'DS', 'AIML', 'CYS', 'ECE', 'EEE', 'MECH', 'CIVIL'];
+
 const branchLabel = (b: BranchKey): string => {
-  if (b === 'CS_IT_DS') return 'CS / IT / DS';
+  if (b === 'CSE') return 'CSE';
+  if (b === 'IT') return 'IT';
+  if (b === 'DS') return 'DS';
+  if (b === 'AIML') return 'AIML';
+  if (b === 'CYS') return 'CYS';
   if (b === 'ECE') return 'ECE';
   if (b === 'EEE') return 'EEE';
   if (b === 'MECH') return 'Mechanical';
-  if (b === 'CIVIL') return 'Civil';
-  return 'AIML / CYS';
+  return 'Civil';
 };
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -221,7 +226,7 @@ const StudyPlusPage: React.FC = () => {
 };
 
 const BranchWiseSubjects: React.FC = () => {
-  const [branch, setBranch] = useState<BranchKey>('CS_IT_DS');
+  const [branch, setBranch] = useState<BranchKey>('CSE');
   const [semester, setSemester] = useState<(typeof SEMESTERS)[number]>('1');
 
   const subjects = useMemo(() => getSubjects(branch, semester), [branch, semester]);
@@ -232,7 +237,7 @@ const BranchWiseSubjects: React.FC = () => {
       <p className="text-muted-foreground mb-4">Pick a branch and semester to view subjects.</p>
 
       <div className="flex flex-wrap gap-2 mb-4 bg-background p-2 rounded-lg border border-border">
-        {(['CS_IT_DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'AIML_ECE_CYS'] as BranchKey[]).map((b) => (
+        {BRANCHES.map((b) => (
           <button
             key={b}
             type="button"
@@ -284,8 +289,8 @@ const BranchWiseSubjects: React.FC = () => {
 const SemesterWiseReference: React.FC = () => {
   const [semester, setSemester] = useState<(typeof SEMESTERS)[number]>('1');
 
-  const groupA = useMemo(() => getSubjects('CS_IT_DS', semester), [semester]);
-  const groupB = useMemo(() => getSubjects('AIML_ECE_CYS', semester), [semester]);
+  const groupA = useMemo(() => getSubjects('CSE', semester), [semester]);
+  const groupB = useMemo(() => getSubjects('AIML', semester), [semester]);
 
   return (
     <div>
@@ -311,7 +316,7 @@ const SemesterWiseReference: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-background border border-border rounded-xl p-4">
-          <div className="font-semibold mb-3">{branchLabel('CS_IT_DS')}</div>
+          <div className="font-semibold mb-3">{branchLabel('CSE')}</div>
           {groupA.length === 0 ? (
             <div className="text-muted-foreground">No subjects found.</div>
           ) : (
@@ -324,7 +329,7 @@ const SemesterWiseReference: React.FC = () => {
         </div>
 
         <div className="bg-background border border-border rounded-xl p-4">
-          <div className="font-semibold mb-3">{branchLabel('AIML_ECE_CYS')}</div>
+          <div className="font-semibold mb-3">{branchLabel('AIML')}</div>
           {groupB.length === 0 ? (
             <div className="text-muted-foreground">No subjects found.</div>
           ) : (

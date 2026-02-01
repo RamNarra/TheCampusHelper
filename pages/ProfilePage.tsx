@@ -7,20 +7,23 @@ import { Navigate, NavLink } from 'react-router-dom';
 import { api } from '../services/firebase';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { getPreviewUserId, isAuthBypassed } from '../lib/dev';
+import type { UserProfile } from '../types';
 
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const isPreview = !user && isAuthBypassed();
-  const displayUser = user ?? (isPreview
+  const displayUser: UserProfile | null = user ?? (isPreview
     ? {
         uid: getPreviewUserId(),
         displayName: 'Preview User',
         email: 'preview@localhost',
         photoURL: null,
         role: 'student',
-        branch: 'CS_IT_DS',
+        branch: 'CSE',
         year: '2',
         section: 'A',
+        collegeEmail: '25311A05MV@cse.sreenidhi.edu.in',
+        dateOfBirth: '2000-01-01',
       }
     : null);
   const [adminFixLoading, setAdminFixLoading] = useState(false);
@@ -89,12 +92,6 @@ const ProfilePage: React.FC = () => {
               <div className="bg-muted/30 border border-border rounded-2xl p-5">
                 <div className="flex items-center justify-between gap-4">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About</h2>
-                  <NavLink
-                    to="/todo"
-                    className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-                  >
-                    Open Mega Calendar
-                  </NavLink>
                 </div>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="text-muted-foreground">

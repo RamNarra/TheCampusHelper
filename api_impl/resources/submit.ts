@@ -12,7 +12,7 @@ const MAX_BODY_SIZE = 25 * 1024; // 25KB
 type SubmitBody = {
   title: string;
   subject: string;
-  branch: 'CSE' | 'CS_IT_DS' | 'AIML_ECE_CYS' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL';
+  branch: 'CSE' | 'IT' | 'DS' | 'AIML' | 'CYS' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL';
   semester: string;
   unit?: string;
   type: string;
@@ -22,8 +22,10 @@ type SubmitBody = {
 
 const ALLOWED_BRANCHES = new Set<SubmitBody['branch']>([
   'CSE',
-  'CS_IT_DS',
-  'AIML_ECE_CYS',
+  'IT',
+  'DS',
+  'AIML',
+  'CYS',
   'ECE',
   'EEE',
   'MECH',

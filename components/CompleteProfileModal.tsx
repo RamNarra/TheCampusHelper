@@ -19,6 +19,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
     dateOfBirth: user?.dateOfBirth || '',
+    branch: user?.branch || '',
     section: user?.section || '',
     collegeEmail: user?.collegeEmail || '',
   });
@@ -32,6 +33,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         setFormData(prev => ({
             ...prev,
             displayName: prev.displayName || user.displayName || '',
+          branch: prev.branch || user.branch || '',
             section: prev.section || user.section || '',
             collegeEmail: prev.collegeEmail || user.collegeEmail || ''
         }));
@@ -62,11 +64,37 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     const dept = m[1];
 
     if (dept === 'cse') return 'CSE';
+    if (dept === 'it') return 'IT';
+    if (dept === 'ds' || dept === 'datascience') return 'DS';
+    if (dept === 'aiml') return 'AIML';
+    if (dept === 'cys' || dept === 'cybersecurity') return 'CYS';
     if (dept === 'ece') return 'ECE';
     if (dept === 'eee') return 'EEE';
     if (dept === 'mech') return 'MECH';
     if (dept === 'civil' || dept === 'ce') return 'CIVIL';
     return null;
+  };
+
+  const inferRollNumberFromCollegeEmail = (value: string): string | null => {
+    const v = (value || '').trim();
+    const at = v.indexOf('@');
+    if (at <= 0) return null;
+    const local = v.slice(0, at).trim();
+    if (!local) return null;
+    // Roll numbers are typically alphanumeric and case-insensitive.
+    const cleaned = local.replace(/\s+/g, '');
+    if (!/^[a-zA-Z0-9]+$/.test(cleaned)) return null;
+    return cleaned.toUpperCase();
+  };
+
+  const inferBatchFromRollNumber = (rollNumber: string | null): string | null => {
+    const rn = (rollNumber || '').trim();
+    if (rn.length < 2) return null;
+    const yy = rn.slice(0, 2);
+    if (!/^\d{2}$/.test(yy)) return null;
+    const startYear = 2000 + parseInt(yy, 10);
+    const endYear = startYear + 4;
+    return `${startYear}-${endYear}`;
   };
 
   const isValidCollegeEmail = (value: string): boolean => {
@@ -84,7 +112,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     const collegeEmail = formData.collegeEmail.trim();
     const section = normalizeSection(formData.section);
 
-    if (!formData.displayName.trim() || !dob || !collegeEmail || !section) {
+    if (!formData.displayName.trim() || !dob || !collegeEmail || !formData.branch || !section) {
       setError('Please fill in all fields to continue.');
       return;
     }
@@ -105,6 +133,14 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
       return;
     }
 
+    if (formData.branch && formData.branch !== inferredBranch) {
+      setError('Branch must match your college email domain.');
+      return;
+    }
+
+    const rollNumber = inferRollNumberFromCollegeEmail(collegeEmail);
+    const batch = inferBatchFromRollNumber(rollNumber);
+
     setLoading(true);
     
     try {
@@ -115,6 +151,8 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         dateOfBirth: dob,
         collegeEmail: collegeEmail,
         branch: inferredBranch,
+        rollNumber: rollNumber || undefined,
+        batch: batch || undefined,
         section,
         profileCompleted: true
       });
@@ -199,9 +237,11 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                     value={formData.collegeEmail}
                     onChange={(e) => {
                       const nextEmail = e.target.value;
+                      const inferred = inferBranchFromCollegeEmail(nextEmail);
                       setFormData((prev) => ({
                         ...prev,
                         collegeEmail: nextEmail,
+                        branch: inferred ? inferred : prev.branch,
                       }));
                     }}
                     className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
@@ -209,32 +249,59 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                   />
                 </div>
 
-                {/* Branch (auto-detected from college email) */}
+                {/* Branch */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <BookOpen className="w-3 h-3" /> Branch (auto)
+                  <label htmlFor="profile-branch" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <BookOpen className="w-3 h-3" /> Branch
                   </label>
-                  <input
-                    type="text"
-                    value={inferBranchFromCollegeEmail(formData.collegeEmail) || ''}
-                    readOnly
-                    className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 outline-none"
-                    placeholder="Enter college email to detect"
-                  />
+                  <div className="relative">
+                    <select
+                      id="profile-branch"
+                      value={formData.branch}
+                      onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                      className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    >
+                      <option value="" disabled className="text-muted-foreground">Select Branch</option>
+                      <option value="CSE" className="text-foreground bg-card">CSE</option>
+                      <option value="IT" className="text-foreground bg-card">IT</option>
+                      <option value="DS" className="text-foreground bg-card">Data Science</option>
+                      <option value="AIML" className="text-foreground bg-card">AIML</option>
+                      <option value="CYS" className="text-foreground bg-card">Cybersecurity</option>
+                      <option value="ECE" className="text-foreground bg-card">ECE</option>
+                      <option value="EEE" className="text-foreground bg-card">EEE</option>
+                      <option value="MECH" className="text-foreground bg-card">Mechanical</option>
+                      <option value="CIVIL" className="text-foreground bg-card">Civil</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Branch auto-fills from college email domain.
+                  </p>
                 </div>
 
                   {/* Section */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <label htmlFor="profile-section" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <Users className="w-3 h-3" /> Section
                     </label>
-                    <input
-                      type="text"
-                      value={formData.section}
-                      onChange={(e) => setFormData({...formData, section: e.target.value})}
-                      className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                      placeholder="A"
-                    />
+                    <div className="relative">
+                      <select
+                        id="profile-section"
+                        value={formData.section}
+                        onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+                        className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      >
+                        <option value="" disabled className="text-muted-foreground">Select Section</option>
+                        {(['A','B','C','D','E','F','G','H','I'] as const).map((s) => (
+                          <option key={s} value={s} className="text-foreground bg-card">{s}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                    </div>
                   </div>
 
                 {error && (

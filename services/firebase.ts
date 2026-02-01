@@ -33,6 +33,51 @@ import { stripUndefined, withTimeout } from './platform/utils';
 import { getPhase1ServerlessOnly } from './platform/phase1Toggle';
 import { authService, moderationService, usersService, presenceService } from './domains';
 
+const normalizeBranchForResource = (raw: any): Resource['branch'] | null => {
+    const v = typeof raw === 'string' ? raw.trim() : '';
+    // Legacy grouped keys (scrapped) -> best-effort mapping
+    if (v === 'CS_IT_DS') return 'CSE';
+    if (v === 'AIML_ECE_CYS') return 'AIML';
+
+    if (
+        v === 'CSE' ||
+        v === 'IT' ||
+        v === 'DS' ||
+        v === 'AIML' ||
+        v === 'CYS' ||
+        v === 'ECE' ||
+        v === 'EEE' ||
+        v === 'MECH' ||
+        v === 'CIVIL'
+    ) {
+        return v as any;
+    }
+    return null;
+};
+
+const coerceResourceDoc = (id: string, data: any): Resource | null => {
+    if (!data || typeof data !== 'object') return null;
+    const branch = normalizeBranchForResource((data as any).branch);
+    if (!branch) return null;
+    const title = String((data as any).title || '').trim();
+    const subject = String((data as any).subject || '').trim();
+    const semester = String((data as any).semester || '').trim();
+    const type = String((data as any).type || '').trim() as any;
+    const downloadUrl = String((data as any).downloadUrl || '').trim();
+    if (!title || !subject || !semester || !type || !downloadUrl) return null;
+
+    return {
+        id,
+        ...data,
+        title,
+        subject,
+        semester,
+        type,
+        downloadUrl,
+        branch,
+    } as Resource;
+};
+
 // --- CONFIGURATION ---
 const DEFAULT_INTERACTION_DAYS = 30; // Default time window for fetching interactions
 
@@ -569,7 +614,9 @@ export const api = {
             limit(500)
         );
         return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const list = snap.docs
+                .map(d => coerceResourceDoc(d.id, d.data()))
+                .filter((r): r is Resource => Boolean(r));
             const toMillis = (t: any): number => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
             list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
             cb(list);
@@ -585,7 +632,9 @@ export const api = {
             limit(200)
         );
         return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const list = snap.docs
+                .map(d => coerceResourceDoc(d.id, d.data()))
+                .filter((r): r is Resource => Boolean(r));
             const toMillis = (t: any): number => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
             list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
             cb(list);
@@ -596,7 +645,9 @@ export const api = {
         if (!db) { cb([]); return () => {}; }
         const q = query(collection(db, 'resources'), orderBy('createdAt', 'desc'), limit(1000));
         return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const list = snap.docs
+                .map(d => coerceResourceDoc(d.id, d.data()))
+                .filter((r): r is Resource => Boolean(r));
             cb(list);
         });
     },
@@ -609,7 +660,9 @@ export const api = {
             limit(500)
         );
         return onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Resource));
+            const list = snap.docs
+                .map(d => coerceResourceDoc(d.id, d.data()))
+                .filter((r): r is Resource => Boolean(r));
             const toMillis = (t: any): number => (typeof t === 'number' ? t : t?.toMillis?.() ?? 0);
             list.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
             cb(list);

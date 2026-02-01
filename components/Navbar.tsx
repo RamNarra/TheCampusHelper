@@ -3,10 +3,9 @@ import React, { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Menu, X, BookOpen, LayoutDashboard, Sparkles, Sun, Moon } from 'lucide-react';
+import { Menu, X, BookOpen, Sparkles, Sun, Moon, User, LogIn } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 
 const Navbar: React.FC = () => {
   const { user } = useAuth();
@@ -15,20 +14,12 @@ const Navbar: React.FC = () => {
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
-  const canViewInsights = useMemo(() => {
-    const r = normalizeRole(user?.role);
-    return !!user && (r === 'instructor' || isAtLeastRole(r, 'admin'));
-  }, [user]);
-
   const primaryLinks = useMemo(() => {
     return [
-      { name: 'Home', path: '/home', icon: null },
+      { name: 'Home', path: '/', icon: null },
       { name: 'Courses', path: '/courses', icon: <BookOpen className="w-4 h-4 mr-2" /> },
-      ...(canViewInsights ? [{ name: 'Insights', path: '/insights', icon: null }] : []),
-      ...(isStaff ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
     ];
-  }, [canViewInsights, isStaff]);
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 transition-colors duration-300">

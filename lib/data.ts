@@ -17,43 +17,98 @@ export interface EventItem {
 
 // Subject Lists defined by specific Cycle Logic
 
-// --- Sem 1 / Sem 2 (2025-26) from provided semwise CSVs ---
-// We keep these per-branch because Sem 1/2 differ across departments.
+// --- Sem 1 (2025-26) from SNIST branch sheets ---
+// All sections within a branch share the same subjects.
 
-const sem1CommonCore = [
+const sem1CSE_IT_DS = [
+  'Advanced Engineering Physics',
+  'Matrices and Calculus',
+  'Programming for Problem Solving',
+  'English for Skill Enhancement',
+  'Environmental Science',
+  'Electric Devices and Circuits',
+  'Advanced Engineering Physics Lab',
+  'Programming for Problem Solving Lab',
+  'Language Proficiency Evaluation',
+  'English Language and Communication Skills Lab',
+  'Engineering Workshop',
+];
+
+const sem1AIML = [
   'Engineering Chemistry',
   'Matrices and Calculus',
   'Programming for Problem Solving',
   'English for Skill Enhancement',
+  'Elements of Electrical Engineering',
+  'Language Proficiency Evaluation',
+  'Engineering Chemistry Lab',
+  'Programming for Problem Solving Lab',
+  'Python Programming Lab',
+  'Basic Electrical Engineering Lab',
+  'IT Workshop',
+];
+
+const sem1CYS = [
+  'Engineering Chemistry',
+  'Matrices and Calculus',
+  'Programming for Problem Solving',
+  'English for Skill Enhancement',
+  'Basic Electrical Engineering',
+  'Language Proficiency Evaluation',
+  'Engineering Chemistry Lab',
+  'Programming for Problem Solving Lab',
+  'Python Programming Lab',
+  'Basic Electrical Engineering Lab',
+  'IT Workshop',
+];
+
+const sem1Civil = [
+  'Engineering Chemistry',
+  'Matrices and Calculus',
+  'Programming for Problem Solving',
+  'English for Skill Enhancement',
+  'Computer Aided Engineering Grapics',
   'Language Proficiency Evaluation',
   'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
 ];
 
-const sem1Civil = [
-  ...sem1CommonCore,
-  'Computer Aided Engineering Grapics',
-];
-
 const sem1EEE = [
-  ...sem1CommonCore,
+  'Engineering Chemistry',
+  'Matrices and Calculus',
+  'Programming for Problem Solving',
+  'English for Skill Enhancement',
   'Electrical Circuits-I',
   'Engineering Drawing and Computer Aided Drafting',
+  'Language Proficiency Evaluation',
+  'Engineering Chemistry Lab',
+  'Programming for Problem Solving Lab',
 ];
 
 const sem1Mech = [
-  ...sem1CommonCore,
+  'Engineering Chemistry',
+  'Matrices and Calculus',
+  'Programming for Problem Solving',
+  'English for Skill Enhancement',
   'Elements of Electrical and Electronics Engineering',
   'Basic Electrical and Electronics Engineering',
   'Engineering Grapics Computer Aided Drafting',
+  'Language Proficiency Evaluation',
+  'Engineering Chemistry Lab',
+  'Programming for Problem Solving Lab',
 ];
 
 const sem1ECE = [
-  ...sem1CommonCore,
+  'Engineering Chemistry',
+  'Matrices and Calculus',
+  'Programming for Problem Solving',
   'Introduction to Electrical Engineering',
   'Python Programming',
-  'Applied Python Programming Lab',
   'Computer Aided Engineering Grapics',
+  'Language Proficiency Evaluation',
+  'Engineering Chemistry Lab',
+  'Programming for Problem Solving Lab',
+  'Applied Python Programming Lab',
 ];
 
 const sem2Civil = [
@@ -113,19 +168,6 @@ const sem2ECE = [
   'Electrical Engineering Lab',
   'Engineering Workshop',
   'Universal Human Values',
-];
-
-// List A: Legacy grouped key (kept for backwards compatibility)
-const listA = [
-  // Fall back to the most common Sem 1 core.
-  ...sem1CommonCore,
-  'Computer Aided Engineering Grapics',
-];
-
-// List B: Legacy grouped key (kept for backwards compatibility)
-const listB = [
-  // A reasonable Sem 2 default for the legacy grouped keys.
-  ...sem2ECE,
 ];
 
 // Sem 3 Base (R25 Regulations - II Year I Semester)
@@ -204,27 +246,41 @@ const sem8Base = [
 ];
 
 export const getSubjects = (branch: string, semester: string): string[] => {
-  // Branch-specific Sem 1/2 (from CSV)
   if (semester === '1') {
-    if (branch === 'CIVIL') return sem1Civil;
-    if (branch === 'EEE') return sem1EEE;
-    if (branch === 'MECH') return sem1Mech;
-    if (branch === 'ECE') return sem1ECE;
+    switch (branch) {
+      case 'CSE':
+      case 'IT':
+      case 'DS':
+        return sem1CSE_IT_DS;
+      case 'AIML':
+        return sem1AIML;
+      case 'CYS':
+        return sem1CYS;
+      case 'CIVIL':
+        return sem1Civil;
+      case 'EEE':
+        return sem1EEE;
+      case 'MECH':
+        return sem1Mech;
+      case 'ECE':
+        return sem1ECE;
+      default:
+        return [];
+    }
   }
 
   if (semester === '2') {
+    // Only known Sem 2 lists (from CSV) for these branches.
     if (branch === 'CIVIL') return sem2Civil;
     if (branch === 'EEE') return sem2EEE;
     if (branch === 'MECH') return sem2Mech;
     if (branch === 'ECE') return sem2ECE;
+    return [];
   }
 
-  // Legacy grouped-key logic (kept for existing users)
-  const isGroupA = branch === 'CSE' || branch === 'CS_IT_DS'; // Group A: CSE + legacy CS/IT/DS
-  if (isGroupA) {
+  // Keep existing R25 higher-semester lists for computing branches.
+  if (branch === 'CSE' || branch === 'IT' || branch === 'DS' || branch === 'AIML' || branch === 'CYS') {
     switch (semester) {
-      case '1': return listA;
-      case '2': return listB;
       case '3': return sem3Base;
       case '4': return sem4Base;
       case '5': return sem5Base;
@@ -235,18 +291,7 @@ export const getSubjects = (branch: string, semester: string): string[] => {
     }
   }
 
-  // Default: use Group B swap mapping (best-effort)
-  switch (semester) {
-    case '1': return listB;
-    case '2': return listA;
-    case '3': return sem4Base;
-    case '4': return sem3Base;
-    case '5': return sem6Base;
-    case '6': return sem5Base;
-    case '7': return sem8Base;
-    case '8': return sem7Base;
-    default: return [];
-  }
+  return [];
 };
 
 export const resources: Resource[] = [
@@ -256,7 +301,7 @@ export const resources: Resource[] = [
     id: 'res-ep-u2-ppt',
     title: 'Unit 2: Fiber Optics',
     subject: 'Advanced Engineering Physics',
-    branch: 'CS_IT_DS', 
+    branch: 'CSE', 
     semester: '2',
     unit: '2',
     type: 'PPT',
@@ -270,7 +315,7 @@ export const resources: Resource[] = [
     id: 'res-ma-u1-impq',
     title: 'Unit 1 Important Questions',
     subject: 'Matrices and Calculus',
-    branch: 'CS_IT_DS', 
+    branch: 'CSE',
     semester: '1',
     unit: '1',
     type: 'ImpQ',
@@ -282,7 +327,7 @@ export const resources: Resource[] = [
     id: 'res-ds-u1-note',
     title: 'Introduction to Data Structures',
     subject: 'Data Structures',
-    branch: 'CS_IT_DS', 
+    branch: 'CSE', 
     semester: '2',
     unit: '1',
     type: 'Note',
@@ -294,7 +339,7 @@ export const resources: Resource[] = [
     id: 'res-ma-u1-note',
     title: 'Rank of Matrix Notes',
     subject: 'Matrices and Calculus',
-    branch: 'CS_IT_DS', 
+    branch: 'CSE',
     semester: '1',
     unit: '1',
     type: 'Note',
@@ -308,7 +353,7 @@ export const pendingUploads: Resource[] = [
     id: 'pend-001',
     title: 'Unit 3 Notes',
     subject: 'Data Structures',
-    branch: 'CS_IT_DS',
+    branch: 'CSE',
     semester: '2',
     unit: '3',
     type: 'Note',

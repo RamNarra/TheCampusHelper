@@ -67,8 +67,6 @@ const ResourcesPage: React.FC = () => {
   const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
 
   const branchMatches = useCallback((resourceBranch: BranchKey): boolean => {
-    // Back-compat: treat legacy grouped key as CSE.
-    if (branch === 'CSE') return resourceBranch === 'CSE' || resourceBranch === 'CS_IT_DS';
     return resourceBranch === branch;
   }, [branch]);
 

@@ -8,8 +8,10 @@ export type UserRole = 'super_admin' | 'admin' | 'moderator' | 'instructor' | 's
 // NOTE: Keep legacy grouped keys for backwards compatibility with existing user/profile docs.
 export type BranchKey =
   | 'CSE'
-  | 'CS_IT_DS'
-  | 'AIML_ECE_CYS'
+  | 'IT'
+  | 'DS'
+  | 'AIML'
+  | 'CYS'
   | 'ECE'
   | 'EEE'
   | 'MECH'
@@ -23,6 +25,8 @@ export interface UserProfile {
   role: UserRole;
   disabled?: boolean;
   branch?: BranchKey;
+  rollNumber?: string;
+  batch?: string; // e.g. "2025-2029"
   year?: string;
   section?: string;
   dateOfBirth?: string; // Format: YYYY-MM-DD

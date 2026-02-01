@@ -26,6 +26,17 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const gamificationInitializedRef = useRef(false);
   const attemptedAdminRecoveryRef = useRef(false);
 
+  const normalizeProfileFromDb = (raw: any): Partial<UserProfile> => {
+    if (!raw || typeof raw !== 'object') return {};
+    const out: any = { ...raw };
+
+    const b = typeof out.branch === 'string' ? out.branch.trim() : '';
+    if (b === 'CS_IT_DS') out.branch = 'CSE';
+    if (b === 'AIML_ECE_CYS') out.branch = 'AIML';
+
+    return out;
+  };
+
   const clearAuthError = () => setAuthError(null);
 
   const formatAuthError = (error: unknown): string => {
@@ -182,8 +193,9 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
                   return;
                 }
 
-                // Merge DB data with existing state
-                setUser(prev => prev ? ({ ...prev, ...data }) : null);
+                // Merge DB data with existing state (normalize legacy fields)
+                const normalized = normalizeProfileFromDb(data);
+                setUser(prev => prev ? ({ ...prev, ...normalized }) : null);
 
                 // Admin recovery is intentionally manual (see Profile page) to avoid
                 // probing the bootstrap endpoint on every login.

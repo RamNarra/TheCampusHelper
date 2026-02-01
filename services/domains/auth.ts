@@ -42,8 +42,26 @@ export const signIn = async (): Promise<void> => {
     await signInWithPopup(auth, provider);
   } catch (err) {
     const code = getAuthErrorCode(err);
-    // Common mobile/Safari/embedded-webview failure: popup blocked.
-    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+    // Prefer popup (best UX). If it fails due to environment/browser constraints,
+    // fall back to redirect so the user still sees the Google account chooser.
+    // NOTE: Redirect won't fix configuration errors (unauthorized-domain, etc.), so we rethrow those.
+    const nonRecoverable = new Set([
+      'auth/unauthorized-domain',
+      'auth/invalid-api-key',
+      'auth/operation-not-allowed',
+    ]);
+
+    const shouldFallbackToRedirect =
+      code === 'auth/popup-blocked' ||
+      code === 'auth/operation-not-supported-in-this-environment' ||
+      code === 'auth/internal-error' ||
+      code === 'auth/network-request-failed' ||
+      code === 'auth/cancelled-popup-request' ||
+      code === 'auth/popup-closed-by-user';
+
+    if (code && nonRecoverable.has(code)) throw err;
+
+    if (shouldFallbackToRedirect) {
       await signInWithRedirect(auth, provider);
       return;
     }

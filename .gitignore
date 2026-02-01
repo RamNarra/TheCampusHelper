@@ -126,6 +126,9 @@ Ram_CV_IITMBS_2025.pdf
 private/
 dist/registerSW.js
 
+# Local semwise source dumps (do not commit)
+semwise shit/
+
 # Firebase Admin service account keys (NEVER commit)
 thecampushelper-adcdc-firebase-adminsdk-*.json
 firebase-adminsdk-*.json
