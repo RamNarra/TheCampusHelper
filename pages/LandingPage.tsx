@@ -1,9 +1,8 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Calculator, Library, Brain } from 'lucide-react';
+import { ArrowRight, Calculator, Library, Terminal, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import AdUnit from '../components/AdUnit';
 
 const LandingPage: React.FC = () => {
   return (
@@ -48,11 +47,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Ad Unit */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 relative z-10">
-        <AdUnit className="my-0" />
-      </div>
-
       {/* Features Grid */}
       <section className="pb-24 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,17 +64,17 @@ const LandingPage: React.FC = () => {
               <p className="text-muted-foreground leading-relaxed">Access verified notes, lab manuals, and previous question papers sorted by branch and semester.</p>
             </motion.div>
 
-            {/* Feature 2: AI Quizzes */}
-            <Link to="/quiz" className="block h-full">
+            {/* Feature 2: Compiler */}
+            <Link to="/compiler" className="block h-full">
               <motion.div 
                 whileHover={{ y: -8 }}
                 className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
               >
                 <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
-                  <Brain className="w-7 h-7" />
+                  <Terminal className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-3">AI Quizzes</h3>
-                <p className="text-muted-foreground leading-relaxed">Generate adaptive MCQ quizzes on any topic with instant feedback and detailed explanations.</p>
+                <h3 className="text-xl font-bold text-foreground mb-3">Compiler</h3>
+                <p className="text-muted-foreground leading-relaxed">Run code quickly in the browser for practice and debugging.</p>
               </motion.div>
             </Link>
 
@@ -98,17 +92,17 @@ const LandingPage: React.FC = () => {
               </motion.div>
             </Link>
 
-            {/* Feature 4: Exam Prep Dashboard */}
-            <Link to="/exam-prep" className="block h-full">
+            {/* Feature 4: Events */}
+            <Link to="/events" className="block h-full">
               <motion.div 
                 whileHover={{ y: -8 }}
                 className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
               >
                 <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
-                  <Brain className="w-7 h-7" />
+                  <Calendar className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-3">Smart Exam Prep</h3>
-                <p className="text-muted-foreground leading-relaxed">AI-powered exam tracking with personalized study plans, progress analytics, and readiness predictions.</p>
+                <h3 className="text-xl font-bold text-foreground mb-3">Events</h3>
+                <p className="text-muted-foreground leading-relaxed">Track upcoming academic events and deadlines.</p>
               </motion.div>
             </Link>
 

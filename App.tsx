@@ -14,9 +14,6 @@ import StudyAssistantPage from './pages/StudyAssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
-import OnboardingTour from './components/OnboardingTour';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
-import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Button } from './components/ui/Button';
@@ -83,8 +80,8 @@ const Analytics = () => {
 
 const AppContent: React.FC = () => {
   const { user, loading, profileLoaded } = useAuth();
+  const isPublicBuild = import.meta.env.PROD;
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showTour, setShowTour] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -140,7 +137,6 @@ const AppContent: React.FC = () => {
     }
     setShowProfileModal(false);
     navigate('/');
-    setShowTour(true);
   };
 
   if (loading) {
@@ -159,11 +155,6 @@ const AppContent: React.FC = () => {
       <div className="h-16 shrink-0" />
       
       <CompleteProfileModal isOpen={showProfileModal} onComplete={handleProfileComplete} />
-      <OnboardingTour isOpen={showTour} onClose={() => setShowTour(false)} />
-      
-      {/* PWA Features */}
-      <PWAInstallPrompt />
-      <PWAUpdatePrompt />
       
       <main className="flex-grow relative flex flex-col">
         <ErrorBoundary>
@@ -178,19 +169,19 @@ const AppContent: React.FC = () => {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/resources" element={<ResourcesPage />} />
-              <Route path="/quiz" element={<QuizPage />} />
+              <Route path="/quiz" element={isPublicBuild ? <NotFoundPage /> : <QuizPage />} />
               <Route path="/calculator" element={<CalculatorPage />} />
               <Route path="/compiler" element={<CompilerPage />} />
               <Route path="/events" element={<EventsPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/exam-prep" element={<ExamPrepPage />} />
+              <Route path="/leaderboard" element={isPublicBuild ? <NotFoundPage /> : <LeaderboardPage />} />
+              <Route path="/exam-prep" element={isPublicBuild ? <NotFoundPage /> : <ExamPrepPage />} />
               <Route path="/study-groups" element={<StudyGroupsPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/study-assistant" element={<StudyAssistantPage />} />
-              <Route path="/study-plus" element={<StudyPlusPage />} />
+              <Route path="/analytics" element={isPublicBuild ? <NotFoundPage /> : <AnalyticsPage />} />
+              <Route path="/study-assistant" element={isPublicBuild ? <NotFoundPage /> : <StudyAssistantPage />} />
+              <Route path="/study-plus" element={isPublicBuild ? <NotFoundPage /> : <StudyPlusPage />} />
               <Route path="/todo" element={<ToDoPage />} />
-              <Route path="/insights" element={<InsightsPage />} />
-              <Route path="/developer" element={<DeveloperPage />} />
+              <Route path="/insights" element={isPublicBuild ? <NotFoundPage /> : <InsightsPage />} />
+              <Route path="/developer" element={isPublicBuild ? <NotFoundPage /> : <DeveloperPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>

@@ -15,6 +15,10 @@ const Navbar: React.FC = () => {
   const [isStudyOpen, setIsStudyOpen] = useState(false);
   const studyMenuRef = useRef<HTMLDivElement | null>(null);
 
+  // Public launch: hide internal/gimmick pages from navigation.
+  // (Still available in dev builds for maintenance.)
+  const isPublicBuild = import.meta.env.PROD;
+
   const toggleMenu = () => setIsOpen(!isOpen);
 
   const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
@@ -29,26 +33,22 @@ const Navbar: React.FC = () => {
       { name: 'Courses', path: '/courses', icon: <BookOpen className="w-4 h-4 mr-2" /> },
       ...(user ? [{ name: 'Planner', path: '/planner', icon: <Calendar className="w-4 h-4 mr-2" /> }] : []),
       { name: 'Community', path: '/community', icon: <Users className="w-4 h-4 mr-2" /> },
-      { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
-      { name: 'Developer', path: '/developer', icon: <User className="w-4 h-4 mr-2" /> },
+      ...(!isPublicBuild ? [{ name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> }] : []),
+      ...(!isPublicBuild ? [{ name: 'Developer', path: '/developer', icon: <User className="w-4 h-4 mr-2" /> }] : []),
       ...(canViewInsights ? [{ name: 'Insights', path: '/insights', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
       ...(isStaff ? [{ name: 'Admin', path: '/admin', icon: <LayoutDashboard className="w-4 h-4 mr-2" /> }] : []),
     ];
-  }, [canViewInsights, isStaff, user]);
+  }, [canViewInsights, isPublicBuild, isStaff, user]);
 
   const studyLinks = useMemo(() => {
     return [
-      { name: 'Study+', path: '/study-plus', icon: <Sparkles className="w-4 h-4 mr-2" /> },
-      { name: 'Study Assistant', path: '/study-assistant', icon: <Brain className="w-4 h-4 mr-2" /> },
-      { name: 'Quiz', path: '/quiz', icon: <Brain className="w-4 h-4 mr-2" /> },
-      { name: 'Exam Prep', path: '/exam-prep', icon: <Brain className="w-4 h-4 mr-2" /> },
       { name: 'Study Groups', path: '/study-groups', icon: <Users className="w-4 h-4 mr-2" /> },
       { name: 'Calculator', path: '/calculator', icon: <Calculator className="w-4 h-4 mr-2" /> },
       { name: 'Compiler', path: '/compiler', icon: <Terminal className="w-4 h-4 mr-2" /> },
       { name: 'Events', path: '/events', icon: <Calendar className="w-4 h-4 mr-2" /> },
-      ...(user ? [{ name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
+      ...(!isPublicBuild && user ? [{ name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-4 h-4 mr-2" /> }] : []),
     ];
-  }, [user]);
+  }, [isPublicBuild, user]);
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
@@ -97,7 +97,7 @@ const Navbar: React.FC = () => {
               </NavLink>
             ))}
 
-            {/* Study+ Dropdown */}
+            {/* Study Dropdown */}
             <div ref={studyMenuRef} className="relative">
               <button
                 type="button"
@@ -109,7 +109,7 @@ const Navbar: React.FC = () => {
                 aria-haspopup="menu"
                 aria-expanded={isStudyOpen}
               >
-                Study+
+                {isPublicBuild ? 'Tools' : 'Study+'}
                 <ChevronDown className={cn("w-4 h-4 ml-1 transition-transform", isStudyOpen ? "rotate-180" : "rotate-0")} />
               </button>
 
@@ -229,7 +229,7 @@ const Navbar: React.FC = () => {
 
               <div className="pt-2 mt-2 border-t border-border">
                 <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Study+
+                  {isPublicBuild ? 'Tools' : 'Study+'}
                 </div>
                 {studyLinks.map((link) => (
                   <NavLink

@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { FileText, Upload, LogOut, Bookmark, FolderOpen } from 'lucide-react';
 import { Navigate, NavLink } from 'react-router-dom';
-import GamificationCard from '../components/GamificationCard';
 import { api } from '../services/firebase';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { getPreviewUserId, isAuthBypassed } from '../lib/dev';
@@ -159,16 +158,6 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-      </motion.div>
-
-      {/* Gamification Card */}
-      <motion.div
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.05 }}
-        className="mb-8"
-      >
-        {user ? <GamificationCard uid={user.uid} /> : null}
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
