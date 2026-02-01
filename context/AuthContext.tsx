@@ -43,6 +43,15 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
     const code = (error as any)?.code;
     const message = error instanceof Error ? error.message : String(error || '');
 
+    // Some Firebase errors hide useful info in nested fields.
+    const nestedMessage =
+      (error as any)?.customData?._tokenResponse?.error?.message ||
+      (error as any)?.customData?._tokenResponse?.errorMessage ||
+      (error as any)?.customData?._tokenResponse?.error_description ||
+      '';
+
+    const details = [message, nestedMessage].map((s) => String(s || '').trim()).filter(Boolean).join(' | ');
+
     if (typeof code === 'string') {
       switch (code) {
         case 'auth/unauthorized-domain':
@@ -56,11 +65,16 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         case 'auth/popup-blocked':
           return 'Sign-in popup was blocked by the browser. Please allow popups or try again.';
         case 'auth/internal-error':
-          return 'Sign-in failed. Please try again. If you are using a college/work Google account, use a gmail.com account only.';
+          return (
+            `Sign-in failed (${code}). ` +
+            'If you are using a college/work Google account, use a gmail.com account only. ' +
+            'If you already used gmail.com, this is usually a Firebase configuration/authorized-domain issue. ' +
+            (details ? `Details: ${details}` : '')
+          ).trim();
         case 'auth/operation-not-allowed':
           return 'Google sign-in is not enabled in Firebase (Auth → Sign-in method → Google).';
         default:
-          return `Sign-in failed (${code}). ${message}`.trim();
+          return `Sign-in failed (${code}). ${details || message}`.trim();
       }
     }
 
@@ -68,7 +82,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
       return 'Auth is not configured (missing VITE_FIREBASE_* env vars).';
     }
 
-    return message || 'Sign-in failed. Please try again.';
+    return details || message || 'Sign-in failed. Please try again.';
   };
 
   useEffect(() => {
