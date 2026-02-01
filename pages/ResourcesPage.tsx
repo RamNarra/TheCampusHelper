@@ -28,7 +28,7 @@ const ResourcesPage: React.FC = () => {
   const { user } = useAuth();
   
   // Navigation State
-  const [branch, setBranch] = useState<BranchKey>('CS_IT_DS');
+  const branch: BranchKey = (user?.branch ?? 'CSE') as BranchKey;
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -66,26 +66,11 @@ const ResourcesPage: React.FC = () => {
 
   const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
 
-  const branchLabel = (b: BranchKey): string => {
-    switch (b) {
-      case 'CS_IT_DS':
-        return 'CS / IT / DS';
-      case 'ECE':
-        return 'ECE';
-      case 'EEE':
-        return 'EEE';
-      case 'MECH':
-        return 'Mechanical';
-      case 'CIVIL':
-        return 'Civil';
-      case 'AIML_ECE_CYS':
-        return 'AIML / CYS';
-      default:
-        return String(b);
-    }
-  };
-
-  const BRANCH_OPTIONS: BranchKey[] = ['CS_IT_DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'AIML_ECE_CYS'];
+  const branchMatches = useCallback((resourceBranch: BranchKey): boolean => {
+    // Back-compat: treat legacy grouped key as CSE.
+    if (branch === 'CSE') return resourceBranch === 'CSE' || resourceBranch === 'CS_IT_DS';
+    return resourceBranch === branch;
+  }, [branch]);
 
   useEffect(() => {
     if (!contextMenu.open) return;
@@ -131,12 +116,6 @@ const ResourcesPage: React.FC = () => {
       window.alert(message || 'Delete failed');
     }
   };
-
-  useEffect(() => {
-    if (user && user.branch) {
-      setBranch(user.branch);
-    }
-  }, [user]);
 
   // Real-time Fetch
   useEffect(() => {
@@ -427,14 +406,14 @@ const ResourcesPage: React.FC = () => {
 
   const filteredResources = useMemo(() => {
     return [...dynamicResources, ...staticResources].filter(r => {
-      if (r.branch !== branch || r.semester !== semester || r.subject !== subject) return false;
+      if (!branchMatches(r.branch) || r.semester !== semester || r.subject !== subject) return false;
 
       if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
         return r.unit === selectedFolder || r.type === selectedFolder;
       }
       return r.unit === selectedFolder && r.type === selectedCategory;
     });
-  }, [dynamicResources, branch, semester, subject, selectedFolder, selectedCategory]);
+  }, [dynamicResources, branchMatches, semester, subject, selectedFolder, selectedCategory]);
 
   // --- UI CONSTANTS ---
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -469,24 +448,7 @@ const ResourcesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8">
             <div>
                 <h1 className="text-3xl font-bold text-foreground">Resources</h1>
-                <p className="text-muted-foreground">Select branch and semester</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <label htmlFor="resources-branch" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Branch
-              </label>
-              <select
-                id="resources-branch"
-                value={branch}
-                onChange={(e) => setBranch(e.target.value as BranchKey)}
-                className="bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-              >
-                {BRANCH_OPTIONS.map((b) => (
-                  <option key={b} value={b} className="bg-card">
-                    {branchLabel(b)}
-                  </option>
-                ))}
-              </select>
+                <p className="text-muted-foreground">Select semester</p>
             </div>
         </div>
 

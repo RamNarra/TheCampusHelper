@@ -32,7 +32,7 @@ const sem1CommonCore = [
 
 const sem1Civil = [
   ...sem1CommonCore,
-  'Computer Aided Engineering Graphics',
+  'Computer Aided Engineering Grapics',
 ];
 
 const sem1EEE = [
@@ -45,7 +45,7 @@ const sem1Mech = [
   ...sem1CommonCore,
   'Elements of Electrical and Electronics Engineering',
   'Basic Electrical and Electronics Engineering',
-  'Engineering Graphics and Computer Aided Drafting',
+  'Engineering Grapics Computer Aided Drafting',
 ];
 
 const sem1ECE = [
@@ -53,7 +53,7 @@ const sem1ECE = [
   'Introduction to Electrical Engineering',
   'Python Programming',
   'Applied Python Programming Lab',
-  'Computer Aided Engineering Graphics',
+  'Computer Aided Engineering Grapics',
 ];
 
 const sem2Civil = [
@@ -119,7 +119,7 @@ const sem2ECE = [
 const listA = [
   // Fall back to the most common Sem 1 core.
   ...sem1CommonCore,
-  'Computer Aided Engineering Graphics',
+  'Computer Aided Engineering Grapics',
 ];
 
 // List B: Legacy grouped key (kept for backwards compatibility)
@@ -220,7 +220,7 @@ export const getSubjects = (branch: string, semester: string): string[] => {
   }
 
   // Legacy grouped-key logic (kept for existing users)
-  const isGroupA = branch === 'CS_IT_DS'; // Group A: CS/IT/DS
+  const isGroupA = branch === 'CSE' || branch === 'CS_IT_DS'; // Group A: CSE + legacy CS/IT/DS
   if (isGroupA) {
     switch (semester) {
       case '1': return listA;

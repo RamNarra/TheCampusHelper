@@ -7,25 +7,12 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
-import CalculatorPage from './pages/CalculatorPage';
-import CompilerPage from './pages/CompilerPage';
-import QuizPage from './pages/QuizPage';
-import StudyAssistantPage from './pages/StudyAssistantPage';
 import NotFoundPage from './pages/NotFoundPage';
-import LeaderboardPage from './pages/LeaderboardPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Button } from './components/ui/Button';
 import { Spinner } from './components/ui/Spinner';
-import EventsPage from './pages/EventsPage';
-import ExamPrepPage from './pages/ExamPrepPage';
-import StudyGroupsPage from './pages/StudyGroupsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import StudyPlusPage from './pages/StudyPlusPage';
-import DeveloperPage from './pages/DeveloperPage';
-import ToDoPage from './pages/ToDoPage';
-import InsightsPage from './pages/InsightsPage';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -161,32 +148,33 @@ const AppContent: React.FC = () => {
               <Route path="/" element={<LandingPage />} />
               {/* Phase-1 route aliases (no removals). Keep old paths working. */}
               <Route path="/home" element={<Navigate to="/" replace />} />
-              <Route path="/planner" element={<Navigate to="/todo" replace />} />
-              <Route path="/community" element={<Navigate to="/study-groups" replace />} />
-              <Route path="/courses" element={<Navigate to="/resources" replace />} />
+              <Route path="/planner" element={<Navigate to="/" replace />} />
+              <Route path="/community" element={<Navigate to="/" replace />} />
+              <Route path="/courses" element={<ResourcesPage />} />
+              <Route path="/resources" element={<Navigate to="/courses" replace />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/resources" element={<ResourcesPage />} />
-              <Route path="/quiz" element={isPublicBuild ? <NotFoundPage /> : <QuizPage />} />
-              <Route path="/calculator" element={<CalculatorPage />} />
-              <Route path="/compiler" element={<CompilerPage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/leaderboard" element={isPublicBuild ? <NotFoundPage /> : <LeaderboardPage />} />
-              <Route path="/exam-prep" element={isPublicBuild ? <NotFoundPage /> : <ExamPrepPage />} />
-              <Route path="/study-groups" element={<StudyGroupsPage />} />
-              <Route path="/analytics" element={isPublicBuild ? <NotFoundPage /> : <AnalyticsPage />} />
-              <Route path="/study-assistant" element={isPublicBuild ? <NotFoundPage /> : <StudyAssistantPage />} />
-              <Route path="/study-plus" element={isPublicBuild ? <NotFoundPage /> : <StudyPlusPage />} />
-              <Route path="/todo" element={<ToDoPage />} />
-              <Route path="/insights" element={isPublicBuild ? <NotFoundPage /> : <InsightsPage />} />
-              <Route path="/developer" element={isPublicBuild ? <NotFoundPage /> : <DeveloperPage />} />
+              <Route path="/admin" element={isPublicBuild ? <NotFoundPage /> : <AdminDashboard />} />
+              {/* Removed features */}
+              <Route path="/study-groups" element={<NotFoundPage />} />
+              <Route path="/calculator" element={<NotFoundPage />} />
+              <Route path="/compiler" element={<NotFoundPage />} />
+              <Route path="/events" element={<NotFoundPage />} />
+              <Route path="/quiz" element={<NotFoundPage />} />
+              <Route path="/exam-prep" element={<NotFoundPage />} />
+              <Route path="/leaderboard" element={<NotFoundPage />} />
+              <Route path="/analytics" element={<NotFoundPage />} />
+              <Route path="/study-assistant" element={<NotFoundPage />} />
+              <Route path="/study-plus" element={<NotFoundPage />} />
+              <Route path="/todo" element={<NotFoundPage />} />
+              <Route path="/insights" element={<NotFoundPage />} />
+              <Route path="/developer" element={<NotFoundPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>
       </main>
 
-      {location.pathname === '/study-groups' ? null : <Footer />}
+      <Footer />
     </div>
   );
 };

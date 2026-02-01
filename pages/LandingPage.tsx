@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Calculator, Library, Terminal, Calendar } from 'lucide-react';
+import { ArrowRight, Library } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
@@ -50,7 +50,7 @@ const LandingPage: React.FC = () => {
       {/* Features Grid */}
       <section className="pb-24 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             
             {/* Feature 1 */}
             <motion.div 
@@ -63,49 +63,6 @@ const LandingPage: React.FC = () => {
               <h3 className="text-xl font-bold text-foreground mb-3">Curated Resources</h3>
               <p className="text-muted-foreground leading-relaxed">Access verified notes, lab manuals, and previous question papers sorted by branch and semester.</p>
             </motion.div>
-
-            {/* Feature 2: Compiler */}
-            <Link to="/compiler" className="block h-full">
-              <motion.div 
-                whileHover={{ y: -8 }}
-                className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
-              >
-                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
-                  <Terminal className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-3">Compiler</h3>
-                <p className="text-muted-foreground leading-relaxed">Run code quickly in the browser for practice and debugging.</p>
-              </motion.div>
-            </Link>
-
-            {/* Feature 3: CGPA Calculator */}
-            <Link to="/calculator" className="block h-full">
-              <motion.div 
-                whileHover={{ y: -8 }}
-                className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
-              >
-                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-secondary/10 text-secondary mb-6 group-hover:scale-110 transition-transform">
-                  <Calculator className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-3">CGPA Calculator</h3>
-                <p className="text-muted-foreground leading-relaxed">Calculate your SGPA & CGPA easily with automatic JNTUH grade mapping and credit weightage.</p>
-              </motion.div>
-            </Link>
-
-            {/* Feature 4: Events */}
-            <Link to="/events" className="block h-full">
-              <motion.div 
-                whileHover={{ y: -8 }}
-                className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group h-full cursor-pointer"
-              >
-                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6 group-hover:scale-110 transition-transform">
-                  <Calendar className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-3">Events</h3>
-                <p className="text-muted-foreground leading-relaxed">Track upcoming academic events and deadlines.</p>
-              </motion.div>
-            </Link>
-
           </div>
         </div>
       </section>

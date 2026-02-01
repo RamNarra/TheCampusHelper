@@ -44,6 +44,10 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
           return 'Sign-in popup was closed before completing.';
         case 'auth/popup-blocked':
           return 'Sign-in popup was blocked by the browser. Please allow popups or try again.';
+        case 'auth/internal-error':
+          return 'Sign-in failed. Please try again. If you are using a college/work Google account, use a gmail.com account only.';
+        case 'auth/operation-not-allowed':
+          return 'Google sign-in is not enabled in Firebase (Auth → Sign-in method → Google).';
         default:
           return `Sign-in failed (${code}). ${message}`.trim();
       }
@@ -120,6 +124,18 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
       }
 
       if (firebaseUser) {
+        const email = (firebaseUser.email || '').toLowerCase();
+        const isGmail = email.endsWith('@gmail.com') || email.endsWith('@googlemail.com');
+        if (!isGmail) {
+          // Hard requirement: only allow personal Gmail accounts for login.
+          setAuthError('Please use a gmail.com account only.');
+          api.signOut().catch(() => undefined);
+          setUser(null);
+          setLoading(false);
+          setProfileLoaded(false);
+          return;
+        }
+
         setAuthError(null);
         // 1. Immediate: Map basic data from Google Token
         const basicProfile = mapAuthToProfile(firebaseUser);

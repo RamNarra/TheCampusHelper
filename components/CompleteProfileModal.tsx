@@ -19,7 +19,6 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
     dateOfBirth: user?.dateOfBirth || '',
-    branch: user?.branch || '',
     section: user?.section || '',
     collegeEmail: user?.collegeEmail || '',
   });
@@ -33,7 +32,6 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         setFormData(prev => ({
             ...prev,
             displayName: prev.displayName || user.displayName || '',
-            branch: prev.branch || user.branch || '',
             section: prev.section || user.section || '',
             collegeEmail: prev.collegeEmail || user.collegeEmail || ''
         }));
@@ -59,16 +57,11 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
 
   const inferBranchFromCollegeEmail = (value: string): BranchKey | null => {
     const v = (value || '').trim().toLowerCase();
-    const m = v.match(/@([a-z0-9-]+)\.sreenidhi\.edu\.in$/);
+    const m = v.match(/@([a-z0-9-]+)\.sreenidh(i)?\.edu\.in$/);
     if (!m) return null;
     const dept = m[1];
 
-    const csGroup = new Set(['cse', 'it', 'ds', 'cs', 'csm', 'csd']);
-    const aimlCysGroup = new Set(['aiml', 'cys']);
-
-    if (csGroup.has(dept)) return 'CS_IT_DS';
-    if (aimlCysGroup.has(dept)) return 'AIML_ECE_CYS';
-
+    if (dept === 'cse') return 'CSE';
     if (dept === 'ece') return 'ECE';
     if (dept === 'eee') return 'EEE';
     if (dept === 'mech') return 'MECH';
@@ -80,7 +73,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     const v = value.trim().toLowerCase();
     // Accept SNIST-style alphanumeric IDs (e.g. 25311A05MV@cse.sreenidhi.edu.in)
     // while enforcing the official domain.
-    return /^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\.sreenidhi\.edu\.in$/.test(v);
+    return /^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\.sreenidh(i)?\.edu\.in$/.test(v);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,7 +84,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     const collegeEmail = formData.collegeEmail.trim();
     const section = normalizeSection(formData.section);
 
-    if (!formData.displayName.trim() || !dob || !collegeEmail || !formData.branch || !section) {
+    if (!formData.displayName.trim() || !dob || !collegeEmail || !section) {
       setError('Please fill in all fields to continue.');
       return;
     }
@@ -102,13 +95,13 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     }
 
     if (!isValidCollegeEmail(collegeEmail)) {
-      setError('Please enter a valid college email (must end with @<dept>.sreenidhi.edu.in).');
+      setError('Please enter a valid college email (must end with @<branch>.sreenidhi.edu.in).');
       return;
     }
 
     const inferredBranch = inferBranchFromCollegeEmail(collegeEmail);
-    if (inferredBranch && formData.branch !== inferredBranch) {
-      setError('Branch must match your college email domain.');
+    if (!inferredBranch) {
+      setError('College email must include your branch subdomain (e.g. 25311A05MV@cse.sreenidhi.edu.in).');
       return;
     }
 
@@ -121,7 +114,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         displayName: formData.displayName.trim(),
         dateOfBirth: dob,
         collegeEmail: collegeEmail,
-        branch: formData.branch as BranchKey,
+        branch: inferredBranch,
         section,
         profileCompleted: true
       });
@@ -206,11 +199,9 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                     value={formData.collegeEmail}
                     onChange={(e) => {
                       const nextEmail = e.target.value;
-                      const inferred = inferBranchFromCollegeEmail(nextEmail);
                       setFormData((prev) => ({
                         ...prev,
                         collegeEmail: nextEmail,
-                        branch: inferred ? inferred : prev.branch,
                       }));
                     }}
                     className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
@@ -218,32 +209,18 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    {/* Branch */}
-                  <div className="space-y-1.5 col-span-2">
-                         <label htmlFor="profile-branch" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                            <BookOpen className="w-3 h-3" /> Branch
-                        </label>
-                        <div className="relative">
-                            <select
-                            id="profile-branch"
-                                value={formData.branch}
-                                onChange={(e) => setFormData({...formData, branch: e.target.value})}
-                                className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                            >
-                                <option value="" disabled className="text-muted-foreground">Select Branch</option>
-                                <option value="CS_IT_DS" className="text-foreground bg-card">CSE / IT / DS</option>
-                                <option value="ECE" className="text-foreground bg-card">ECE</option>
-                                <option value="EEE" className="text-foreground bg-card">EEE</option>
-                                <option value="MECH" className="text-foreground bg-card">Mechanical</option>
-                                <option value="CIVIL" className="text-foreground bg-card">Civil</option>
-                                <option value="AIML_ECE_CYS" className="text-foreground bg-card">AIML / CYS</option>
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </div>
-                        </div>
-                    </div>
+                {/* Branch (auto-detected from college email) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <BookOpen className="w-3 h-3" /> Branch (auto)
+                  </label>
+                  <input
+                    type="text"
+                    value={inferBranchFromCollegeEmail(formData.collegeEmail) || ''}
+                    readOnly
+                    className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/50 outline-none"
+                    placeholder="Enter college email to detect"
+                  />
                 </div>
 
                   {/* Section */}

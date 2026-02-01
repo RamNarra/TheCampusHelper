@@ -7,6 +7,7 @@ export type UserRole = 'super_admin' | 'admin' | 'moderator' | 'instructor' | 's
 // Branch identifiers.
 // NOTE: Keep legacy grouped keys for backwards compatibility with existing user/profile docs.
 export type BranchKey =
+  | 'CSE'
   | 'CS_IT_DS'
   | 'AIML_ECE_CYS'
   | 'ECE'

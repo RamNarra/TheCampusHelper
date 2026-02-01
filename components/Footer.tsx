@@ -18,7 +18,7 @@ const Footer: React.FC = () => {
                 </span>
               </div>
               <p className="text-muted-foreground max-w-sm mb-6 leading-relaxed">
-                Empowering students with accessible resources, academic tools, and a collaborative community platform.
+                Verified academic resources, organized by branch and semester.
               </p>
           </div>
           
@@ -27,18 +27,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><Link to="/courses" className="hover:text-primary transition-colors">Lecture Notes</Link></li>
               <li><Link to="/courses" className="hover:text-primary transition-colors">Question Papers</Link></li>
-              <li><Link to="/calculator" className="hover:text-primary transition-colors">CGPA Calculator</Link></li>
               <li><Link to="/login" className="hover:text-primary transition-colors">Student Login</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-foreground font-semibold mb-4">Community</h3>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-primary transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Contributors</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Feedback</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
             </ul>
           </div>
         </div>

@@ -27,6 +27,7 @@ if (isConfigured) {
     auth = getAuth(app);
     db = getFirestore(app);
     googleProvider = new GoogleAuthProvider();
+    googleProvider.setCustomParameters({ prompt: 'select_account' });
   } catch (e) {
     console.error('Firebase Init Failed:', e);
   }
