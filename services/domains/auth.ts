@@ -1,6 +1,9 @@
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   getRedirectResult,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -37,6 +40,18 @@ export const signIn = async (): Promise<void> => {
   const auth = getAuthClient();
   const provider = getGoogleProvider();
   if (!auth || !provider) throw new Error('Auth not configured');
+
+  // Some browsers/environments can throw opaque auth/internal-error if persistence
+  // cannot be established. Try to set persistence explicitly (best-effort).
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch {
+    try {
+      await setPersistence(auth, browserSessionPersistence);
+    } catch {
+      // Ignore; we'll still attempt sign-in.
+    }
+  }
 
   // Deployed environments can be flaky with popup-based OAuth due to browser policies
   // and cross-origin isolation headers. Redirect is the most reliable path.
