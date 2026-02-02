@@ -3,6 +3,7 @@ import { UserProfile } from '../types';
 import { api, mapAuthToProfile } from '../services/firebase';
 import { initializeGamification, updateStreak, awardXP, XP_REWARDS } from '../services/gamification';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
+import { env } from '../services/platform/firebaseClient';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -65,12 +66,30 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         case 'auth/popup-blocked':
           return 'Sign-in popup was blocked by the browser. Please allow popups or try again.';
         case 'auth/internal-error':
+          {
+            const origin = (() => {
+              try { return window.location.origin; } catch { return ''; }
+            })();
+
+            const authDomain = String((env as any)?.VITE_FIREBASE_AUTH_DOMAIN || '').trim();
+            const projectId = String((env as any)?.VITE_FIREBASE_PROJECT_ID || '').trim();
+            const appId = String((env as any)?.VITE_FIREBASE_APP_ID || '').trim();
+
+            const diag = [
+              origin ? `origin=${origin}` : '',
+              authDomain ? `authDomain=${authDomain}` : 'authDomain=MISSING',
+              projectId ? `projectId=${projectId}` : 'projectId=MISSING',
+              appId ? `appId=${appId}` : 'appId=MISSING',
+            ].filter(Boolean).join(' | ');
+
           return (
             `Sign-in failed (${code}). ` +
             'If you are using a college/work Google account, use a gmail.com account only. ' +
             'If you already used gmail.com, this is usually a Firebase configuration/authorized-domain issue. ' +
-            (details ? `Details: ${details}` : '')
+            (details ? `Details: ${details}. ` : '') +
+            (diag ? `Config: ${diag}` : '')
           ).trim();
+          }
         case 'auth/operation-not-allowed':
           return 'Google sign-in is not enabled in Firebase (Auth → Sign-in method → Google).';
         default:
