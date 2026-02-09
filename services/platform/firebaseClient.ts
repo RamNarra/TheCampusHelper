@@ -4,6 +4,14 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 
 export const env = (import.meta as any).env || {};
 
+const isNonEmptyString = (v: unknown): v is string => {
+  if (typeof v !== 'string') return false;
+  const s = v.trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  return lower !== 'undefined' && lower !== 'null';
+};
+
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY,
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -14,7 +22,25 @@ const firebaseConfig = {
   measurementId: env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-export const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined';
+const REQUIRED_KEYS: Array<keyof typeof firebaseConfig> = ['apiKey', 'authDomain', 'projectId', 'appId'];
+
+export const getFirebaseConfigDiagnostics = () => {
+  const missing = REQUIRED_KEYS.filter((k) => !isNonEmptyString(firebaseConfig[k]));
+  const ok = missing.length === 0;
+  return {
+    ok,
+    missing,
+    // Expose a minimal non-sensitive snapshot for debugging.
+    values: {
+      authDomain: String(firebaseConfig.authDomain || '').trim(),
+      projectId: String(firebaseConfig.projectId || '').trim(),
+      appIdPresent: isNonEmptyString(firebaseConfig.appId),
+      apiKeyPresent: isNonEmptyString(firebaseConfig.apiKey),
+    },
+  };
+};
+
+export const isConfigured = getFirebaseConfigDiagnostics().ok;
 
 let app: ReturnType<typeof initializeApp> | undefined;
 let auth: Auth | undefined;
@@ -30,6 +56,15 @@ if (isConfigured) {
     googleProvider.setCustomParameters({ prompt: 'select_account' });
   } catch (e) {
     console.error('Firebase Init Failed:', e);
+  }
+} else {
+  try {
+    const d = getFirebaseConfigDiagnostics();
+    if (!d.ok) {
+      console.warn('Firebase not configured. Missing:', d.missing.join(', '));
+    }
+  } catch {
+    // Ignore diagnostics errors.
   }
 }
 

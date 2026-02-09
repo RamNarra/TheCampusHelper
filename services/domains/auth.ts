@@ -53,14 +53,6 @@ export const signIn = async (): Promise<void> => {
     }
   }
 
-  // Deployed environments can be flaky with popup-based OAuth due to browser policies
-  // and cross-origin isolation headers. Redirect is the most reliable path.
-  const isProd = Boolean((import.meta as any)?.env?.PROD);
-  if (isProd) {
-    await signInWithRedirect(auth, provider);
-    return;
-  }
-
   try {
     await signInWithPopup(auth, provider);
   } catch (err) {
