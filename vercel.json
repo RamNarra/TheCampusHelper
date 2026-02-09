@@ -37,6 +37,10 @@
     { "source": "/api/studyGroups/updateSession", "destination": "/api/studyGroups?action=updateSession" },
     { "source": "/api/studyGroups/deleteSession", "destination": "/api/studyGroups?action=deleteSession" },
 
+    { "source": "/api/resources/submit", "destination": "/api/resources?action=submit" },
+    { "source": "/api/resources/setStatus", "destination": "/api/resources?action=setStatus" },
+    { "source": "/api/resources/delete", "destination": "/api/resources?action=delete" },
+
     
 
     { "source": "/api/generate", "destination": "/api/insights?action=generate" },
