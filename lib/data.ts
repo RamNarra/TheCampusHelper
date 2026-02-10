@@ -284,6 +284,13 @@ const sem8Base = [
 ];
 
 export const getSubjects = (branch: string, semester: string): string[] => {
+  // Latest constraint: curriculum is available for CSE only up to Sem 4.
+  // Other branches intentionally show no subjects until their syllabi are added.
+  const semNum = Number.parseInt(String(semester || '').trim(), 10);
+  if (Number.isFinite(semNum) && semNum >= 1 && semNum <= 4 && branch !== 'CSE') {
+    return [];
+  }
+
   if (semester === '1') {
     switch (branch) {
       case 'CSE':
@@ -331,8 +338,8 @@ export const getSubjects = (branch: string, semester: string): string[] => {
     }
   }
 
-  // Keep existing R25 higher-semester lists for computing branches.
-  if (branch === 'CSE' || branch === 'IT' || branch === 'DS' || branch === 'AIML' || branch === 'CYS') {
+  // Higher-semester lists are currently defined for CSE only.
+  if (branch === 'CSE') {
     switch (semester) {
       case '3': return sem3Base;
       case '4': return sem4Base;
