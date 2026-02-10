@@ -7,6 +7,14 @@ import { awardXP, XP_REWARDS } from '../services/gamification';
 import { Alert } from './ui/Alert';
 import { Button } from './ui/Button';
 import { Spinner } from './ui/Spinner';
+import {
+  inferBranchFromCollegeEmail,
+  inferRollNumberFromCollegeEmail,
+  isValidCollegeEmailForBranch,
+  isValidCollegeEmailSyntax,
+  normalizeCollegeEmail,
+  expectedDomainForBranch,
+} from '../lib/collegeEmail';
 
 interface CompleteProfileModalProps {
   isOpen: boolean;
@@ -57,34 +65,8 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
 
   const normalizeSection = (value: string): string => value.trim().toUpperCase();
 
-  const inferBranchFromCollegeEmail = (value: string): BranchKey | null => {
-    const v = (value || '').trim().toLowerCase();
-    const m = v.match(/@([a-z0-9-]+)\.sreenidh(i)?\.edu\.in$/);
-    if (!m) return null;
-    const dept = m[1];
-
-    if (dept === 'cse') return 'CSE';
-    if (dept === 'it') return 'IT';
-    if (dept === 'ds' || dept === 'datascience') return 'DS';
-    if (dept === 'aiml') return 'AIML';
-    if (dept === 'cys' || dept === 'cybersecurity') return 'CYS';
-    if (dept === 'ece') return 'ECE';
-    if (dept === 'eee') return 'EEE';
-    if (dept === 'mech') return 'MECH';
-    if (dept === 'civil' || dept === 'ce') return 'CIVIL';
-    return null;
-  };
-
-  const inferRollNumberFromCollegeEmail = (value: string): string | null => {
-    const v = (value || '').trim();
-    const at = v.indexOf('@');
-    if (at <= 0) return null;
-    const local = v.slice(0, at).trim();
-    if (!local) return null;
-    // Roll numbers are typically alphanumeric and case-insensitive.
-    const cleaned = local.replace(/\s+/g, '');
-    if (!/^[a-zA-Z0-9]+$/.test(cleaned)) return null;
-    return cleaned.toUpperCase();
+  const formatExpectedEmailHint = (branch: BranchKey) => {
+    return `<rollno>@${expectedDomainForBranch(branch)}`;
   };
 
   const inferBatchFromRollNumber = (rollNumber: string | null): string | null => {
@@ -98,10 +80,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
   };
 
   const isValidCollegeEmail = (value: string): boolean => {
-    const v = value.trim().toLowerCase();
-    // Accept SNIST-style alphanumeric IDs (e.g. 25311A05MV@cse.sreenidhi.edu.in)
-    // while enforcing the official domain.
-    return /^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\.sreenidh(i)?\.edu\.in$/.test(v);
+    return isValidCollegeEmailSyntax(value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,7 +88,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     setError('');
 
     const dob = formData.dateOfBirth.trim();
-    const collegeEmail = formData.collegeEmail.trim();
+    const collegeEmail = normalizeCollegeEmail(formData.collegeEmail);
     const section = normalizeSection(formData.section);
 
     if (!formData.displayName.trim() || !dob || !collegeEmail || !formData.branch || !section) {
@@ -123,13 +102,18 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     }
 
     if (!isValidCollegeEmail(collegeEmail)) {
-      setError('Please enter a valid college email (must end with @<branch>.sreenidhi.edu.in).');
+      setError('Please enter your college email in the format <rollno>@<branch-domain> (rollno must be 6–16 alphanumeric).');
       return;
     }
 
     const inferredBranch = inferBranchFromCollegeEmail(collegeEmail);
     if (!inferredBranch) {
-      setError('College email must include your branch subdomain (e.g. 25311A05MV@cse.sreenidhi.edu.in).');
+      setError('College email domain is not recognized. Please use your branch email domain (e.g. 25311A05MV@cse.sreenidhi.edu.in).');
+      return;
+    }
+
+    if (!isValidCollegeEmailForBranch(inferredBranch, collegeEmail)) {
+      setError(`College email must match ${formatExpectedEmailHint(inferredBranch)}.`);
       return;
     }
 
@@ -147,7 +131,7 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
       await updateProfile({
         displayName: formData.displayName.trim(),
         dateOfBirth: dob,
-        collegeEmail: collegeEmail,
+        collegeEmail,
         branch: inferredBranch,
         rollNumber: rollNumber || undefined,
         batch: batch || undefined,

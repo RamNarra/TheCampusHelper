@@ -21,26 +21,24 @@ export interface EventItem {
 // All sections within a branch share the same subjects.
 
 const sem1CSE_IT_DS = [
-  'Advanced Engineering Physics',
   'Matrices and Calculus',
+  'Advanced Engineering Physics',
   'Programming for Problem Solving',
   'English for Skill Enhancement',
   'Environmental Science',
-  'Electric Devices and Circuits',
+  'Electronic Devices and Circuits',
   'Advanced Engineering Physics Lab',
   'Programming for Problem Solving Lab',
-  'Language Proficiency Evaluation',
   'English Language and Communication Skills Lab',
   'Engineering Workshop',
 ];
 
 const sem1AIML = [
-  'Engineering Chemistry',
   'Matrices and Calculus',
+  'Engineering Chemistry',
   'Programming for Problem Solving',
   'English for Skill Enhancement',
-  'Elements of Electrical Engineering',
-  'Language Proficiency Evaluation',
+  'Basic Electrical Engineering',
   'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
   'Python Programming Lab',
@@ -49,12 +47,11 @@ const sem1AIML = [
 ];
 
 const sem1CYS = [
-  'Engineering Chemistry',
   'Matrices and Calculus',
+  'Engineering Chemistry',
   'Programming for Problem Solving',
   'English for Skill Enhancement',
   'Basic Electrical Engineering',
-  'Language Proficiency Evaluation',
   'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
   'Python Programming Lab',
@@ -63,95 +60,137 @@ const sem1CYS = [
 ];
 
 const sem1Civil = [
-  'Engineering Chemistry',
   'Matrices and Calculus',
-  'Programming for Problem Solving',
-  'English for Skill Enhancement',
-  'Computer Aided Engineering Grapics',
-  'Language Proficiency Evaluation',
-  'Engineering Chemistry Lab',
-  'Programming for Problem Solving Lab',
-];
-
-const sem1EEE = [
   'Engineering Chemistry',
-  'Matrices and Calculus',
   'Programming for Problem Solving',
   'English for Skill Enhancement',
   'Electrical Circuits-I',
-  'Engineering Drawing and Computer Aided Drafting',
-  'Language Proficiency Evaluation',
   'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
+  'Engineering Graphics Lab',
 ];
 
-const sem1Mech = [
-  'Engineering Chemistry',
+const sem1EEE = [
   'Matrices and Calculus',
+  'Engineering Chemistry',
   'Programming for Problem Solving',
   'English for Skill Enhancement',
   'Elements of Electrical and Electronics Engineering',
-  'Basic Electrical and Electronics Engineering',
-  'Engineering Grapics Computer Aided Drafting',
-  'Language Proficiency Evaluation',
   'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
+  'Basic Electrical Engineering Lab',
+  'Engineering Graphics Lab',
 ];
 
-const sem1ECE = [
-  'Engineering Chemistry',
+const sem1Mech = [
   'Matrices and Calculus',
+  'Engineering Chemistry',
   'Programming for Problem Solving',
   'Introduction to Electrical Engineering',
   'Python Programming',
-  'Computer Aided Engineering Grapics',
-  'Language Proficiency Evaluation',
   'Engineering Chemistry Lab',
   'Programming for Problem Solving Lab',
   'Applied Python Programming Lab',
+  'Engineering Graphics Lab',
+];
+
+const sem1ECE = [
+  'Matrices and Calculus',
+  'Engineering Chemistry',
+  'Programming for Problem Solving',
+  'Introduction to Electrical Engineering',
+  'Python Programming',
+  'Engineering Chemistry Lab',
+  'Programming for Problem Solving Lab',
+  'Applied Python Programming Lab',
+  'Engineering Graphics Lab',
+];
+
+// --- Sem 2 (Cycle Swap) ---
+
+const sem2CSE_IT = [
+  'Ordinary Differential Equations and Vector Calculus',
+  'Engineering Chemistry',
+  'Data Structures',
+  'Basic Electrical Engineering',
+  'Engineering Drawing and Computer Aided Drafting',
+  'Engineering Chemistry Lab',
+  'Data Structures Lab',
+  'Basic Electrical Engineering Lab',
+  'Python Programming Lab',
+  'IT Workshop',
+];
+
+const sem2DS = [
+  'Ordinary Differential Equations and Vector Calculus',
+  'Engineering Chemistry',
+  'Data Structures',
+  'Elements of Electrical Engineering',
+  'Engineering Drawing and Computer Aided Drafting',
+  'Engineering Chemistry Lab',
+  'Data Structures Lab',
+  'Basic Electrical Engineering Lab',
+  'Python Programming Lab',
+  'IT Workshop',
+  'Universal Human Values',
+];
+
+const sem2AIML = [
+  'Advanced Engineering Physics',
+  'Ordinary Differential Equations and Vector Calculus',
+  'Data Structures',
+  'Electronic Devices and Circuits',
+  'Engineering Drawing and Computer Aided Drafting',
+  'Environmental Science',
+  'Advanced Engineering Physics Lab',
+  'Data Structures Lab',
+  'English Language and Communication Skills Lab',
+  'Engineering Workshop',
+];
+
+const sem2CYS = [
+  ...sem2AIML,
+  'Universal Human Values',
 ];
 
 const sem2Civil = [
   'Advanced Engineering Physics',
   'Ordinary Differential Equations and Vector Calculus',
+  'Engineering Mechanics',
   'Elements of Electrical and Electronics Engineering',
-  'Engineering Mechanics for Civil',
   'Python Programming',
   'Quantitative Aptitude and Logical Reasoning',
-  'Language Proficiency Evaluation',
-  'English Language and Communication Skills Lab',
   'Advanced Engineering Physics Lab',
   'Python Programming Lab',
   'Elements of Electrical and Electronics Engineering Lab',
+  'English Language and Communication Skills Lab',
 ];
 
 const sem2EEE = [
   'Advanced Engineering Physics',
   'Ordinary Differential Equations and Vector Calculus',
-  'Environmental Science',
-  'Electrical Circuits-II',
   'Data Structures',
+  'Electrical Circuits-II',
   'Principles of Python Programming',
-  'Language Proficiency Evaluation',
-  'English Language and Communication Skills Lab',
+  'Environmental Science',
   'Advanced Engineering Physics Lab',
   'Data Structures Lab',
   'Python Programming Lab',
   'Electrical Circuits Lab',
+  'English Language and Communication Skills Lab',
   'Engineering Workshop',
 ];
 
 const sem2Mech = [
   'Advanced Engineering Physics',
   'Ordinary Differential Equations and Vector Calculus',
-  'Engineering Mechanics',
   'Data Structures',
+  'Engineering Mechanics',
   'Python Programming',
-  'Language Proficiency Evaluation',
-  'English Language and Communication Skills Lab',
   'Advanced Engineering Physics Lab',
   'Data Structures Lab',
   'Engineering Workshop',
+  'English Language and Communication Skills Lab',
   'Universal Human Values',
 ];
 
@@ -159,13 +198,12 @@ const sem2ECE = [
   'Advanced Engineering Physics',
   'Ordinary Differential Equations and Vector Calculus',
   'Data Structures',
-  'English for Skill Enhancement',
   'Network Analysis and Synthesis',
-  'Language Proficiency Evaluation',
-  'English Language and Communication Skills Lab',
+  'English for Skill Enhancement',
   'Advanced Engineering Physics Lab',
   'Data Structures Lab',
-  'Electrical Engineering Lab',
+  'Basic Electrical Engineering Lab',
+  'English Language and Communication Skills Lab',
   'Engineering Workshop',
   'Universal Human Values',
 ];
@@ -270,12 +308,27 @@ export const getSubjects = (branch: string, semester: string): string[] => {
   }
 
   if (semester === '2') {
-    // Only known Sem 2 lists (from CSV) for these branches.
-    if (branch === 'CIVIL') return sem2Civil;
-    if (branch === 'EEE') return sem2EEE;
-    if (branch === 'MECH') return sem2Mech;
-    if (branch === 'ECE') return sem2ECE;
-    return [];
+    switch (branch) {
+      case 'CSE':
+      case 'IT':
+        return sem2CSE_IT;
+      case 'DS':
+        return sem2DS;
+      case 'AIML':
+        return sem2AIML;
+      case 'CYS':
+        return sem2CYS;
+      case 'ECE':
+        return sem2ECE;
+      case 'EEE':
+        return sem2EEE;
+      case 'MECH':
+        return sem2Mech;
+      case 'CIVIL':
+        return sem2Civil;
+      default:
+        return [];
+    }
   }
 
   // Keep existing R25 higher-semester lists for computing branches.
@@ -301,7 +354,7 @@ export const resources: Resource[] = [
     id: 'res-ep-u2-ppt',
     title: 'Unit 2: Fiber Optics',
     subject: 'Advanced Engineering Physics',
-    branch: 'CSE', 
+    branch: 'CYS', 
     semester: '2',
     unit: '2',
     type: 'PPT',

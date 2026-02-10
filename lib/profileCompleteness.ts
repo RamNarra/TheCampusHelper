@@ -1,4 +1,9 @@
 import type { UserProfile } from '../types';
+import {
+  isValidCollegeEmailForBranch,
+  isValidCollegeEmailSyntax,
+  normalizeCollegeEmail,
+} from './collegeEmail';
 
 export type ProfileFieldKey =
   | 'displayName'
@@ -13,11 +18,6 @@ const isNonEmptyString = (v: unknown, maxLen = 200): v is string => {
   return s.length > 0 && s.length <= maxLen;
 };
 
-const isValidCollegeEmail = (value: string): boolean => {
-  const v = value.trim().toLowerCase();
-  return /^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\.sreenidh(i)?\.edu\.in$/.test(v);
-};
-
 // Canonical completeness check used across client + server.
 // Keep this conservative: if in doubt, treat as incomplete.
 export const missingProfileFields = (profile: Partial<UserProfile> | null | undefined): ProfileFieldKey[] => {
@@ -26,8 +26,13 @@ export const missingProfileFields = (profile: Partial<UserProfile> | null | unde
 
   if (!isNonEmptyString(p.displayName, 80)) missing.push('displayName');
 
-  const collegeEmail = typeof p.collegeEmail === 'string' ? p.collegeEmail.trim() : '';
-  if (!collegeEmail || collegeEmail.length > 120 || !isValidCollegeEmail(collegeEmail)) {
+  const collegeEmailRaw = typeof p.collegeEmail === 'string' ? p.collegeEmail : '';
+  const collegeEmail = normalizeCollegeEmail(collegeEmailRaw);
+  if (!collegeEmail || collegeEmail.length > 120 || !isValidCollegeEmailSyntax(collegeEmail)) {
+    missing.push('collegeEmail');
+  } else if (typeof p.branch !== 'string' || !isValidCollegeEmailForBranch(p.branch, collegeEmail)) {
+    // If branch is missing, that will be surfaced by the 'branch' field too.
+    // But we still treat collegeEmail as invalid if it doesn't match the expected branch domain.
     missing.push('collegeEmail');
   }
 

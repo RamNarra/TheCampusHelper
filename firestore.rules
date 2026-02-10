@@ -156,6 +156,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isCollegeEmailMatchesBranch() {
+      let b = myUserDoc().branch;
+      let e = myUserDoc().collegeEmail;
+      return (b == 'CSE' && e.matches('^[A-Za-z0-9]{6,16}@cse\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'IT' && e.matches('^[A-Za-z0-9]{6,16}@it\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'DS' && e.matches('^[A-Za-z0-9]{6,16}@ds\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'AIML' && e.matches('^[A-Za-z0-9]{6,16}@aiml\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'CYS' && e.matches('^[A-Za-z0-9]{6,16}@cs\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'ECE' && e.matches('^[A-Za-z0-9]{6,16}@ece\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'EEE' && e.matches('^[A-Za-z0-9]{6,16}@eee\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'MECH' && e.matches('^[A-Za-z0-9]{6,16}@me\\.sreenidhi\\.edu\\.in$'))
+        || (b == 'CIVIL' && e.matches('^[A-Za-z0-9]{6,16}@ce\\.sreenidhi\\.edu\\.in$'));
+    }
+
     function isProfileComplete() {
       // Keep conservative: if missing/invalid, treat as incomplete.
       return isAuthenticated()
@@ -168,7 +182,6 @@ service cloud.firestore {
         && (myUserDoc().collegeEmail is string)
         && (myUserDoc().collegeEmail.size() > 3)
         && (myUserDoc().collegeEmail.size() <= 120)
-        && myUserDoc().collegeEmail.matches('^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\\.sreenidh(i)?\\.edu\\.in$')
         && ('dateOfBirth' in myUserDoc())
         && (myUserDoc().dateOfBirth is string)
         && (myUserDoc().dateOfBirth.size() > 0)
@@ -177,6 +190,7 @@ service cloud.firestore {
         && (myUserDoc().branch is string)
         && (myUserDoc().branch.size() > 0)
         && (myUserDoc().branch.size() <= 20)
+        && isCollegeEmailMatchesBranch()
         && ('section' in myUserDoc())
         && (myUserDoc().section is string)
         && (myUserDoc().section.size() > 0)
