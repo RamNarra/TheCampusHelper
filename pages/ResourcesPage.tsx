@@ -3,7 +3,7 @@ import { resources as staticResources, getSubjects } from '../lib/data';
 import { BranchKey, Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { isProfileComplete } from '../lib/profileCompleteness';
-import { api } from '../services/firebase';
+import { api, extractDriveId } from '../services/firebase';
 import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { 
@@ -243,11 +243,22 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
+  const getDrivePreviewId = (res: Resource): string | null => {
+    if (res.driveFileId) return res.driveFileId;
+    const fromUrl = extractDriveId(res.downloadUrl || '');
+    return fromUrl || null;
+  };
+
   const getDownloadUrl = (res: Resource): string => {
+    const driveId = getDrivePreviewId(res);
+    if (driveId) return `https://drive.google.com/u/0/uc?id=${driveId}&export=download`;
     return safeExternalHttpUrl(res.downloadUrl) ?? 'about:blank';
   };
 
   const inferPreviewKind = (res: Resource): 'pdf' | 'pptx' | 'other' => {
+    // Drive resources are rendered via Drive's iframe preview (more reliable than cross-origin fetch).
+    if (getDrivePreviewId(res)) return 'other';
+
     const mime = (res.mimeType || '').toLowerCase();
     if (mime === 'application/pdf') return 'pdf';
     if (mime.includes('presentation') || mime.includes('powerpoint')) return 'pptx';
@@ -266,6 +277,12 @@ const ResourcesPage: React.FC = () => {
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   };
 
+  const getDriveIframeSrc = (res: Resource): string | null => {
+    const driveId = getDrivePreviewId(res);
+    if (!driveId) return null;
+    return `https://drive.google.com/file/d/${driveId}/preview`;
+  };
+
   // --- UPLOAD LOGIC ---
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,21 +296,9 @@ const ResourcesPage: React.FC = () => {
         if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
         if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
         if (!uploadName.trim()) throw new Error("Resource name is required.");
-        if (!uploadLink.trim() && !uploadFile) throw new Error("Please paste a link or upload a file.");
+        // Free path (no Cloudinary): accept Drive link or any http(s) URL.
+        if (!uploadLink.trim()) throw new Error("Please paste a Drive link or a direct URL.");
 
-        const maxBytes = 20 * 1024 * 1024; // 20MB
-        if (uploadFile && uploadFile.size > maxBytes) {
-          throw new Error('File is too large (max 20MB).');
-        }
-
-        const isPdf = (f: File) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
-        const isPptx = (f: File) =>
-          f.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
-          f.name.toLowerCase().endsWith('.pptx');
-
-        if (uploadFile && !(isPdf(uploadFile) || isPptx(uploadFile))) {
-          throw new Error('Only PDF and PPTX files are allowed for now.');
-        }
 
         // 2. Validate Category
         const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
@@ -309,23 +314,11 @@ const ResourcesPage: React.FC = () => {
           : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         let finalUrl = uploadLink.trim();
-        let mimeType: string | undefined;
-        let originalFileName: string | undefined;
-        let fileSizeBytes: number | undefined;
-        let storagePath: string | undefined;
+        const safe = safeExternalHttpUrl(finalUrl);
+        if (!safe) throw new Error('Please provide a valid http(s) URL.');
+        finalUrl = safe;
 
-        if (uploadFile) {
-          const uploaded = await api.uploadResourceFile({ uid: user.uid, resourceId, file: uploadFile });
-          finalUrl = uploaded.downloadUrl;
-          storagePath = uploaded.storagePath;
-          mimeType = uploadFile.type || undefined;
-          originalFileName = uploadFile.name || undefined;
-          fileSizeBytes = uploadFile.size || undefined;
-        } else {
-          const safe = safeExternalHttpUrl(finalUrl);
-          if (!safe) throw new Error('Please provide a valid http(s) URL.');
-          finalUrl = safe;
-        }
+        const driveId = extractDriveId(finalUrl);
 
         const newResource: Omit<Resource, 'id'> = {
           title: uploadName.trim(),
@@ -335,10 +328,7 @@ const ResourcesPage: React.FC = () => {
             unit: selectedFolder,
             type: finalType,
             downloadUrl: finalUrl,
-            mimeType,
-            originalFileName,
-            fileSizeBytes,
-            storagePath,
+            driveFileId: driveId || undefined,
           ownerId: user.uid,
           // Client submits as pending; staff approves via moderation tools.
           status: 'pending'
@@ -593,7 +583,7 @@ const ResourcesPage: React.FC = () => {
                               />
                               <input 
                                   type="url" 
-                                  placeholder="PDF/PPTX URL (https://...)" 
+                                  placeholder="Drive Link or URL (https://...)" 
                                   value={uploadLink}
                                   onChange={e => {
                                     setUploadLink(e.target.value);
@@ -602,40 +592,8 @@ const ResourcesPage: React.FC = () => {
                                   className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
                               />
 
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                <div className="h-px flex-1 bg-border" />
-                                <span>OR</span>
-                                <div className="h-px flex-1 bg-border" />
-                              </div>
-
-                              <input
-                                type="file"
-                                accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                                aria-label="Upload file"
-                                title="Upload file"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0] || null;
-                                  if (f) {
-                                    const maxBytes = 20 * 1024 * 1024;
-                                    if (f.size > maxBytes) {
-                                      setUploadError('File is too large (max 20MB).');
-                                      e.target.value = '';
-                                      setUploadFile(null);
-                                      return;
-                                    }
-                                  }
-                                  setUploadFile(f);
-                                  if (f && !uploadName.trim()) {
-                                    const base = f.name.replace(/\.[^/.]+$/, '');
-                                    const pretty = base.replace(/[_-]+/g, ' ').trim();
-                                    if (pretty) setUploadName(pretty);
-                                  }
-                                  if (f) setUploadLink('');
-                                }}
-                                className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
-                              />
-                              <div className="text-xs text-muted-foreground -mt-2">
-                                Accepted: PDF, PPTX{uploadFile ? ` · Selected: ${uploadFile.name}` : ''}
+                              <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                                Tip: For the best free preview experience, use a Google Drive file link.
                               </div>
                               
                               <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
@@ -724,6 +682,18 @@ const ResourcesPage: React.FC = () => {
                 </div>
                 <div className="flex-1 bg-background overflow-hidden">
                   {(() => {
+                    const driveIframe = getDriveIframeSrc(selectedResource);
+                    if (driveIframe) {
+                      return (
+                        <iframe
+                          src={driveIframe}
+                          className="w-full h-full border-0"
+                          allow="autoplay; fullscreen"
+                          title="Drive Preview"
+                        />
+                      );
+                    }
+
                     const kind = inferPreviewKind(selectedResource);
                     const url = safeExternalHttpUrl(selectedResource.downloadUrl);
                     if (!url) {
