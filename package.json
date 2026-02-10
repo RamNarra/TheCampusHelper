@@ -9,6 +9,7 @@
     "dev:secure": "vercel dev --yes",
     "dev:frontend": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/postbuild-git.mjs",
     "generate:icons": "node scripts/generate-icons.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
