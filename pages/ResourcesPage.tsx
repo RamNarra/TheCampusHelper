@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { BranchKey, Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -17,11 +17,6 @@ import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
 
@@ -44,18 +39,10 @@ const ResourcesPage: React.FC = () => {
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-
-  // Preview State
-  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
-  const [pdfPage, setPdfPage] = useState<number>(1);
-  const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
-  const pdfContainerRef = useRef<HTMLDivElement | null>(null);
-  const [pdfWidth, setPdfWidth] = useState<number>(0);
   
   // Upload State
   const [uploadName, setUploadName] = useState('');
   const [uploadLink, setUploadLink] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -169,26 +156,6 @@ const ResourcesPage: React.FC = () => {
     };
   }, [user?.uid, isStaff]);
 
-  useEffect(() => {
-    const el = pdfContainerRef.current;
-    if (!el) return;
-
-    const compute = () => {
-      const rect = el.getBoundingClientRect();
-      // Keep some padding for scrollbars and mobile safe area.
-      setPdfWidth(Math.max(0, Math.floor(rect.width)));
-    };
-
-    compute();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => compute()) : null;
-    ro?.observe(el);
-    window.addEventListener('resize', compute);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener('resize', compute);
-    };
-  }, [selectedResource]);
-
   const trackInteraction = async (
     resourceId: string, 
     type: 'view' | 'download',
@@ -224,9 +191,6 @@ const ResourcesPage: React.FC = () => {
   const openResource = async (res: Resource) => {
     // Always use the in-app preview overlay.
     setSelectedResource(res);
-    setPdfNumPages(0);
-    setPdfPage(1);
-    setPdfLoadError(null);
     
     // Award XP for viewing resource
     if (user) {
@@ -255,32 +219,29 @@ const ResourcesPage: React.FC = () => {
     return safeExternalHttpUrl(res.downloadUrl) ?? 'about:blank';
   };
 
-  const inferPreviewKind = (res: Resource): 'pdf' | 'pptx' | 'other' => {
-    // Drive resources are rendered via Drive's iframe preview (more reliable than cross-origin fetch).
-    if (getDrivePreviewId(res)) return 'other';
+  const getPreviewIframeSrc = (res: Resource): string | null => {
+    const driveId = getDrivePreviewId(res);
+    if (driveId) return `https://drive.google.com/file/d/${driveId}/preview`;
 
-    const mime = (res.mimeType || '').toLowerCase();
-    if (mime === 'application/pdf') return 'pdf';
-    if (mime.includes('presentation') || mime.includes('powerpoint')) return 'pptx';
-
-    const url = (safeExternalHttpUrl(res.downloadUrl) || '').toLowerCase();
-    if (url.endsWith('.pdf') || url.includes('.pdf?') || url.includes('.pdf#')) return 'pdf';
-    if (url.endsWith('.pptx') || url.includes('.pptx?') || url.includes('.pptx#')) return 'pptx';
-    if (url.endsWith('.ppt') || url.includes('.ppt?') || url.includes('.ppt#')) return 'pptx';
-    return 'other';
-  };
-
-  const getPptxEmbedUrl = (res: Resource): string | null => {
     const url = safeExternalHttpUrl(res.downloadUrl);
     if (!url) return null;
-    // Office viewer can render PPT/PPTX if the URL is publicly accessible.
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
-  };
 
-  const getDriveIframeSrc = (res: Resource): string | null => {
-    const driveId = getDrivePreviewId(res);
-    if (!driveId) return null;
-    return `https://drive.google.com/file/d/${driveId}/preview`;
+    const lower = url.toLowerCase();
+    const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.pdf#');
+    const isPptx = lower.endsWith('.pptx') || lower.includes('.pptx?') || lower.includes('.pptx#');
+
+    if (isPptx) {
+      // Office viewer can render PPTX if the URL is publicly accessible.
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+    }
+
+    if (isPdf) {
+      // Most PDF URLs can be embedded directly.
+      return url;
+    }
+
+    // Best-effort fallback for other docs.
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
   };
 
   // --- UPLOAD LOGIC ---
@@ -296,7 +257,7 @@ const ResourcesPage: React.FC = () => {
         if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
         if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
         if (!uploadName.trim()) throw new Error("Resource name is required.");
-        // Free path (no Cloudinary): accept Drive link or any http(s) URL.
+        // Free path: accept Drive link or any http(s) URL.
         if (!uploadLink.trim()) throw new Error("Please paste a Drive link or a direct URL.");
 
 
@@ -354,7 +315,6 @@ const ResourcesPage: React.FC = () => {
         // 6. Success State
         setUploadName('');
         setUploadLink('');
-        setUploadFile(null);
 
     } catch (err: any) {
         console.error("Upload error:", err);
@@ -587,7 +547,6 @@ const ResourcesPage: React.FC = () => {
                                   value={uploadLink}
                                   onChange={e => {
                                     setUploadLink(e.target.value);
-                                    if (e.target.value) setUploadFile(null);
                                   }}
                                   className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
                               />
@@ -682,131 +641,14 @@ const ResourcesPage: React.FC = () => {
                 </div>
                 <div className="flex-1 bg-background overflow-hidden">
                   {(() => {
-                    const driveIframe = getDriveIframeSrc(selectedResource);
-                    if (driveIframe) {
-                      return (
-                        <iframe
-                          src={driveIframe}
-                          className="w-full h-full border-0"
-                          allow="autoplay; fullscreen"
-                          title="Drive Preview"
-                        />
-                      );
-                    }
-
-                    const kind = inferPreviewKind(selectedResource);
-                    const url = safeExternalHttpUrl(selectedResource.downloadUrl);
-                    if (!url) {
+                    const src = getPreviewIframeSrc(selectedResource);
+                    if (!src) {
                       return (
                         <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
                           <div className="max-w-lg">
                             <div className="font-semibold">Preview unavailable</div>
                             <div className="text-sm text-muted-foreground mt-2">
-                              This resource doesn’t have a valid preview link. Use Download to open it.
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    if (kind === 'pptx') {
-                      const embed = getPptxEmbedUrl(selectedResource);
-                      if (!embed) {
-                        return (
-                          <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
-                            <div className="max-w-lg">
-                              <div className="font-semibold">Preview unavailable</div>
-                              <div className="text-sm text-muted-foreground mt-2">
-                                This PPTX can’t be embedded. Use Download to open it.
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <iframe
-                          src={embed}
-                          className="w-full h-full border-0"
-                          allow="autoplay; fullscreen"
-                          title="PPTX Preview"
-                        />
-                      );
-                    }
-
-                    if (kind === 'pdf') {
-                      return (
-                        <div ref={pdfContainerRef} className="w-full h-full overflow-auto">
-                          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span className="font-medium text-foreground">PDF</span>
-                              {pdfNumPages > 0 ? (
-                                <span className="tabular-nums">Page {pdfPage} / {pdfNumPages}</span>
-                              ) : null}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                disabled={pdfPage <= 1}
-                                onClick={() => setPdfPage((p) => Math.max(1, p - 1))}
-                              >
-                                Prev
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                disabled={pdfNumPages <= 0 || pdfPage >= pdfNumPages}
-                                onClick={() => setPdfPage((p) => Math.min(pdfNumPages || p + 1, p + 1))}
-                              >
-                                Next
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="px-4 py-6 flex justify-center">
-                            <div className="w-full max-w-5xl">
-                              {pdfLoadError ? (
-                                <div className="rounded-xl border border-border bg-card p-6 text-center">
-                                  <div className="font-semibold">Preview failed</div>
-                                  <div className="text-sm text-muted-foreground mt-2">{pdfLoadError}</div>
-                                  <div className="mt-4">
-                                    <a
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                                    >
-                                      Open in new tab
-                                    </a>
-                                  </div>
-                                </div>
-                              ) : (
-                                <Document
-                                  file={{ url }}
-                                  loading={
-                                    <div className="flex justify-center py-10">
-                                      <Spinner size="lg" />
-                                    </div>
-                                  }
-                                  onLoadSuccess={(info) => {
-                                    setPdfNumPages(info.numPages);
-                                    setPdfPage(1);
-                                  }}
-                                  onLoadError={(err) => {
-                                    const msg = err instanceof Error ? err.message : 'Unable to load PDF preview.';
-                                    setPdfLoadError(msg);
-                                  }}
-                                >
-                                  <Page
-                                    pageNumber={pdfPage}
-                                    width={Math.min(pdfWidth ? pdfWidth - 32 : 900, 1100)}
-                                    renderTextLayer={false}
-                                    renderAnnotationLayer={false}
-                                  />
-                                </Document>
-                              )}
+                              This resource doesn’t have a preview link. Use Download to open it.
                             </div>
                           </div>
                         </div>
@@ -814,14 +656,12 @@ const ResourcesPage: React.FC = () => {
                     }
 
                     return (
-                      <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
-                        <div className="max-w-lg">
-                          <div className="font-semibold">Preview unavailable</div>
-                          <div className="text-sm text-muted-foreground mt-2">
-                            Only PDF and PPTX previews are supported. Use Download to open this resource.
-                          </div>
-                        </div>
-                      </div>
+                      <iframe
+                        src={src}
+                        className="w-full h-full border-0"
+                        allow="autoplay; fullscreen"
+                        title="Preview"
+                      />
                     );
                   })()}
                 </div>
