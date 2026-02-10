@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { applyCors, isOriginAllowed } from '../_lib/cors';
-import { assertBodySize, assertJson, requireUser } from '../_lib/authz';
+import { assertBodySize, assertJson, requireCompleteProfile, requireUser } from '../_lib/authz';
 import { hasCoursePermission, hasPermission, type PlatformRole } from '../../lib/rbac';
 import { ensureFirebaseAdminApp } from '../_lib/firebaseAdmin';
 import { getRequestContext, type VercelRequest, type VercelResponse } from '../_lib/request';
@@ -62,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertBodySize(req, MAX_BODY_SIZE);
 
     const caller = await requireUser(req);
+    await requireCompleteProfile(caller);
     const body = (req.body || {}) as UpsertEventBody;
 
     const eventId = (body.eventId || '').trim();

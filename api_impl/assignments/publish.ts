@@ -1,7 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { rateLimitExceeded } from '../../lib/rateLimit';
 import { applyCors, isOriginAllowed } from '../_lib/cors';
-import { assertBodySize, assertJson, requireUser } from '../_lib/authz';
+import { assertBodySize, assertJson, requireCompleteProfile, requireUser } from '../_lib/authz';
 import { ensureFirebaseAdminApp } from '../_lib/firebaseAdmin';
 import { getRequestContext, type VercelRequest, type VercelResponse } from '../_lib/request';
 import { writeAuditLog } from '../_lib/auditLog';
@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertBodySize(req, MAX_BODY_SIZE);
 
     const caller = await requireUser(req);
+    await requireCompleteProfile(caller);
     const body = (req.body || {}) as Body;
 
     const courseId = (body.courseId ?? '').trim();

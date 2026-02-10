@@ -3,7 +3,7 @@ import { rateLimitExceeded } from '../../lib/rateLimit';
 import { isAtLeastRole } from '../../lib/rbac';
 import { applyCors, isOriginAllowed } from '../_lib/cors';
 import { writeAuditLog } from '../_lib/auditLog';
-import { assertBodySize, assertJson, requireUser } from '../_lib/authz';
+import { assertBodySize, assertJson, requireCompleteProfile, requireUser } from '../_lib/authz';
 import { ensureFirebaseAdminApp } from '../_lib/firebaseAdmin';
 import { getRequestContext, type VercelRequest, type VercelResponse } from '../_lib/request';
 
@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertBodySize(req, MAX_BODY_SIZE);
 
     const caller = await requireUser(req);
+    await requireCompleteProfile(caller);
     if (!isAtLeastRole(caller.role, 'admin')) {
       return res.status(403).json({ error: 'Forbidden', requestId: ctx.requestId });
     }

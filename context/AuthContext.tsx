@@ -4,11 +4,14 @@ import { api, mapAuthToProfile } from '../services/firebase';
 import { initializeGamification, updateStreak, awardXP, XP_REWARDS } from '../services/gamification';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { env } from '../services/platform/firebaseClient';
+import { missingProfileFields, type ProfileFieldKey } from '../lib/profileCompleteness';
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;        // Layer 1: Is Firebase Auth initialized?
   profileLoaded: boolean;  // Layer 2: Is Firestore profile data fetched?
+  profileStatus: 'loading' | 'incomplete' | 'complete';
+  missingProfile: ProfileFieldKey[];
   authError: string | null;
   clearAuthError: () => void;
   signInWithGoogle: () => Promise<void>;
@@ -23,6 +26,8 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileStatus, setProfileStatus] = useState<'loading' | 'incomplete' | 'complete'>('loading');
+  const [missingProfile, setMissingProfile] = useState<ProfileFieldKey[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
   const gamificationInitializedRef = useRef(false);
   const attemptedAdminRecoveryRef = useRef(false);
@@ -191,9 +196,12 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
           photoURL: basicProfile.photoURL,
         });
         
-        // 2. Optimistic Update: Unblock the UI immediately
+        // 2. Unblock the UI immediately with auth basics. DB snapshot will be authoritative.
         setUser(prev => ({ ...prev, ...basicProfile }));
         setLoading(false);
+        setProfileLoaded(false);
+        setProfileStatus('loading');
+        setMissingProfile([]);
 
         // LAYER 2: Firestore Profile Listener
         // Subscribe to real-time updates for this user's profile
@@ -253,6 +261,15 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
             }
             // Mark profile as "Loaded" (success or empty)
             setProfileLoaded(true);
+
+            // Canonical completeness state is derived from the authoritative snapshot.
+            const merged = {
+              ...basicProfile,
+              ...(data ? normalizeProfileFromDb(data) : {}),
+            } as Partial<UserProfile>;
+            const missing = missingProfileFields(merged);
+            setMissingProfile(missing);
+            setProfileStatus(missing.length ? 'incomplete' : 'complete');
         });
       } else {
         // User Logged Out
@@ -260,6 +277,8 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         setLoading(false);
         setProfileLoaded(false);
         setAuthError(null);
+        setProfileStatus('loading');
+        setMissingProfile([]);
         gamificationInitializedRef.current = false;
         attemptedAdminRecoveryRef.current = false;
 
@@ -300,17 +319,10 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
-    
-    // Optimistic UI Update
-    setUser(prev => prev ? ({ ...prev, ...data }) : null);
 
-    try {
-        await api.updateProfile(user.uid, data);
-    } catch (error) {
-        console.error("Profile Update Failed:", error);
-        // We don't revert optimistic update to keep UI fluid, 
-        // but real-time listener would eventually correct it if offline.
-    }
+    // No optimistic bypass: we rely on the Firestore real-time snapshot to become the source of truth.
+    // This prevents partial/failed writes from unlocking protected features.
+    await api.updateProfile(user.uid, data);
   };
 
   const signInAsAdmin = async () => {
@@ -323,6 +335,8 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         user, 
         loading, 
         profileLoaded, 
+        profileStatus,
+        missingProfile,
         authError,
         clearAuthError,
         signInWithGoogle, 

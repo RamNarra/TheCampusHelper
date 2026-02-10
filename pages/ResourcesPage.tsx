@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
-import { BranchKey, Resource, ResourceType, RecommendationResult } from '../types';
+import { BranchKey, Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { api, extractDriveId } from '../services/firebase';
+import { isProfileComplete } from '../lib/profileCompleteness';
+import { api } from '../services/firebase';
 import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { 
-  Folder, FileText, Download, ChevronRight, Book, Presentation, HelpCircle, 
-  FileQuestion, Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Eye, 
-  Lock, Plus, TrendingUp
+  FileText, ChevronRight, Book, Presentation, HelpCircle,
+  Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AccessGate from '../components/AccessGate';
@@ -17,10 +17,11 @@ import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
-import { 
-  buildUserPreferences, 
-  getHybridRecommendations 
-} from '../lib/recommendationService';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
 
@@ -38,15 +39,18 @@ const ResourcesPage: React.FC = () => {
   const [dynamicResources, setDynamicResources] = useState<Resource[]>([]);
   const [isResourcesLoading, setIsResourcesLoading] = useState(true);
   
-  // Recommendation State
-  const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
-  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
-  
   // UI State
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+
+  // Preview State
+  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
+  const [pdfPage, setPdfPage] = useState<number>(1);
+  const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
+  const pdfContainerRef = useRef<HTMLDivElement | null>(null);
+  const [pdfWidth, setPdfWidth] = useState<number>(0);
   
   // Upload State
   const [uploadName, setUploadName] = useState('');
@@ -165,43 +169,25 @@ const ResourcesPage: React.FC = () => {
     };
   }, [user?.uid, isStaff]);
 
-  const loadRecommendations = useCallback(async () => {
-    if (!user?.uid) return;
-    
-    setIsLoadingRecommendations(true);
-    try {
-      const userInteractions = await api.getUserInteractions(user.uid);
-      
-      const allResources = [...dynamicResources, ...staticResources];
-      const userPrefs = buildUserPreferences(
-        userInteractions, 
-        user.studyPattern || 'mixed',
-        user.uid
-      );
-      
-      const recs = getHybridRecommendations(
-        user.uid,
-        userPrefs,
-        userInteractions,
-        [],
-        allResources,
-        6
-      );
-      
-      setRecommendations(recs);
-    } catch (error) {
-      console.error('Error loading recommendations:', error);
-    } finally {
-      setIsLoadingRecommendations(false);
-    }
-  }, [user, dynamicResources]);
-
-  // Load recommendations when user is logged in and not browsing a specific semester
   useEffect(() => {
-    if (user?.uid && !semester) {
-      loadRecommendations();
-    }
-  }, [user, semester, loadRecommendations]);
+    const el = pdfContainerRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const rect = el.getBoundingClientRect();
+      // Keep some padding for scrollbars and mobile safe area.
+      setPdfWidth(Math.max(0, Math.floor(rect.width)));
+    };
+
+    compute();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => compute()) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', compute);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', compute);
+    };
+  }, [selectedResource]);
 
   const trackInteraction = async (
     resourceId: string, 
@@ -238,6 +224,9 @@ const ResourcesPage: React.FC = () => {
   const openResource = async (res: Resource) => {
     // Always use the in-app preview overlay.
     setSelectedResource(res);
+    setPdfNumPages(0);
+    setPdfPage(1);
+    setPdfLoadError(null);
     
     // Award XP for viewing resource
     if (user) {
@@ -254,42 +243,27 @@ const ResourcesPage: React.FC = () => {
     }
   };
 
-  const getDrivePreviewId = (res: Resource): string | null => {
-    if (res.driveFileId) return res.driveFileId;
-    // Back-compat: some older resources may have a Drive link but no driveFileId field.
-    const fromUrl = extractDriveId(res.downloadUrl || '');
-    return fromUrl || null;
+  const getDownloadUrl = (res: Resource): string => {
+    return safeExternalHttpUrl(res.downloadUrl) ?? 'about:blank';
   };
 
-  const getPreviewIframeSrc = (res: Resource): string | null => {
-    const driveId = getDrivePreviewId(res);
-    if (driveId) return `https://drive.google.com/file/d/${driveId}/preview`;
+  const inferPreviewKind = (res: Resource): 'pdf' | 'pptx' | 'other' => {
+    const mime = (res.mimeType || '').toLowerCase();
+    if (mime === 'application/pdf') return 'pdf';
+    if (mime.includes('presentation') || mime.includes('powerpoint')) return 'pptx';
 
+    const url = (safeExternalHttpUrl(res.downloadUrl) || '').toLowerCase();
+    if (url.endsWith('.pdf') || url.includes('.pdf?') || url.includes('.pdf#')) return 'pdf';
+    if (url.endsWith('.pptx') || url.includes('.pptx?') || url.includes('.pptx#')) return 'pptx';
+    if (url.endsWith('.ppt') || url.includes('.ppt?') || url.includes('.ppt#')) return 'pptx';
+    return 'other';
+  };
+
+  const getPptxEmbedUrl = (res: Resource): string | null => {
     const url = safeExternalHttpUrl(res.downloadUrl);
     if (!url) return null;
-
-    const lower = url.toLowerCase();
-    const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.pdf#');
-    const isPptx = lower.endsWith('.pptx') || lower.includes('.pptx?') || lower.includes('.pptx#');
-
-    if (isPptx) {
-      // Office viewer can render PPTX if the URL is publicly accessible.
-      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
-    }
-
-    if (isPdf) {
-      // Most PDF URLs can be embedded directly. If the host blocks iframes, user can still Download/Open.
-      return url;
-    }
-
-    // Best-effort fallback for other docs.
-    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
-  };
-
-  const getDownloadUrl = (res: Resource): string => {
-    const driveId = getDrivePreviewId(res);
-    if (driveId) return `https://drive.google.com/u/0/uc?id=${driveId}&export=download`;
-    return safeExternalHttpUrl(res.downloadUrl) ?? 'about:blank';
+    // Office viewer can render PPT/PPTX if the URL is publicly accessible.
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
   };
 
   // --- UPLOAD LOGIC ---
@@ -302,6 +276,7 @@ const ResourcesPage: React.FC = () => {
     try {
         // 1. Validate Context
         if (!user?.uid) throw new Error('Please sign in to upload a resource.');
+        if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
         if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
         if (!uploadName.trim()) throw new Error("Resource name is required.");
         if (!uploadLink.trim() && !uploadFile) throw new Error("Please paste a link or upload a file.");
@@ -334,27 +309,36 @@ const ResourcesPage: React.FC = () => {
           : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         let finalUrl = uploadLink.trim();
-        let driveId: string | null = null;
+        let mimeType: string | undefined;
+        let originalFileName: string | undefined;
+        let fileSizeBytes: number | undefined;
+        let storagePath: string | undefined;
 
         if (uploadFile) {
           const uploaded = await api.uploadResourceFile({ uid: user.uid, resourceId, file: uploadFile });
           finalUrl = uploaded.downloadUrl;
+          storagePath = uploaded.storagePath;
+          mimeType = uploadFile.type || undefined;
+          originalFileName = uploadFile.name || undefined;
+          fileSizeBytes = uploadFile.size || undefined;
         } else {
           const safe = safeExternalHttpUrl(finalUrl);
           if (!safe) throw new Error('Please provide a valid http(s) URL.');
           finalUrl = safe;
-          driveId = extractDriveId(finalUrl);
         }
 
         const newResource: Omit<Resource, 'id'> = {
-            title: uploadName,
+          title: uploadName.trim(),
             subject: subject,
             branch: branch,
             semester: semester,
             unit: selectedFolder,
             type: finalType,
             downloadUrl: finalUrl,
-            driveFileId: driveId || undefined,
+            mimeType,
+            originalFileName,
+            fileSizeBytes,
+            storagePath,
           ownerId: user.uid,
           // Client submits as pending; staff approves via moderation tools.
           status: 'pending'
@@ -460,81 +444,14 @@ const ResourcesPage: React.FC = () => {
 
         <AnimatePresence mode="wait">
             {currentView === 'SEMESTERS' && (
-                <>
-                    {/* Recommendations Section */}
-                    {user && recommendations.length > 0 && (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 20 }} 
-                            animate={{ opacity: 1, y: 0 }} 
-                            className="mb-8"
-                        >
-                            <div className="flex items-center gap-2 mb-4">
-                                <Sparkles className="w-5 h-5 text-primary" />
-                                <h2 className="text-xl font-bold text-foreground">Recommended for You</h2>
-                                <span className="text-xs text-muted-foreground">Based on your activity</span>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {recommendations.map((rec, idx) => (
-                                    <motion.div
-                                        key={rec.resource.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        onClick={() => handleResourceClick(rec.resource)}
-                                      onContextMenu={(e) => openContextMenu(e, rec.resource)}
-                                        className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer group relative overflow-hidden"
-                                    >
-                                        <div className="absolute top-2 right-2">
-                                            <div className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                                                <TrendingUp className="w-3 h-3" />
-                                                {rec.reason === 'collaborative' && 'Popular'}
-                                                {rec.reason === 'content-based' && 'Matched'}
-                                                {rec.reason === 'time-based' && 'Timely'}
-                                                {rec.reason === 'popular' && 'Trending'}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-muted rounded-lg">
-                                                <FileText className="w-5 h-5 text-foreground" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="font-medium group-hover:text-primary transition-colors line-clamp-1">
-                                                    {rec.resource.title}
-                                                </h4>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {rec.resource.subject}
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                                    <span>Sem {rec.resource.semester}</span>
-                                                    <span>•</span>
-                                                    <span>{rec.resource.type}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {isLoadingRecommendations && user && (
-                        <div className="flex items-center gap-2 text-muted-foreground mb-8">
-                        <Spinner size="sm" />
-                            <span className="text-sm">Loading personalized recommendations...</span>
-                        </div>
-                    )}
-
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {semesters.map(sem => (
-                            <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
-                                <span className="text-xl font-bold block mb-1">Semester {sem}</span>
-                                <span className="text-sm text-muted-foreground">View Subjects</span>
-                            </button>
-                        ))}
-                    </motion.div>
-                </>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {semesters.map(sem => (
+                  <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
+                    <span className="text-xl font-bold block mb-1">Semester {sem}</span>
+                    <span className="text-sm text-muted-foreground">View Subjects</span>
+                  </button>
+                ))}
+              </motion.div>
             )}
 
             {currentView === 'SUBJECTS' && (
@@ -578,7 +495,7 @@ const ResourcesPage: React.FC = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold">Files</h2>
-                      {user && (
+                      {user && isProfileComplete(user) && (
                             <Button
                               onClick={() => {
                                 setUploadError('');
@@ -617,7 +534,7 @@ const ResourcesPage: React.FC = () => {
                                           Pending
                                         </span>
                                       ) : null}
-                                      {res.driveFileId ? <Eye className="w-5 h-5 text-muted-foreground" /> : <ExternalLink className="w-5 h-5 text-muted-foreground" />}
+                                        <ExternalLink className="w-5 h-5 text-muted-foreground" />
                                     </div>
                                 </div>
                             ))}
@@ -676,7 +593,7 @@ const ResourcesPage: React.FC = () => {
                               />
                               <input 
                                   type="url" 
-                                  placeholder="Drive Link or URL" 
+                                  placeholder="PDF/PPTX URL (https://...)" 
                                   value={uploadLink}
                                   onChange={e => {
                                     setUploadLink(e.target.value);
@@ -708,6 +625,11 @@ const ResourcesPage: React.FC = () => {
                                     }
                                   }
                                   setUploadFile(f);
+                                  if (f && !uploadName.trim()) {
+                                    const base = f.name.replace(/\.[^/.]+$/, '');
+                                    const pretty = base.replace(/[_-]+/g, ' ').trim();
+                                    if (pretty) setUploadName(pretty);
+                                  }
                                   if (f) setUploadLink('');
                                 }}
                                 className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
@@ -800,16 +722,32 @@ const ResourcesPage: React.FC = () => {
                         Download
                     </a>
                 </div>
-                <div className="flex-1 bg-background">
-                    {(() => {
-                      const src = getPreviewIframeSrc(selectedResource);
-                      if (!src) {
+                <div className="flex-1 bg-background overflow-hidden">
+                  {(() => {
+                    const kind = inferPreviewKind(selectedResource);
+                    const url = safeExternalHttpUrl(selectedResource.downloadUrl);
+                    if (!url) {
+                      return (
+                        <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
+                          <div className="max-w-lg">
+                            <div className="font-semibold">Preview unavailable</div>
+                            <div className="text-sm text-muted-foreground mt-2">
+                              This resource doesn’t have a valid preview link. Use Download to open it.
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (kind === 'pptx') {
+                      const embed = getPptxEmbedUrl(selectedResource);
+                      if (!embed) {
                         return (
                           <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
                             <div className="max-w-lg">
                               <div className="font-semibold">Preview unavailable</div>
                               <div className="text-sm text-muted-foreground mt-2">
-                                This resource doesn’t have a preview link. Use Download to open it.
+                                This PPTX can’t be embedded. Use Download to open it.
                               </div>
                             </div>
                           </div>
@@ -817,13 +755,105 @@ const ResourcesPage: React.FC = () => {
                       }
                       return (
                         <iframe
-                          src={src}
+                          src={embed}
                           className="w-full h-full border-0"
                           allow="autoplay; fullscreen"
-                          title="Preview"
+                          title="PPTX Preview"
                         />
                       );
-                    })()}
+                    }
+
+                    if (kind === 'pdf') {
+                      return (
+                        <div ref={pdfContainerRef} className="w-full h-full overflow-auto">
+                          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <span className="font-medium text-foreground">PDF</span>
+                              {pdfNumPages > 0 ? (
+                                <span className="tabular-nums">Page {pdfPage} / {pdfNumPages}</span>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={pdfPage <= 1}
+                                onClick={() => setPdfPage((p) => Math.max(1, p - 1))}
+                              >
+                                Prev
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={pdfNumPages <= 0 || pdfPage >= pdfNumPages}
+                                onClick={() => setPdfPage((p) => Math.min(pdfNumPages || p + 1, p + 1))}
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="px-4 py-6 flex justify-center">
+                            <div className="w-full max-w-5xl">
+                              {pdfLoadError ? (
+                                <div className="rounded-xl border border-border bg-card p-6 text-center">
+                                  <div className="font-semibold">Preview failed</div>
+                                  <div className="text-sm text-muted-foreground mt-2">{pdfLoadError}</div>
+                                  <div className="mt-4">
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                                    >
+                                      Open in new tab
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Document
+                                  file={{ url }}
+                                  loading={
+                                    <div className="flex justify-center py-10">
+                                      <Spinner size="lg" />
+                                    </div>
+                                  }
+                                  onLoadSuccess={(info) => {
+                                    setPdfNumPages(info.numPages);
+                                    setPdfPage(1);
+                                  }}
+                                  onLoadError={(err) => {
+                                    const msg = err instanceof Error ? err.message : 'Unable to load PDF preview.';
+                                    setPdfLoadError(msg);
+                                  }}
+                                >
+                                  <Page
+                                    pageNumber={pdfPage}
+                                    width={Math.min(pdfWidth ? pdfWidth - 32 : 900, 1100)}
+                                    renderTextLayer={false}
+                                    renderAnnotationLayer={false}
+                                  />
+                                </Document>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
+                        <div className="max-w-lg">
+                          <div className="font-semibold">Preview unavailable</div>
+                          <div className="text-sm text-muted-foreground mt-2">
+                            Only PDF and PPTX previews are supported. Use Download to open this resource.
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
              </div>
         )}

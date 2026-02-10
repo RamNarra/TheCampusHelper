@@ -269,7 +269,14 @@ export const api = {
                                 unit: payload.unit,
                                 type: payload.type,
                                 downloadUrl: payload.downloadUrl,
+                                // Legacy support (existing docs). New uploads should not depend on Drive.
                                 driveFileId: payload.driveFileId,
+
+                                // Preferred metadata for modern previews.
+                                mimeType: (payload as any).mimeType,
+                                originalFileName: (payload as any).originalFileName,
+                                fileSizeBytes: (payload as any).fileSizeBytes,
+                                storagePath: (payload as any).storagePath,
                             }),
                         }),
                         15000

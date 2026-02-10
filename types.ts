@@ -115,7 +115,15 @@ export interface Resource {
   unit?: string; // '1', '2', '3', '4', '5' (Optional, for unit-specific files)
   type: ResourceType;
   downloadUrl: string;
-  driveFileId?: string; // New field for the Google Drive ID
+  // Legacy (back-compat): historical Google Drive resources.
+  // The UI no longer embeds Drive previews.
+  driveFileId?: string;
+
+  // Modern upload metadata (preferred)
+  mimeType?: string;
+  originalFileName?: string;
+  fileSizeBytes?: number;
+  storagePath?: string;
   status?: 'approved' | 'pending' | 'rejected';
   ownerId?: string;
   reviewedBy?: string;

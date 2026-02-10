@@ -50,6 +50,11 @@ This project uses a **Server-Side Proxy Architecture** to protect sensitive cred
 ### 1. Environment Configuration
 Create a `.env.local` file in the root. **DO NOT COMMIT THIS FILE.**
 
+If you're using Vercel, you can do the one-time local setup (links project + pulls dev env vars):
+```bash
+npm run local:init
+```
+
 > **IMPORTANT:** Replace the values below with your actual API keys and secrets. Never commit real credentials to Git.
 
 ```env
@@ -89,18 +94,25 @@ npm install
 ```
 
 ### 3. Running Locally (Secure Mode)
-**STOP:** Do not use `npm run dev`. It only runs the frontend (Vite) and cannot serve the `api/` backend functions, causing AI features to fail (404 Errors).
-
-**You must use Vercel Dev:**
+**Use Vercel Dev (full stack):**
 ```bash
-# Option A: Using the script (Recommended)
+# Recommended
+npm run dev
+
+# Alias
 npm run dev:secure
 
-# Option B: Manual
+# Manual
 npx vercel dev
 ```
 
 The app will start at `http://localhost:3000`.
+
+**Frontend-only (no `api/` functions):**
+```bash
+npm run dev:frontend
+```
+This starts Vite (usually at `http://localhost:5173`). AI/admin serverless routes will 404 in this mode.
 
 ---
 

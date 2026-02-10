@@ -156,6 +156,33 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isProfileComplete() {
+      // Keep conservative: if missing/invalid, treat as incomplete.
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && ('displayName' in myUserDoc())
+        && (myUserDoc().displayName is string)
+        && (myUserDoc().displayName.size() > 0)
+        && (myUserDoc().displayName.size() <= 80)
+        && ('collegeEmail' in myUserDoc())
+        && (myUserDoc().collegeEmail is string)
+        && (myUserDoc().collegeEmail.size() > 3)
+        && (myUserDoc().collegeEmail.size() <= 120)
+        && myUserDoc().collegeEmail.matches('^[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+\\.sreenidh(i)?\\.edu\\.in$')
+        && ('dateOfBirth' in myUserDoc())
+        && (myUserDoc().dateOfBirth is string)
+        && (myUserDoc().dateOfBirth.size() > 0)
+        && (myUserDoc().dateOfBirth.size() <= 16)
+        && ('branch' in myUserDoc())
+        && (myUserDoc().branch is string)
+        && (myUserDoc().branch.size() > 0)
+        && (myUserDoc().branch.size() <= 20)
+        && ('section' in myUserDoc())
+        && (myUserDoc().section is string)
+        && (myUserDoc().section.size() > 0)
+        && (myUserDoc().section.size() <= 10);
+    }
+
     function phase1ServerlessOnly() {
       // Single runtime toggle: /config/phase1 { serverlessOnly: true|false }
       // - Readable by clients (non-sensitive)
@@ -302,6 +329,7 @@ service cloud.firestore {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.requestedBy == request.auth.uid);
 
       allow create: if isAuthenticated()
+                    && isProfileComplete()
                     && request.resource.data.requestedBy == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && request.resource.data.createdAt == request.time;
@@ -409,32 +437,36 @@ service cloud.firestore {
       allow read: if isOwner(userId);
 
       allow create: if isOwner(userId)
+                    && isProfileComplete()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.updatedAt == request.time;
 
       allow update: if isOwner(userId)
+                    && isProfileComplete()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.createdAt == resource.data.createdAt
                     && request.resource.data.updatedAt == request.time;
 
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) && isProfileComplete();
     }
 
     match /users/{userId}/habits/{habitId} {
       allow read: if isOwner(userId);
 
       allow create: if isOwner(userId)
+                    && isProfileComplete()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.updatedAt == request.time;
 
       allow update: if isOwner(userId)
+                    && isProfileComplete()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.createdAt == resource.data.createdAt
                     && request.resource.data.updatedAt == request.time;
 
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) && isProfileComplete();
     }
 
     // LEADERBOARD COLLECTION (Public subset of user data for leaderboard)
@@ -466,6 +498,7 @@ service cloud.firestore {
       // Admins may create approved resources.
       allow create: if !phase1ServerlessOnly()
             && isAuthenticated()
+            && isProfileComplete()
                     && request.resource.data.ownerId == request.auth.uid
                     && isValidResource(request.resource.data)
                     && canSetModeratedStatus(request.resource.data)
@@ -475,6 +508,7 @@ service cloud.firestore {
 
       // UPDATE: Admins can update anything (within validation). Owners can update their own pending resources.
       allow update: if !phase1ServerlessOnly()
+                    && isProfileComplete()
                     && (
                       isMod() ||
                       (isAuthenticated()
@@ -493,6 +527,7 @@ service cloud.firestore {
 
       // DELETE: Admins can delete any resource. Owners can delete their pending resources.
       allow delete: if !phase1ServerlessOnly()
+                    && isProfileComplete()
                     && (isMod() || (
                       isAuthenticated()
                       && ('ownerId' in resource.data)
@@ -512,17 +547,19 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
 
       allow create: if isAuthenticated()
+                    && isProfileComplete()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.updatedAt == request.time;
 
       allow update: if isAuthenticated()
+                    && isProfileComplete()
                     && resource.data.uid == request.auth.uid
                     && request.resource.data.uid == resource.data.uid
                     && request.resource.data.createdAt == resource.data.createdAt
                     && request.resource.data.updatedAt == request.time;
 
-      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow delete: if isAuthenticated() && isProfileComplete() && resource.data.uid == request.auth.uid;
     }
 
     // HABITS (private per-user)
@@ -530,34 +567,38 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
 
       allow create: if isAuthenticated()
+                    && isProfileComplete()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.updatedAt == request.time;
 
       allow update: if isAuthenticated()
+                    && isProfileComplete()
                     && resource.data.uid == request.auth.uid
                     && request.resource.data.uid == resource.data.uid
                     && request.resource.data.createdAt == resource.data.createdAt
                     && request.resource.data.updatedAt == request.time;
 
-      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow delete: if isAuthenticated() && isProfileComplete() && resource.data.uid == request.auth.uid;
     }
 
     // INTERACTIONS COLLECTION (private per-user analytics)
     match /interactions/{interactionId} {
       allow create: if isAuthenticated()
+                    && isProfileComplete()
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.timestamp == request.time;
 
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow update: if false;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && isProfileComplete() && resource.data.userId == request.auth.uid;
     }
 
     // QUIZZES COLLECTION
     match /quizzes/{quizId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
+                    && isProfileComplete()
                     && request.resource.data.createdBy == request.auth.uid
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.title is string
@@ -577,6 +618,7 @@ service cloud.firestore {
       // Allow owner or admin to update/delete quizzes
       allow update, delete: if isAdmin() || (
         isAuthenticated()
+        && isProfileComplete()
         && resource.data.createdBy == request.auth.uid
       );
     }
@@ -589,6 +631,7 @@ service cloud.firestore {
       );
 
       allow create: if isAuthenticated()
+                    && isProfileComplete()
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.completedAt == request.time
                     && request.resource.data.quizId is string

@@ -144,8 +144,6 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
     setLoading(true);
     
     try {
-      // We wrap this in a try/catch, but we allow the UI to proceed 
-      // even if the backend write is slow or fails (Optimistic UI)
       await updateProfile({
         displayName: formData.displayName.trim(),
         dateOfBirth: dob,
@@ -159,15 +157,19 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
       
       // Award XP for completing profile
       if (user) {
-        await awardXP(user.uid, XP_REWARDS.PROFILE_COMPLETE, 'Completed profile');
+        try {
+          await awardXP(user.uid, XP_REWARDS.PROFILE_COMPLETE, 'Completed profile');
+        } catch {
+          // Non-critical: profile completion should not be blocked by XP awarding failures.
+        }
       }
       
       if (onComplete) onComplete();
 
     } catch (err) {
-      console.warn("Profile save warning:", err);
-      // Fallback: Proceed anyway so user isn't stuck
-      if (onComplete) onComplete();
+      console.warn('Profile save failed:', err);
+      const message = err instanceof Error ? err.message : '';
+      setError(message ? `Could not save profile: ${message}` : 'Could not save profile. Please try again.');
     } finally {
       setLoading(false);
     }

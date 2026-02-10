@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { applyCors, isOriginAllowed } from '../_lib/cors';
-import { assertBodySize, assertJson, requireUser } from '../_lib/authz';
+import { assertBodySize, assertJson, requireCompleteProfile, requireUser } from '../_lib/authz';
 import { ensureFirebaseAdminApp } from '../_lib/firebaseAdmin';
 import { getRequestContext, type VercelRequest, type VercelResponse } from '../_lib/request';
 import { writeAuditLog } from '../_lib/auditLog';
@@ -18,6 +18,12 @@ type SubmitBody = {
   type: string;
   downloadUrl: string;
   driveFileId?: string;
+
+  // Modern file metadata (preferred)
+  mimeType?: string;
+  originalFileName?: string;
+  fileSizeBytes?: number;
+  storagePath?: string;
 };
 
 const ALLOWED_BRANCHES = new Set<SubmitBody['branch']>([
@@ -58,6 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertBodySize(req, MAX_BODY_SIZE);
 
     const caller = await requireUser(req);
+    await requireCompleteProfile(caller);
     const body = (req.body || {}) as SubmitBody;
 
     const title = (body.title ?? '').trim();
@@ -68,6 +75,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const type = (body.type ?? '').trim();
     const downloadUrl = (body.downloadUrl ?? '').trim();
     const driveFileId = body.driveFileId?.trim();
+
+    const mimeType = (body.mimeType ?? '').trim();
+    const originalFileName = (body.originalFileName ?? '').trim();
+    const fileSizeBytes = typeof body.fileSizeBytes === 'number' ? body.fileSizeBytes : undefined;
+    const storagePath = (body.storagePath ?? '').trim();
 
     if (!title || title.length > 200) return res.status(400).json({ error: 'Invalid title', requestId: ctx.requestId });
     if (!subject || subject.length > 200) return res.status(400).json({ error: 'Invalid subject', requestId: ctx.requestId });
@@ -84,6 +96,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid driveFileId', requestId: ctx.requestId });
     }
 
+    if (mimeType && mimeType.length > 200) {
+      return res.status(400).json({ error: 'Invalid mimeType', requestId: ctx.requestId });
+    }
+    if (originalFileName && originalFileName.length > 260) {
+      return res.status(400).json({ error: 'Invalid originalFileName', requestId: ctx.requestId });
+    }
+    if (typeof fileSizeBytes === 'number') {
+      if (!Number.isFinite(fileSizeBytes) || fileSizeBytes < 0 || fileSizeBytes > 50 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Invalid fileSizeBytes', requestId: ctx.requestId });
+      }
+    }
+    if (storagePath && storagePath.length > 600) {
+      return res.status(400).json({ error: 'Invalid storagePath', requestId: ctx.requestId });
+    }
+
     const admin = ensureFirebaseAdminApp();
     const db = admin.firestore();
 
@@ -97,6 +124,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       type,
       downloadUrl,
       driveFileId: driveFileId || undefined,
+      mimeType: mimeType || undefined,
+      originalFileName: originalFileName || undefined,
+      fileSizeBytes: typeof fileSizeBytes === 'number' ? fileSizeBytes : undefined,
+      storagePath: storagePath || undefined,
       status: 'pending',
       ownerId: caller.uid,
       createdAt: FieldValue.serverTimestamp(),

@@ -4,8 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "echo '⚠️ SECURITY WARNING: Use \"npm run dev:secure\" to run the backend proxy locally.' && vite",
-    "dev:secure": "npx vercel dev",
+    "local:init": "node scripts/setup-local.mjs && vercel link --yes && vercel env pull .env.local --yes",
+    "dev": "node scripts/dev.mjs",
+    "dev:secure": "vercel dev --yes",
+    "dev:frontend": "vite",
     "build": "vite build",
     "generate:icons": "node scripts/generate-icons.mjs",
     "preview": "vite preview",
@@ -21,8 +23,10 @@
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-pdf": "^9.2.0",
     "react-router-dom": "^6.22.3",
-    "tailwind-merge": "^2.2.1"
+    "tailwind-merge": "^2.2.1",
+    "pdfjs-dist": "^4.10.38"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
@@ -33,6 +37,7 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.10",
     "typescript": "^5.4.2",
-    "vite": "^5.1.5"
+    "vite": "^5.1.5",
+    "vercel": "^50.13.2"
   }
 }

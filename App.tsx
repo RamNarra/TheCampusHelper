@@ -66,66 +66,52 @@ const Analytics = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, loading, profileLoaded } = useAuth();
+  const { user, loading, profileLoaded, profileStatus } = useAuth();
   const isPublicBuild = import.meta.env.PROD;
   const [showProfileModal, setShowProfileModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
+  const didPostAuthRedirectRef = React.useRef(false);
+
   useEffect(() => {
-    // CONDITION: Show modal ONLY when:
-    // 1. Auth is done (!loading)
-    // 2. User is logged in (!!user)
-    // 3. Profile fetch returned (profileLoaded)
-    // 4. Profile data is actually incomplete
-    
     if (!loading && user && profileLoaded) {
-      const isProfileIncomplete = (
-        !user.displayName ||
-        !user.dateOfBirth ||
-        !user.collegeEmail ||
-        !user.branch ||
-        !user.section
-      );
-
-      let suppressModal = false;
-      try {
-        const completedAtRaw = localStorage.getItem('thc_profile_completed_at');
-        const completedAt = completedAtRaw ? Number(completedAtRaw) : 0;
-        // Suppress immediate re-open while profile write propagates
-        suppressModal = completedAt > 0 && Date.now() - completedAt < 15000;
-        if (!isProfileIncomplete) {
-          localStorage.removeItem('thc_profile_completed_at');
-          localStorage.removeItem('thc_profile_completed');
-        }
-      } catch {
-        suppressModal = false;
-      }
-
-      if (isProfileIncomplete && !suppressModal) {
-        setShowProfileModal(true);
-      } else {
-        setShowProfileModal(false);
-      }
+      setShowProfileModal(profileStatus === 'incomplete');
     } else {
       setShowProfileModal(false);
     }
-  }, [user, loading, profileLoaded]);
+  }, [user, loading, profileLoaded, profileStatus]);
+
+  useEffect(() => {
+    // Post-auth routing: always land on homepage after sign-in/session restore.
+    // Never route to /profile by default.
+    if (!loading && user && !didPostAuthRedirectRef.current) {
+      didPostAuthRedirectRef.current = true;
+      if (location.pathname !== '/') {
+        navigate('/', { replace: true });
+      }
+    }
+    if (!user) {
+      didPostAuthRedirectRef.current = false;
+    }
+  }, [user, loading, location.pathname, navigate]);
 
   const handleProfileComplete = () => {
-    // Mark locally to prevent immediate re-pop if DB write is slow
-    try {
-      localStorage.setItem('thc_profile_completed_at', String(Date.now()));
-      // Backward-compat for older builds
-      localStorage.setItem('thc_profile_completed', '1');
-    } catch {
-      // Ignore storage failures
-    }
+    // The modal will close automatically once Firestore snapshot reflects completeness.
     setShowProfileModal(false);
-    navigate('/');
+    if (location.pathname !== '/') navigate('/', { replace: true });
   };
 
   if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // Lock down the app until we have an authoritative profile snapshot.
+  if (user && !profileLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <Spinner size="lg" />

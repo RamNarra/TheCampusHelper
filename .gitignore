@@ -132,3 +132,5 @@ semwise shit/
 # Firebase Admin service account keys (NEVER commit)
 thecampushelper-adcdc-firebase-adminsdk-*.json
 firebase-adminsdk-*.json
+.vercel
+.env*.local

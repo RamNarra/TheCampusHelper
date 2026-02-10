@@ -2,6 +2,7 @@ import { Buffer } from 'buffer';
 import type { VercelRequest } from './request';
 import { ensureFirebaseAdminApp } from './firebaseAdmin';
 import { hasPermission, normalizeRole, type Permission, type PlatformRole } from '../../lib/rbac';
+import { missingProfileFields } from '../../lib/profileCompleteness';
 
 export interface AuthenticatedCaller {
   uid: string;
@@ -63,6 +64,21 @@ export async function requireUser(req: VercelRequest): Promise<AuthenticatedCall
     role,
     claims: decoded,
   };
+}
+
+export async function requireCompleteProfile(caller: AuthenticatedCaller) {
+  const admin = ensureFirebaseAdminApp();
+  const db = admin.firestore();
+
+  const snap = await db.collection('users').doc(caller.uid).get();
+  const data = snap.exists ? (snap.data() as any) : null;
+  const missing = missingProfileFields(data || {});
+
+  if (missing.length) {
+    const err = new Error(`Profile incomplete: missing ${missing.join(', ')}`);
+    (err as any).status = 403;
+    throw err;
+  }
 }
 
 export function requirePermission(caller: AuthenticatedCaller, permission: Permission) {

@@ -12,6 +12,9 @@ import type { UserProfile } from '../types';
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const isPreview = !user && isAuthBypassed();
+  const adminRecoveryEnabled =
+    import.meta.env.DEV ||
+    String((import.meta.env as any).VITE_ENABLE_ADMIN_RECOVERY || '').toLowerCase() === 'true';
   const displayUser: UserProfile | null = user ?? (isPreview
     ? {
         uid: getPreviewUserId(),
@@ -33,7 +36,11 @@ const ProfilePage: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const canAttemptAdminFix = !!user && !isAtLeastRole(normalizeRole(displayUser.role), 'admin') && !adminFixLoading;
+  const canAttemptAdminFix =
+    adminRecoveryEnabled &&
+    !!user &&
+    !isAtLeastRole(normalizeRole(displayUser.role), 'admin') &&
+    !adminFixLoading;
 
   return (
     <div className="pt-6 pb-10 px-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -192,9 +199,12 @@ const ProfilePage: React.FC = () => {
               <Upload className="w-5 h-5 text-secondary" />
               Contributions
             </h2>
-            <button className="text-sm text-primary hover:text-primary/80 transition-colors font-semibold">
+            <NavLink
+              to="/courses"
+              className="text-sm text-primary hover:text-primary/80 transition-colors font-semibold"
+            >
               + Upload New
-            </button>
+            </NavLink>
           </div>
 
           <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-border rounded-xl bg-muted/20 p-8">

@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { rateLimitExceeded } from '../lib/rateLimit';
 import { applyCors, isOriginAllowed } from './_lib/cors';
-import { assertBodySize, assertJson, requireUser } from './_lib/authz';
+import { assertBodySize, assertJson, requireCompleteProfile, requireUser } from './_lib/authz';
 import { getRequestContext, type VercelRequest, type VercelResponse } from './_lib/request';
 import { aiGatewayGenerateText, getAiGatewayConfig } from './_lib/aiGateway';
 
@@ -53,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     assertBodySize(req, MAX_BODY_SIZE);
 
     const caller = await requireUser(req);
+    await requireCompleteProfile(caller);
 
     // Rate limit (fail closed - high cost endpoint)
     const rateLimitKey = `ai:generate:${caller.uid}`;

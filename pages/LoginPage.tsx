@@ -13,7 +13,7 @@ const LoginPage: React.FC = () => {
 
   React.useEffect(() => {
     if (user) {
-      navigate('/profile');
+      navigate('/', { replace: true });
     }
   }, [user, navigate]);
 
