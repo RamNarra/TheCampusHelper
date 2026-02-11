@@ -14,7 +14,6 @@ type SubmitBody = {
   subject: string;
   branch: 'CSE' | 'IT' | 'DS' | 'AIML' | 'CYS' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL';
   semester: string;
-  unit?: string;
   type: string;
   downloadUrl: string;
   driveFileId?: string;
@@ -71,7 +70,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const subject = (body.subject ?? '').trim();
     const branch = body.branch;
     const semester = (body.semester ?? '').trim();
-    const unit = body.unit?.trim();
     const type = (body.type ?? '').trim();
     const downloadUrl = (body.downloadUrl ?? '').trim();
     const driveFileId = body.driveFileId?.trim();
@@ -87,7 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid branch', requestId: ctx.requestId });
     }
     if (!semester || semester.length > 10) return res.status(400).json({ error: 'Invalid semester', requestId: ctx.requestId });
-    if (unit && unit.length > 20) return res.status(400).json({ error: 'Invalid unit', requestId: ctx.requestId });
     if (!type || type.length > 50) return res.status(400).json({ error: 'Invalid type', requestId: ctx.requestId });
     if (!downloadUrl || downloadUrl.length > 2000 || !isHttpUrl(downloadUrl)) {
       return res.status(400).json({ error: 'Invalid downloadUrl', requestId: ctx.requestId });
@@ -120,7 +117,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       subject,
       branch,
       semester,
-      unit: unit || undefined,
       type,
       downloadUrl,
       driveFileId: driveFileId || undefined,
@@ -142,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requestId: ctx.requestId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      metadata: { resourceId: ref.id, title, subject, branch, semester, unit: unit || null, type },
+      metadata: { resourceId: ref.id, title, subject, branch, semester, type },
     });
 
     return res.status(200).json({ resourceId: ref.id });

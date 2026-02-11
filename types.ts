@@ -1,5 +1,8 @@
 
-export type ResourceType = 'Note' | 'PYQ' | 'Lab Record' | 'PPT' | 'MidPaper' | 'ImpQ';
+// System-defined, non-editable resource categories under each subject.
+// NOTE: Legacy docs may still contain other strings in Firestore, but the UI/backend
+// normalize them into these categories.
+export type ResourceType = 'PPT' | 'MidPaper' | 'PYQ' | 'ImpQ';
 
 // Platform roles (new) + legacy roles (back-compat with existing documents).
 export type UserRole = 'super_admin' | 'admin' | 'moderator' | 'instructor' | 'student' | 'user' | 'mod';
@@ -112,8 +115,9 @@ export interface Resource {
   subject: string;
   branch: BranchKey;
   semester: string; // "1" through "8"
-  unit?: string; // '1', '2', '3', '4', '5' (Optional, for unit-specific files)
   type: ResourceType;
+  // Optional back-compat marker for migrated resources.
+  legacyType?: string;
   downloadUrl: string;
   // Legacy (back-compat): historical Google Drive resources.
   // The UI no longer embeds Drive previews.

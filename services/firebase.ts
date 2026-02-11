@@ -266,7 +266,6 @@ export const api = {
                                 subject: payload.subject,
                                 branch: payload.branch,
                                 semester: payload.semester,
-                                unit: payload.unit,
                                 type: payload.type,
                                 downloadUrl: payload.downloadUrl,
                                 // Legacy support (existing docs). New uploads should not depend on Drive.

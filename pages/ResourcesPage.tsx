@@ -18,7 +18,32 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
 
-type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'SUBJECT_ROOT' | 'UNIT_CONTENTS' | 'FILES';
+type ViewState = 'SEMESTERS' | 'SUBJECTS' | 'CATEGORIES' | 'FILES';
+
+const toSystemResourceType = (raw: unknown): ResourceType | null => {
+  const t = String(raw || '').trim();
+  if (!t) return null;
+  if (t === 'PPT') return 'PPT';
+  if (t === 'MidPaper') return 'MidPaper';
+  if (t === 'PYQ') return 'PYQ';
+  if (t === 'ImpQ') return 'ImpQ';
+
+  // Legacy/back-compat mappings.
+  if (t === 'Note' || t === 'Lab Record') return 'ImpQ';
+  const lower = t.toLowerCase();
+  if (lower === 'mid papers' || lower === 'midpaper') return 'MidPaper';
+  if (lower === 'pyqs' || lower === 'pyq') return 'PYQ';
+  if (lower === 'ppts' || lower === 'ppt') return 'PPT';
+  if (lower === 'important qs' || lower === 'important questions') return 'ImpQ';
+  return null;
+};
+
+const CATEGORY_LABEL: Record<ResourceType, string> = {
+  PPT: 'PPTs',
+  MidPaper: 'MID Papers',
+  PYQ: 'PYQs',
+  ImpQ: 'Important Qs',
+};
 
 const ResourcesPage: React.FC = () => {
   const { user } = useAuth();
@@ -27,7 +52,6 @@ const ResourcesPage: React.FC = () => {
   const branch: BranchKey = (user?.branch ?? 'CSE') as BranchKey;
   const [semester, setSemester] = useState<string | null>(null);
   const [subject, setSubject] = useState<string | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ResourceType | null>(null);
   
   // Data State
@@ -255,20 +279,14 @@ const ResourcesPage: React.FC = () => {
         // 1. Validate Context
         if (!user?.uid) throw new Error('Please sign in to upload a resource.');
         if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
-        if (!semester || !subject || !selectedFolder) throw new Error("Please navigate to a specific folder first.");
+        if (!semester || !subject || !selectedCategory) throw new Error('Please navigate to a specific category first.');
         if (!uploadName.trim()) throw new Error("Resource name is required.");
         // Free path: accept Drive link or any http(s) URL.
         if (!uploadLink.trim()) throw new Error("Please paste a Drive link or a direct URL.");
 
 
-        // 2. Validate Category
-        const isExamFolder = ['PYQ', 'MidPaper'].includes(selectedFolder);
-        if (!isExamFolder && !selectedCategory) {
-            throw new Error("Please select a category (Notes, PPT, etc.)");
-        }
-
-        // 3. Prepare Object
-        const finalType = isExamFolder ? (selectedFolder as ResourceType) : selectedCategory!;
+    // 2. Prepare Object
+    const finalType: ResourceType = selectedCategory;
 
         const resourceId = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
           ? (globalThis.crypto as any).randomUUID()
@@ -286,7 +304,6 @@ const ResourcesPage: React.FC = () => {
             subject: subject,
             branch: branch,
             semester: semester,
-            unit: selectedFolder,
             type: finalType,
             downloadUrl: finalUrl,
             driveFileId: driveId || undefined,
@@ -328,9 +345,7 @@ const ResourcesPage: React.FC = () => {
   const getCurrentView = (): ViewState => {
     if (!semester) return 'SEMESTERS';
     if (!subject) return 'SUBJECTS';
-    if (!selectedFolder) return 'SUBJECT_ROOT';
-    if (['PYQ', 'MidPaper'].includes(selectedFolder)) return 'FILES';
-    if (!selectedCategory) return 'UNIT_CONTENTS';
+    if (!selectedCategory) return 'CATEGORIES';
     return 'FILES';
   };
 
@@ -340,40 +355,24 @@ const ResourcesPage: React.FC = () => {
     return [...dynamicResources, ...staticResources].filter(r => {
       if (!branchMatches(r.branch) || r.semester !== semester || r.subject !== subject) return false;
 
-      if (['PYQ', 'MidPaper'].includes(selectedFolder || '')) {
-        return r.unit === selectedFolder || r.type === selectedFolder;
-      }
-      return r.unit === selectedFolder && r.type === selectedCategory;
+      if (!selectedCategory) return false;
+      const normalized = toSystemResourceType((r as any).type);
+      return normalized === selectedCategory;
     });
-  }, [dynamicResources, branchMatches, semester, subject, selectedFolder, selectedCategory]);
+  }, [dynamicResources, branchMatches, semester, subject, selectedCategory]);
 
   // --- UI CONSTANTS ---
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
-  const subjectFolders = [
-    { id: '1', label: 'Unit 1', type: 'unit' },
-    { id: '2', label: 'Unit 2', type: 'unit' },
-    { id: '3', label: 'Unit 3', type: 'unit' },
-    { id: '4', label: 'Unit 4', type: 'unit' },
-    { id: '5', label: 'Unit 5', type: 'unit' },
-    { id: 'PYQ', label: 'PYQs', type: 'exam' },
-    { id: 'MidPaper', label: 'Mid Exams', type: 'exam' },
-  ];
-  const unitFolders = [
-    { type: 'ImpQ', label: 'Important Qs', icon: HelpCircle, color: 'text-orange-500 bg-orange-500/10' },
-    { type: 'Note', label: 'Notes', icon: Book, color: 'text-emerald-500 bg-emerald-500/10' },
+  const categoryFolders: Array<{ type: ResourceType; label: string; icon: any; color: string }> = [
     { type: 'PPT', label: 'PPTs', icon: Presentation, color: 'text-blue-500 bg-blue-500/10' },
+    { type: 'MidPaper', label: 'MID Papers', icon: FileText, color: 'text-purple-500 bg-purple-500/10' },
+    { type: 'PYQ', label: 'PYQs', icon: HelpCircle, color: 'text-emerald-500 bg-emerald-500/10' },
+    { type: 'ImpQ', label: 'Important Qs', icon: Book, color: 'text-orange-500 bg-orange-500/10' },
   ];
 
-  const resetToHome = () => { setSemester(null); setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
-  const resetToSemester = () => { setSubject(null); setSelectedFolder(null); setSelectedCategory(null); };
-  const resetToSubject = () => { setSelectedFolder(null); setSelectedCategory(null); };
-  const resetToFolder = () => { setSelectedCategory(null); };
-
-  const getFolderLabel = (id: string) => {
-      if (id === 'PYQ') return 'PYQs';
-      if (id === 'MidPaper') return 'Mid Papers';
-      return `Unit ${id}`;
-  };
+  const resetToHome = () => { setSemester(null); setSubject(null); setSelectedCategory(null); };
+  const resetToSemester = () => { setSubject(null); setSelectedCategory(null); };
+  const resetToSubject = () => { setSelectedCategory(null); };
 
   return (
     <div className="pt-6 pb-10 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -388,8 +387,7 @@ const ResourcesPage: React.FC = () => {
           <button onClick={resetToHome} aria-label="Home" title="Home"><Home className="w-4 h-4" /></button>
             {semester && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSemester}>Sem {semester}</button></>}
             {subject && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSubject} className="truncate max-w-[150px]">{subject}</button></>}
-            {selectedFolder && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToFolder}>{getFolderLabel(selectedFolder)}</button></>}
-            {selectedCategory && <><ChevronRight className="w-4 h-4 opacity-50" /><span>{selectedCategory}</span></>}
+            {selectedCategory && <><ChevronRight className="w-4 h-4 opacity-50" /><span>{CATEGORY_LABEL[selectedCategory]}</span></>}
         </nav>
 
         <AnimatePresence mode="wait">
@@ -415,30 +413,18 @@ const ResourcesPage: React.FC = () => {
                 </motion.div>
             )}
 
-            {currentView === 'SUBJECT_ROOT' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {subjectFolders.map(folder => (
-                        <button key={folder.id} onClick={() => setSelectedFolder(folder.id)} className={`p-6 bg-card border border-border rounded-xl hover:shadow-lg transition-all text-center flex flex-col items-center gap-3 relative overflow-hidden ${folder.type === 'unit' ? 'hover:border-primary/50' : 'hover:border-secondary/50'}`}>
-                            <div className={`absolute top-0 w-full h-1 ${folder.type === 'unit' ? 'bg-primary' : 'bg-secondary'}`} />
-                            <FolderOpen className={`w-8 h-8 ${folder.type === 'unit' ? 'text-primary' : 'text-secondary'}`} />
-                            <span className="font-bold">{folder.label}</span>
-                        </button>
-                    ))}
-                </motion.div>
-            )}
-
-            {currentView === 'UNIT_CONTENTS' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {unitFolders.map(cat => (
-                        <button key={cat.type} onClick={() => setSelectedCategory(cat.type as any)} className="p-6 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all flex items-center gap-4">
-                            <div className={`p-3 rounded-lg ${cat.color}`}><cat.icon className="w-6 h-6" /></div>
-                            <div className="text-left">
-                                <h3 className="font-bold">{cat.label}</h3>
-                                <p className="text-xs text-muted-foreground">Browse files</p>
-                            </div>
-                        </button>
-                    ))}
-                </motion.div>
+            {currentView === 'CATEGORIES' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {categoryFolders.map(cat => (
+                  <button key={cat.type} onClick={() => setSelectedCategory(cat.type)} className="p-6 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all flex items-center gap-4">
+                    <div className={`p-3 rounded-lg ${cat.color}`}><cat.icon className="w-6 h-6" /></div>
+                    <div className="text-left">
+                      <h3 className="font-bold">{cat.label}</h3>
+                      <p className="text-xs text-muted-foreground">Browse files</p>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
             )}
 
             {currentView === 'FILES' && (
@@ -536,7 +522,7 @@ const ResourcesPage: React.FC = () => {
                           <form onSubmit={handleUploadSubmit} className="space-y-4">
                               <input 
                                   type="text" 
-                                  placeholder="Display Name (e.g. Unit 1 Notes)" 
+                                  placeholder="Display Name (e.g. Fiber Optics PPT)" 
                                   value={uploadName}
                                   onChange={e => setUploadName(e.target.value)}
                                   className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
@@ -557,7 +543,7 @@ const ResourcesPage: React.FC = () => {
                               
                               <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
                                   Using context: {branch} &gt; {semester} &gt; {subject} <br/>
-                                  Target: {selectedFolder} {selectedCategory ? `> ${selectedCategory}` : ''}
+                                  Target: {selectedCategory ? CATEGORY_LABEL[selectedCategory] : ''}
                               </div>
 
                               {uploadError ? <Alert variant="destructive" description={uploadError} /> : null}

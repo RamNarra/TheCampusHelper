@@ -356,14 +356,13 @@ export const getSubjects = (branch: string, semester: string): string[] => {
 
 export const resources: Resource[] = [
   // --- USER REQUESTED RESOURCE ---
-  // Path: CS/IT/DS > Sem 1 > Engineering Physics > Unit 2 > Teacher PPTs
+  // Path: Semester > Subject > PPTs
   {
     id: 'res-ep-u2-ppt',
     title: 'Unit 2: Fiber Optics',
     subject: 'Advanced Engineering Physics',
     branch: 'CYS', 
     semester: '2',
-    unit: '2',
     type: 'PPT',
     downloadUrl: 'https://docs.google.com/presentation/d/1--fcBt0glKsOPnxbhWMZ9BoXZ_4EAKKZ/edit?usp=sharing',
     status: 'approved',
@@ -377,7 +376,6 @@ export const resources: Resource[] = [
     subject: 'Matrices and Calculus',
     branch: 'CSE',
     semester: '1',
-    unit: '1',
     type: 'ImpQ',
     downloadUrl: '#',
     status: 'approved',
@@ -389,8 +387,8 @@ export const resources: Resource[] = [
     subject: 'Data Structures',
     branch: 'CSE', 
     semester: '2',
-    unit: '1',
-    type: 'Note',
+    type: 'ImpQ',
+    legacyType: 'Note',
     downloadUrl: '#',
     status: 'approved',
     driveFileId: '1BDq7G_y9XvXyk5zXXzXzXzXzXzXzXzX' 
@@ -401,8 +399,8 @@ export const resources: Resource[] = [
     subject: 'Matrices and Calculus',
     branch: 'CSE',
     semester: '1',
-    unit: '1',
-    type: 'Note',
+    type: 'ImpQ',
+    legacyType: 'Note',
     downloadUrl: '#',
     status: 'approved'
   }
@@ -415,8 +413,8 @@ export const pendingUploads: Resource[] = [
     subject: 'Data Structures',
     branch: 'CSE',
     semester: '2',
-    unit: '3',
-    type: 'Note',
+    type: 'ImpQ',
+    legacyType: 'Note',
     downloadUrl: '#',
     status: 'pending'
   }

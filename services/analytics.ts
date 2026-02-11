@@ -13,7 +13,7 @@ export const generateMockStudySessions = (userId: string): StudySession[] => {
     'Database Management Systems'
   ];
   
-  const resourceTypes: ResourceType[] = ['Note', 'PYQ', 'Lab Record', 'PPT'];
+  const resourceTypes: ResourceType[] = ['PPT', 'PYQ', 'MidPaper', 'ImpQ'];
   const sessions: StudySession[] = [];
   
   // Generate last 30 days of data

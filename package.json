@@ -8,6 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:secure": "vercel dev --yes",
     "dev:frontend": "vite",
+    "migrate:resources:categories": "node scripts/migrate-resources-to-categories.mjs --dry-run",
     "build": "vite build",
     "postbuild": "node scripts/postbuild-git.mjs",
     "generate:icons": "node scripts/generate-icons.mjs",

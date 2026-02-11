@@ -158,9 +158,9 @@ export const getContentBasedRecommendations = (
     }
     
     // Match study pattern
-    if (userPreferences.studyPattern === 'visual' && (resource.type === 'PPT' || resource.type === 'Lab Record')) {
+    if (userPreferences.studyPattern === 'visual' && resource.type === 'PPT') {
       score += 1.5;
-    } else if (userPreferences.studyPattern === 'text' && (resource.type === 'Note' || resource.type === 'ImpQ')) {
+    } else if (userPreferences.studyPattern === 'text' && (resource.type === 'ImpQ' || resource.type === 'PYQ')) {
       score += 1.5;
     } else if (userPreferences.studyPattern === 'mixed') {
       score += 0.5;
@@ -224,10 +224,8 @@ export const getTimeBasedRecommendations = (
       }
     } else {
       // During regular time, prioritize learning resources
-      if (resource.type === 'Note' || resource.type === 'PPT') {
+      if (resource.type === 'ImpQ' || resource.type === 'PPT') {
         score += 3;
-      } else if (resource.type === 'Lab Record') {
-        score += 2;
       }
     }
     
