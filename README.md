@@ -5,7 +5,32 @@ A secure, full-stack student resource platform featuring RBAC-protected resource
 ## ✨ Features
 
 ### 📚 Resource Management
-- Upload and access study materials (Notes, PYQs, Lab Records, PPTs)
+- Upload and access subject resources (PPTs, MID Papers, PYQs, Important Qs)
+
+## Resources structure (system-defined)
+
+Resources are organized as:
+
+- Semester
+	- Subject
+		- PPTs
+		- MID Papers
+		- PYQs
+		- Important Qs
+
+The four categories are system-defined (non-editable). New uploads must use one of these categories.
+
+### Migration (no data loss)
+
+If you have existing Firestore `resources` docs with legacy `unit` fields and/or legacy types (`Note`, `Lab Record`), run:
+
+- Dry run: `npm run migrate:resources:categories`
+- Apply: `node scripts/migrate-resources-to-categories.mjs`
+
+This migration:
+- Deletes the legacy `unit` field
+- Normalizes `type` into one of: `PPT`, `MidPaper`, `PYQ`, `ImpQ`
+- Preserves the original value in `legacyType` when mapping occurs
 - Branch and semester-specific organization
 - Admin-controlled approval workflow
 

@@ -268,8 +268,12 @@ service cloud.firestore {
              && data.title is string && data.title.size() > 3 && data.title.size() < 200
              && data.subject is string && data.subject.size() > 0 && data.subject.size() < 200
              && data.type is string && data.type.size() > 0 && data.type.size() < 50
+             // System-defined, non-editable categories (no custom folders).
+             && (data.type == 'PPT' || data.type == 'MidPaper' || data.type == 'PYQ' || data.type == 'ImpQ')
              && data.downloadUrl is string && data.downloadUrl.size() > 5 && data.downloadUrl.size() < 2000
              && data.ownerId is string
+             // Legacy unit-based categorization is no longer allowed.
+             && !('unit' in data)
              && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
     }
 

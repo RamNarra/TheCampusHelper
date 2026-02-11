@@ -37,6 +37,25 @@ const ALLOWED_BRANCHES = new Set<SubmitBody['branch']>([
   'CIVIL',
 ]);
 
+const SYSTEM_RESOURCE_TYPES = new Set(['PPT', 'MidPaper', 'PYQ', 'ImpQ']);
+
+function normalizeResourceType(raw: string): { type: string; legacyType?: string } | null {
+  const t = (raw ?? '').trim();
+  if (!t) return null;
+  if (SYSTEM_RESOURCE_TYPES.has(t)) return { type: t };
+
+  // Legacy mappings (best-effort). We keep the original in legacyType.
+  if (t === 'Note' || t === 'Lab Record') return { type: 'ImpQ', legacyType: t };
+
+  const lower = t.toLowerCase();
+  if (lower === 'mid papers' || lower === 'midpaper') return { type: 'MidPaper', legacyType: t };
+  if (lower === 'pyqs' || lower === 'pyq') return { type: 'PYQ', legacyType: t };
+  if (lower === 'ppts' || lower === 'ppt') return { type: 'PPT', legacyType: t };
+  if (lower === 'important qs' || lower === 'important questions') return { type: 'ImpQ', legacyType: t };
+
+  return null;
+}
+
 function isHttpUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
@@ -70,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const subject = (body.subject ?? '').trim();
     const branch = body.branch;
     const semester = (body.semester ?? '').trim();
-    const type = (body.type ?? '').trim();
+    const typeRaw = (body.type ?? '').trim();
     const downloadUrl = (body.downloadUrl ?? '').trim();
     const driveFileId = body.driveFileId?.trim();
 
@@ -85,7 +104,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid branch', requestId: ctx.requestId });
     }
     if (!semester || semester.length > 10) return res.status(400).json({ error: 'Invalid semester', requestId: ctx.requestId });
-    if (!type || type.length > 50) return res.status(400).json({ error: 'Invalid type', requestId: ctx.requestId });
+    const normalizedType = normalizeResourceType(typeRaw);
+    if (!normalizedType) {
+      return res.status(400).json({ error: 'Invalid type', requestId: ctx.requestId });
+    }
     if (!downloadUrl || downloadUrl.length > 2000 || !isHttpUrl(downloadUrl)) {
       return res.status(400).json({ error: 'Invalid downloadUrl', requestId: ctx.requestId });
     }
@@ -117,7 +139,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       subject,
       branch,
       semester,
-      type,
+      type: normalizedType.type,
+      legacyType: normalizedType.legacyType || undefined,
       downloadUrl,
       driveFileId: driveFileId || undefined,
       mimeType: mimeType || undefined,
@@ -138,7 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requestId: ctx.requestId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      metadata: { resourceId: ref.id, title, subject, branch, semester, type },
+      metadata: { resourceId: ref.id, title, subject, branch, semester, type: normalizedType.type },
     });
 
     return res.status(200).json({ resourceId: ref.id });
