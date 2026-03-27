@@ -34,6 +34,7 @@ import { stripUndefined, withTimeout } from './platform/utils';
 import { authedJsonPost } from './platform/apiClient';
 import { getPhase1ServerlessOnly } from './platform/phase1Toggle';
 import { authService, moderationService, usersService, presenceService } from './domains';
+import { importFromDriveFolder } from './domains/resourcesImport';
 
 const normalizeBranchForResource = (raw: any): Resource['branch'] | null => {
     const v = typeof raw === 'string' ? raw.trim() : '';
@@ -303,6 +304,23 @@ export const api = {
 
                 const docRef = await withTimeout(addDoc(collection(db, 'resources'), payload as any), 15000);
                 return docRef.id;
+    },
+
+    importFromDriveFolder: async (input: {
+        folderId: string;
+        branch: 'CSE' | 'IT' | 'DS' | 'AIML' | 'CYS' | 'ECE' | 'EEE' | 'MECH' | 'CIVIL';
+        semester: string;
+        subject: string;
+        type: 'PPT' | 'MidPaper' | 'PYQ' | 'ImpQ';
+        maxFiles?: number;
+    }): Promise<{
+        ok: true;
+        imported: number;
+        skipped: number;
+        totalListed: number;
+        results: Array<{ driveFileId: string; title: string; ok: boolean; reason?: string; resourceId?: string }>;
+    }> => {
+        return await importFromDriveFolder(input);
     },
 
         uploadResourceFile: async (params: {

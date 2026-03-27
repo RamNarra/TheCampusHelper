@@ -28,7 +28,8 @@ export type AuditAction =
   | 'calendar.event.update'
   | 'resource.submit'
   | 'resource.delete'
-  | 'resource.status.set';
+  | 'resource.status.set'
+  | 'resource.import.driveFolder';
 
 export interface AuditLogEntry {
   id?: string;
