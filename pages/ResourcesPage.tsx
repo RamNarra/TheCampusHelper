@@ -82,7 +82,6 @@ const ResourcesPage: React.FC = () => {
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
-  const [showDriveImportModal, setShowDriveImportModal] = useState(false);
   
   // Upload State
   const [uploadName, setUploadName] = useState('');
@@ -96,19 +95,6 @@ const ResourcesPage: React.FC = () => {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkResults, setBulkResults] = useState<Array<{ line: string; ok: boolean; message: string }>>([]);
-
-  const [driveImportFolder, setDriveImportFolder] = useState('');
-  const [driveImportMaxFiles, setDriveImportMaxFiles] = useState('200');
-  const [driveImportRunning, setDriveImportRunning] = useState(false);
-  const [driveImportError, setDriveImportError] = useState<string | null>(null);
-  const [driveImportSummary, setDriveImportSummary] = useState<
-    | null
-    | {
-        imported: number;
-        skipped: number;
-        totalListed: number;
-      }
-  >(null);
 
   const uploadLinkNormalized = useMemo(() => {
     const raw = uploadLink.trim();
@@ -248,67 +234,6 @@ const ResourcesPage: React.FC = () => {
       setBulkRunning(false);
     }
   }, [branch, isStaff, parseBulkLines, semester, selectedCategory, subject, user]);
-
-  const parseDriveFolderId = useCallback((raw: string): string | null => {
-    const s = String(raw || '').trim();
-    if (!s) return null;
-    const urlMatch = s.match(/\/folders\/([-\w]{10,})/i);
-    if (urlMatch?.[1]) return urlMatch[1];
-    if (/^[-\w]{10,}$/.test(s)) return s;
-    return null;
-  }, []);
-
-  const runDriveImport = useCallback(async () => {
-    setDriveImportError(null);
-    setDriveImportSummary(null);
-
-    try {
-      if (!user?.uid) throw new Error('Please sign in.');
-      if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
-      if (!isStaff) throw new Error('Drive import is staff-only.');
-      if (!semester || !subject || !selectedCategory) {
-        throw new Error('Navigate to a specific category first (semester → subject → folder).');
-      }
-
-      const folderId = parseDriveFolderId(driveImportFolder);
-      if (!folderId) throw new Error('Please paste a valid Drive folder link or folder ID.');
-
-      const maxFiles = Math.max(
-        1,
-        Math.min(500, Number.parseInt(String(driveImportMaxFiles || '200').trim(), 10) || 200)
-      );
-
-      setDriveImportRunning(true);
-      const res = await api.importFromDriveFolder({
-        folderId,
-        branch,
-        semester,
-        subject,
-        type: selectedCategory,
-        maxFiles,
-      });
-
-      setDriveImportSummary({
-        imported: res.imported,
-        skipped: res.skipped,
-        totalListed: res.totalListed,
-      });
-    } catch (e: any) {
-      setDriveImportError(e?.message || 'Drive import failed');
-    } finally {
-      setDriveImportRunning(false);
-    }
-  }, [
-    branch,
-    driveImportFolder,
-    driveImportMaxFiles,
-    isStaff,
-    parseDriveFolderId,
-    selectedCategory,
-    semester,
-    subject,
-    user,
-  ]);
 
   const branchMatches = useCallback((resourceBranch: BranchKey): boolean => {
     return resourceBranch === branch;
@@ -698,21 +623,6 @@ const ResourcesPage: React.FC = () => {
                               Bulk Add
                             </Button>
                           ) : null}
-                          {isStaff ? (
-                            <Button
-                              variant="secondary"
-                              onClick={() => {
-                                setDriveImportError(null);
-                                setDriveImportSummary(null);
-                                setDriveImportFolder('');
-                                setDriveImportMaxFiles('200');
-                                setShowDriveImportModal(true);
-                              }}
-                              size="md"
-                            >
-                              Import Drive Folder
-                            </Button>
-                          ) : null}
                           <Button
                             onClick={() => {
                               setUploadError('');
@@ -946,89 +856,6 @@ const ResourcesPage: React.FC = () => {
                       onClick={runBulkAdd}
                     >
                       {bulkRunning ? 'Submitting…' : 'Submit lines'}
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* DRIVE FOLDER IMPORT MODAL (staff-only) */}
-        <AnimatePresence>
-          {showDriveImportModal && (
-            <div className="fixed inset-0 z-[150] flex items-center justify-center px-4">
-              <div
-                className="absolute inset-0 bg-background/70 backdrop-blur-sm backdrop-brightness-50"
-                onClick={() => !driveImportRunning && setShowDriveImportModal(false)}
-              />
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative bg-card w-full max-w-2xl p-6 rounded-2xl border border-border shadow-2xl"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold">Import Drive Folder (Staff)</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Paste a Drive folder link/ID. Matching files are submitted as pending.
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Using context: {branch} &gt; {semester} &gt; {subject} | Target:{' '}
-                      {selectedCategory ? CATEGORY_LABEL[selectedCategory] : ''}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Drive folder link or ID</label>
-                    <input
-                      value={driveImportFolder}
-                      onChange={(e) => setDriveImportFolder(e.target.value)}
-                      placeholder="https://drive.google.com/drive/folders/FOLDER_ID"
-                      className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary text-sm"
-                      disabled={driveImportRunning}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1 sm:col-span-1">
-                      <label className="text-xs text-muted-foreground">Max files</label>
-                      <input
-                        value={driveImportMaxFiles}
-                        onChange={(e) => setDriveImportMaxFiles(e.target.value)}
-                        placeholder="200"
-                        className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary text-sm"
-                        disabled={driveImportRunning}
-                        inputMode="numeric"
-                      />
-                    </div>
-                    <div className="sm:col-span-2 rounded-lg border border-border bg-background/40 px-3 py-2 text-xs text-muted-foreground">
-                      Imports PDF/PPT/PPTX only (best-effort). Skips existing items by Drive file ID.
-                    </div>
-                  </div>
-
-                  {driveImportError ? <Alert variant="destructive" description={driveImportError} /> : null}
-
-                  {driveImportSummary ? (
-                    <Alert
-                      title="Import complete"
-                      description={`Listed ${driveImportSummary.totalListed}. Imported ${driveImportSummary.imported}. Skipped ${driveImportSummary.skipped}.`}
-                    />
-                  ) : null}
-
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      disabled={driveImportRunning}
-                      onClick={() => setShowDriveImportModal(false)}
-                    >
-                      Close
-                    </Button>
-                    <Button type="button" disabled={driveImportRunning} onClick={runDriveImport}>
-                      {driveImportRunning ? 'Importing…' : 'Import'}
                     </Button>
                   </div>
                 </div>
