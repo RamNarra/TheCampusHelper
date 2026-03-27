@@ -45,6 +45,24 @@ const CATEGORY_LABEL: Record<ResourceType, string> = {
   ImpQ: 'Important Qs',
 };
 
+const OFFICIAL_DRIVE_FOLDERS: Array<{ label: string; url: string }> = [
+  { label: 'Core / General (Folder 1)', url: 'https://drive.google.com/drive/folders/1qxM-XvKKOE3gv1P1T468bhRPdpTEASjl?usp=sharing' },
+  { label: 'Core / General (Folder 2)', url: 'https://drive.google.com/drive/folders/1A_VgsKalMvYAYqPcH4wNmCs09-mG9n1H?usp=sharing' },
+  { label: 'Core / General (Folder 3)', url: 'https://drive.google.com/drive/folders/1qN4fpA-D5zUut7ycZ1rRQLGSeyNy25Fj?usp=drive_link' },
+  { label: 'Core / General (Folder 4)', url: 'https://drive.google.com/drive/folders/1i_8Zkm-NcpkIaZJPDAP9uVZJSeBEEbY8?usp=drive_link' },
+  { label: 'Engineering (Folder 1)', url: 'https://drive.google.com/drive/folders/13bEK41KIqhdGsat2Wg3rDbNq8H3HDTh-?usp=sharing' },
+  { label: 'Engineering (Folder 2)', url: 'https://drive.google.com/drive/folders/1FNyT0JkXs3Mx0J4HNltDKu1Ryh4_LeGp?usp=sharing' },
+  { label: 'Engineering (Folder 3)', url: 'https://drive.google.com/drive/folders/18eeswg9oDXh9SjN1e9gF9ihIxyP32x0a?usp=sharing' },
+  { label: 'Engineering (Folder 4)', url: 'https://drive.google.com/drive/folders/1xHK3ebIJ94a6ws-rMHdbO1e_Vuq9IQXq?usp=sharing' },
+  { label: 'Branch (Folder 1)', url: 'https://drive.google.com/drive/folders/19wsqDgjWuqbTj9wu_IXANNO1RBky3al1?usp=sharing' },
+  { label: 'Branch (Folder 2)', url: 'https://drive.google.com/drive/folders/15wzXoNO7dKMvUPpdAOSLsZNxPB_8a3bK?usp=sharing' },
+  { label: 'Branch (Folder 3)', url: 'https://drive.google.com/drive/folders/1wArHy5Doi3nn02ErATBCzpJ2C-_fufTY?usp=sharing' },
+  { label: 'Assignments (Folder 1)', url: 'https://drive.google.com/drive/folders/1uIAPwouH4CdLLU_Tg7H_0R_6dzCIVdAX?usp=sharing' },
+  { label: 'Assignments (Folder 2)', url: 'https://drive.google.com/drive/folders/1VX2u1mDdWnT6RuHweugS8WdQXnB0lhwv?usp=sharing' },
+  { label: 'Assignments (Folder 3)', url: 'https://drive.google.com/drive/folders/1T3llvTPixFkZDByiYFxIj6c24rXWNmU_?usp=sharing' },
+  { label: 'Assignments (Folder 4)', url: 'https://drive.google.com/drive/folders/1aPi2oQnRI-UNLdiZmnTeD2A36f_Qqjux?usp=sharing' },
+];
+
 const ResourcesPage: React.FC = () => {
   const { user } = useAuth();
   
@@ -399,6 +417,31 @@ const ResourcesPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-foreground">Resources</h1>
                 <p className="text-muted-foreground">Select semester</p>
             </div>
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-border bg-card/60 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-foreground">Official Drive Folders</div>
+              <div className="text-xs text-muted-foreground">From the embedded links in the First Year Guide</div>
+            </div>
+            <div className="text-xs text-muted-foreground">Opens in new tab</div>
+          </div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {OFFICIAL_DRIVE_FOLDERS.map((f) => (
+              <a
+                key={f.url}
+                href={f.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                title={f.url}
+              >
+                <span className="truncate">{f.label}</span>
+                <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+              </a>
+            ))}
+          </div>
         </div>
 
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 pb-2 border-b border-border/50 overflow-x-auto">
