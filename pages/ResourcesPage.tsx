@@ -81,6 +81,7 @@ const ResourcesPage: React.FC = () => {
   const [showAccessGate, setShowAccessGate] = useState(false);
   const [pendingResource, setPendingResource] = useState<Resource | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showBulkAddModal, setShowBulkAddModal] = useState(false);
   
   // Upload State
   const [uploadName, setUploadName] = useState('');
@@ -89,6 +90,11 @@ const ResourcesPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [lastSubmittedResource, setLastSubmittedResource] = useState<Resource | null>(null);
+
+  const [bulkText, setBulkText] = useState('');
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkResults, setBulkResults] = useState<Array<{ line: string; ok: boolean; message: string }>>([]);
 
   const uploadLinkNormalized = useMemo(() => {
     const raw = uploadLink.trim();
@@ -118,6 +124,116 @@ const ResourcesPage: React.FC = () => {
   }>({ open: false, x: 0, y: 0, resource: null });
 
   const isStaff = isAtLeastRole(normalizeRole(user?.role), 'moderator');
+
+  const parseBulkLines = useCallback(() => {
+    const lines = bulkText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
+
+    return lines.map((line) => {
+      // Supported formats:
+      // 1) URL only
+      // 2) Title | URL
+      // 3) Title - URL  (best-effort)
+      let title: string | null = null;
+      let url: string | null = null;
+
+      const pipe = line.split('|').map((s) => s.trim()).filter(Boolean);
+      if (pipe.length >= 2) {
+        title = pipe.slice(0, -1).join(' | ');
+        url = pipe[pipe.length - 1];
+      } else {
+        const match = line.match(/(https?:\/\/\S+)/i);
+        if (match) {
+          url = match[1];
+          const before = line.slice(0, match.index ?? 0).trim();
+          const after = line.slice((match.index ?? 0) + url.length).trim();
+          const rawTitle = (before || after).replace(/[-–—]+\s*$/, '').trim();
+          if (rawTitle) title = rawTitle;
+        }
+      }
+
+      return { line, title, url };
+    });
+  }, [bulkText]);
+
+  const runBulkAdd = useCallback(async () => {
+    setBulkError(null);
+    setBulkResults([]);
+
+    try {
+      if (!user?.uid) throw new Error('Please sign in.');
+      if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
+      if (!semester || !subject || !selectedCategory) {
+        throw new Error('Navigate to a specific category first (semester → subject → folder).');
+      }
+      if (!isStaff) throw new Error('Bulk add is staff-only.');
+
+      const entries = parseBulkLines();
+      if (entries.length === 0) throw new Error('Paste one or more Drive file links (one per line).');
+      if (entries.length > 50) throw new Error('Too many lines at once. Paste up to 50 at a time.');
+
+      setBulkRunning(true);
+
+      const results: Array<{ line: string; ok: boolean; message: string }> = [];
+
+      for (const entry of entries) {
+        const rawUrl = (entry.url || '').trim();
+        if (!rawUrl) {
+          results.push({ line: entry.line, ok: false, message: 'No URL found in line' });
+          continue;
+        }
+        const safe = safeExternalHttpUrl(rawUrl);
+        if (!safe) {
+          results.push({ line: entry.line, ok: false, message: 'Invalid http(s) URL' });
+          continue;
+        }
+
+        const driveId = extractDriveId(safe);
+        if (!driveId) {
+          results.push({ line: entry.line, ok: false, message: 'Not a recognized Google Drive file link' });
+          continue;
+        }
+
+        const title = (entry.title || '').trim() || `Drive File ${driveId.slice(0, 8)}`;
+        if (title.length < 3 || title.length > 200) {
+          results.push({ line: entry.line, ok: false, message: 'Title is invalid/too long' });
+          continue;
+        }
+
+        const resourceId = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+          ? (globalThis.crypto as any).randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        const newResource: Omit<Resource, 'id'> = {
+          title,
+          subject,
+          branch,
+          semester,
+          type: selectedCategory,
+          downloadUrl: safe,
+          driveFileId: driveId,
+          ownerId: user.uid,
+          status: 'pending',
+        };
+
+        try {
+          await api.addResource(newResource, { id: resourceId });
+          results.push({ line: entry.line, ok: true, message: 'Submitted (pending)' });
+        } catch (e: any) {
+          results.push({ line: entry.line, ok: false, message: e?.message || 'Submit failed' });
+        }
+        setBulkResults([...results]);
+      }
+
+      setBulkResults(results);
+    } catch (e: any) {
+      setBulkError(e?.message || 'Bulk add failed');
+    } finally {
+      setBulkRunning(false);
+    }
+  }, [branch, isStaff, parseBulkLines, semester, selectedCategory, subject, user]);
 
   const branchMatches = useCallback((resourceBranch: BranchKey): boolean => {
     return resourceBranch === branch;
@@ -491,19 +607,35 @@ const ResourcesPage: React.FC = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold">Files</h2>
-                      {user && isProfileComplete(user) && (
+                      {user && isProfileComplete(user) ? (
+                        <div className="flex items-center gap-2">
+                          {isStaff ? (
                             <Button
+                              variant="secondary"
                               onClick={() => {
-                                setUploadError('');
-                                setUploadSuccess(null);
-                                setLastSubmittedResource(null);
-                                setShowUploadModal(true);
+                                setBulkError(null);
+                                setBulkResults([]);
+                                setBulkText('');
+                                setShowBulkAddModal(true);
                               }}
                               size="md"
                             >
-                                <Plus className="w-4 h-4" /> Add Resource
+                              Bulk Add
                             </Button>
-                        )}
+                          ) : null}
+                          <Button
+                            onClick={() => {
+                              setUploadError('');
+                              setUploadSuccess(null);
+                              setLastSubmittedResource(null);
+                              setShowUploadModal(true);
+                            }}
+                            size="md"
+                          >
+                            <Plus className="w-4 h-4" /> Add Resource
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
 
                     {isResourcesLoading ? (
@@ -651,6 +783,85 @@ const ResourcesPage: React.FC = () => {
                     </motion.div>
                 </div>
             )}
+        </AnimatePresence>
+
+        {/* BULK ADD MODAL (staff-only) */}
+        <AnimatePresence>
+          {showBulkAddModal && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center px-4">
+              <div
+                className="absolute inset-0 bg-background/70 backdrop-blur-sm backdrop-brightness-50"
+                onClick={() => !bulkRunning && setShowBulkAddModal(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative bg-card w-full max-w-2xl p-6 rounded-2xl border border-border shadow-2xl"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold">Bulk Add (Staff)</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Paste one Drive file link per line (optional: <span className="font-medium">Title | URL</span>). Submits as pending.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Using context: {branch} &gt; {semester} &gt; {subject} | Target: {selectedCategory ? CATEGORY_LABEL[selectedCategory] : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <textarea
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    placeholder={
+                      'Example:\nUnit-1 Notes | https://drive.google.com/file/d/FILE_ID/view\nhttps://drive.google.com/file/d/FILE_ID/view\n# lines starting with # are ignored'
+                    }
+                    className="w-full h-40 bg-muted border border-border rounded-lg px-4 py-3 outline-none focus:border-primary text-sm"
+                    disabled={bulkRunning}
+                  />
+
+                  {bulkError ? <Alert variant="destructive" description={bulkError} /> : null}
+
+                  {bulkResults.length > 0 ? (
+                    <div className="max-h-48 overflow-auto rounded-lg border border-border bg-background/40">
+                      <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border">Results</div>
+                      <div className="divide-y divide-border">
+                        {bulkResults.map((r, idx) => (
+                          <div key={idx} className="px-3 py-2 text-sm flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-foreground" title={r.line}>{r.line}</div>
+                              <div className={r.ok ? 'text-xs text-emerald-400' : 'text-xs text-destructive'}>
+                                {r.ok ? 'OK' : 'Error'}: {r.message}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      disabled={bulkRunning}
+                      onClick={() => setShowBulkAddModal(false)}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={bulkRunning}
+                      onClick={runBulkAdd}
+                    >
+                      {bulkRunning ? 'Submitting…' : 'Submit lines'}
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </AnimatePresence>
 
         {/* Right-click context menu */}
