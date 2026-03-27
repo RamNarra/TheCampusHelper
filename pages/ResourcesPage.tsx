@@ -72,6 +72,26 @@ const ResourcesPage: React.FC = () => {
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [lastSubmittedResource, setLastSubmittedResource] = useState<Resource | null>(null);
 
+  const uploadLinkNormalized = useMemo(() => {
+    const raw = uploadLink.trim();
+    if (!raw) return null;
+    return safeExternalHttpUrl(raw);
+  }, [uploadLink]);
+
+  const uploadPreviewSrc = useMemo(() => {
+    if (!uploadLinkNormalized) return null;
+    const driveId = extractDriveId(uploadLinkNormalized);
+    if (driveId) return `https://drive.google.com/file/d/${driveId}/preview`;
+
+    const lower = uploadLinkNormalized.toLowerCase();
+    const isPdf = lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.pdf#');
+    const isPptx = lower.endsWith('.pptx') || lower.includes('.pptx?') || lower.includes('.pptx#');
+
+    if (isPptx) return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(uploadLinkNormalized)}`;
+    if (isPdf) return uploadLinkNormalized;
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(uploadLinkNormalized)}`;
+  }, [uploadLinkNormalized]);
+
   const [contextMenu, setContextMenu] = useState<{
     open: boolean;
     x: number;
@@ -280,9 +300,8 @@ const ResourcesPage: React.FC = () => {
         if (!user?.uid) throw new Error('Please sign in to upload a resource.');
         if (!isProfileComplete(user)) throw new Error('Please complete your profile before uploading.');
         if (!semester || !subject || !selectedCategory) throw new Error('Please navigate to a specific category first.');
-        if (!uploadName.trim()) throw new Error("Resource name is required.");
-        // Free path: accept Drive link or any http(s) URL.
-        if (!uploadLink.trim()) throw new Error("Please paste a Drive link or a direct URL.");
+        if (!uploadName.trim()) throw new Error('Resource name is required.');
+        if (!uploadLink.trim()) throw new Error('Please paste a Drive link or a direct URL.');
 
 
     // 2. Prepare Object
@@ -292,10 +311,9 @@ const ResourcesPage: React.FC = () => {
           ? (globalThis.crypto as any).randomUUID()
           : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-        let finalUrl = uploadLink.trim();
-        const safe = safeExternalHttpUrl(finalUrl);
+        const safe = uploadLinkNormalized;
         if (!safe) throw new Error('Please provide a valid http(s) URL.');
-        finalUrl = safe;
+        const finalUrl = safe;
 
         const driveId = extractDriveId(finalUrl);
 
@@ -537,6 +555,30 @@ const ResourcesPage: React.FC = () => {
                                   className="w-full bg-muted border border-border rounded-lg px-4 py-2 outline-none focus:border-primary"
                               />
 
+                              {uploadLink.trim() && !uploadLinkNormalized ? (
+                                <Alert
+                                  variant="destructive"
+                                  title="Invalid link"
+                                  description="Please use a valid http(s) URL."
+                                />
+                              ) : null}
+
+                              {uploadPreviewSrc ? (
+                                <div className="rounded-lg border border-border overflow-hidden bg-background">
+                                  <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border bg-muted/40">
+                                    Preview (best-effort)
+                                  </div>
+                                  <div className="h-56">
+                                    <iframe
+                                      src={uploadPreviewSrc}
+                                      className="w-full h-full border-0"
+                                      title="Upload preview"
+                                      allow="autoplay; fullscreen"
+                                    />
+                                  </div>
+                                </div>
+                              ) : null}
+
                               <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
                                 Tip: For the best free preview experience, use a Google Drive file link.
                               </div>
@@ -548,7 +590,11 @@ const ResourcesPage: React.FC = () => {
 
                               {uploadError ? <Alert variant="destructive" description={uploadError} /> : null}
 
-                                <Button disabled={isUploading} className="w-full" size="lg">
+                                <Button
+                                  disabled={isUploading || (!!uploadLink.trim() && !uploadLinkNormalized)}
+                                  className="w-full"
+                                  size="lg"
+                                >
                                   {isUploading ? (
                                     <>
                                       <Spinner size="md" className="border-t-primary-foreground" />

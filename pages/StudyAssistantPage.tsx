@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Brain, Send, BookOpen, GraduationCap } from 'lucide-react';
 import { StudyContext, StudyMessage } from '../types';
 import { getAuthToken } from '../services/firebase';
+import { authedJsonPost } from '../services/platform/apiClient';
 import { isAuthBypassed } from '../lib/dev';
 import { Page, PageHeader } from '../components/ui/Page';
 import { Card, CardContent } from '../components/ui/Card';
@@ -95,45 +96,16 @@ const StudyAssistantPage: React.FC = () => {
         ].slice(-5), // Keep last 5 interactions
       };
 
-      const response = await fetch('/api/study-assistant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      // NOTE: keep token check for a clear UX message.
+      // Actual auth header attachment happens inside authedJsonPost.
+      const data = await authedJsonPost<any>(
+        '/api/study-assistant',
+        {
           context: updatedContext,
           question: inputMessage,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Study Assistant backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.');
-        }
-
-        if (response.status === 429) {
-          throw new Error('You are sending requests too quickly. Please wait a minute and try again.');
-        }
-
-        if (response.status === 502) {
-          throw new Error('AI service is temporarily unavailable. Please try again in a moment.');
-        }
-
-        let message = 'Failed to get response';
-        let requestId: string | undefined;
-        try {
-          const error = await response.json();
-          message = error?.error || error?.message || message;
-          requestId = typeof error?.requestId === 'string' ? error.requestId : undefined;
-        } catch {
-          // ignore JSON parse errors
-        }
-        const suffix = requestId ? ` (requestId: ${requestId})` : '';
-        throw new Error(`${message}${suffix}`);
-      }
-
-      const data = await response.json();
+        },
+        { timeoutMs: 60000 }
+      );
 
       const assistantMessage: StudyMessage = {
         id: generateMessageId(),

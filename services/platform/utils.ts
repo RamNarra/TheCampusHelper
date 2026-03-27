@@ -13,3 +13,16 @@ export const stripUndefined = <T extends Record<string, any>>(obj: T): T => {
   const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
   return Object.fromEntries(entries) as T;
 };
+
+export const addDevAllFeaturesHeader = (headers?: Record<string, string>): Record<string, string> => {
+  const out: Record<string, string> = { ...(headers || {}) };
+  try {
+    const env = (import.meta as any)?.env || {};
+    const flag = String(env?.VITE_DEV_ALL_FEATURES ?? '').trim().toLowerCase();
+    const enabled = Boolean(env?.DEV) && (flag === '1' || flag === 'true' || flag === 'yes' || flag === 'on');
+    if (enabled) out['x-dev-all-features'] = '1';
+  } catch {
+    // ignore
+  }
+  return out;
+};

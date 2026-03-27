@@ -28,8 +28,10 @@ import {
 import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit, StudyGroupRequest } from '../types';
 import { normalizeRole } from '../lib/rbac';
+import { isDevAllFeaturesEnabled } from '../lib/devAllFeatures';
 import { env, getAuthClient, getDb, getGoogleProvider, isConfigured } from './platform/firebaseClient';
 import { stripUndefined, withTimeout } from './platform/utils';
+import { authedJsonPost } from './platform/apiClient';
 import { getPhase1ServerlessOnly } from './platform/phase1Toggle';
 import { authService, moderationService, usersService, presenceService } from './domains';
 
@@ -172,9 +174,10 @@ export const mapAuthToProfile = (user: User): UserProfile => {
     displayName: user.displayName,
     email: user.email,
     photoURL: user.photoURL,
-        // Never trust client env allowlists for authorization.
-        // Real roles come from Firestore + custom claims.
-        role: 'student',
+                // Never trust client env allowlists for authorization.
+                // Real roles come from Firestore + custom claims.
+                // Dev-only override: allow local testing with full UI unlocked.
+                role: isDevAllFeaturesEnabled() ? ('super_admin' as any) : 'student',
     branch: undefined,
         year: undefined,
         section: undefined,
@@ -685,27 +688,15 @@ export const api = {
         if (!uid) throw new Error('You must be signed in.');
         const usePhase1 = await getPhase1ServerlessOnly();
         if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
-            const res = await withTimeout(
-                fetch('/api/resources/setStatus', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        resourceId,
-                        status,
-                        rejectionReason: options?.rejectionReason ?? '',
-                    }),
-                }),
-                10000
+            await authedJsonPost<void>(
+                '/api/resources/setStatus',
+                {
+                    resourceId,
+                    status,
+                    rejectionReason: options?.rejectionReason ?? '',
+                },
+                { timeoutMs: 10000 }
             );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Update status failed (${res.status})`);
-            }
             return;
         }
         const docRef = doc(db, 'resources', resourceId);
@@ -738,21 +729,7 @@ export const api = {
         // Prefer server-authoritative delete (works even when client deletes are blocked by rules).
         if (token) {
             try {
-                const res = await withTimeout(
-                    fetch('/api/resources/delete', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({ resourceId }),
-                    }),
-                    10000
-                );
-                if (!res.ok) {
-                    const text = await res.text().catch(() => '');
-                    throw new Error(text || `Delete failed (${res.status})`);
-                }
+                await authedJsonPost<void>('/api/resources/delete', { resourceId }, { timeoutMs: 10000 });
                 return;
             } catch (e) {
                 // If Phase1 is on, deletion is intentionally server-only.
@@ -848,53 +825,7 @@ export const api = {
      * It DOES NOT call Google APIs directly.
      */
     generateContent: async (prompt: string): Promise<string> => {
-       const token = await getAuthToken();
-       if (!token) throw new Error("User must be logged in to use AI features.");
-
-             const parseApiError = async (response: Response): Promise<{ message: string; requestId?: string }> => {
-                 const status = response.status;
-
-                 // Common dev pitfall: Vite-only dev server.
-                 if (status === 404) {
-                     return {
-                         message:
-                             'AI backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.',
-                     };
-                 }
-
-                 if (status === 429) {
-                     return { message: 'You are sending requests too quickly. Please wait a minute and try again.' };
-                 }
-
-                 try {
-                     const err = (await response.json().catch(() => null)) as any;
-                     const requestId = typeof err?.requestId === 'string' ? err.requestId : undefined;
-                     const message = (err?.error || err?.message || '').toString().trim();
-                     if (message) return { message, requestId };
-                     return { message: `Request failed (${status})`, requestId };
-                 } catch {
-                     // Non-JSON error body.
-                     return { message: `Request failed (${status})` };
-                 }
-             };
-
-       // Direct call to our secure proxy
-       const response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: {
-             'Content-Type': 'application/json',
-             'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ prompt })
-       });
-
-       if (!response.ok) {
-                    const err = await parseApiError(response);
-                    const suffix = err.requestId ? ` (requestId: ${err.requestId})` : '';
-                    throw new Error(`${err.message || 'Generation failed'}${suffix}`);
-       }
-
-       const data = await response.json();
+       const data = await authedJsonPost<{ text: string }>('/api/generate', { prompt }, { timeoutMs: 30000 });
        return data.text;
     },
 
@@ -902,42 +833,11 @@ export const api = {
      * Generate quiz questions using AI
      */
     generateQuiz: async (subject: string, topic: string, difficulty: number, questionCount: number = 10): Promise<{ questions: QuizQuestion[], metadata: any }> => {
-       const token = await getAuthToken();
-       if (!token) throw new Error("User must be logged in to use AI features.");
-
-       const response = await fetch('/api/generateQuiz', {
-          method: 'POST',
-          headers: {
-             'Content-Type': 'application/json',
-             'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ subject, topic, difficulty, questionCount })
-       });
-
-       if (!response.ok) {
-                    // Keep error messaging consistent with generateContent.
-                    let message = 'Quiz generation failed';
-                    let requestId: string | undefined;
-
-                    if (response.status === 404) {
-                        message = 'Quiz backend is not available. In local dev, run "npm run dev:secure" (Vercel dev) so /api routes work.';
-                    } else if (response.status === 429) {
-                        message = 'You are sending requests too quickly. Please wait a minute and try again.';
-                    } else {
-                        try {
-                            const err = (await response.json().catch(() => null)) as any;
-                            requestId = typeof err?.requestId === 'string' ? err.requestId : undefined;
-                            message = (err?.error || err?.message || message).toString();
-                        } catch {
-                            // ignore
-                        }
-                    }
-
-                    const suffix = requestId ? ` (requestId: ${requestId})` : '';
-                    throw new Error(`${message}${suffix}`);
-       }
-
-       return await response.json();
+       return await authedJsonPost<{ questions: QuizQuestion[]; metadata: any }>(
+         '/api/generateQuiz',
+         { subject, topic, difficulty, questionCount },
+         { timeoutMs: 45000 }
+       );
     },
 
     /**
@@ -1015,23 +915,7 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const usePhase1 = await getPhase1ServerlessOnly();
         if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
-            const res = await withTimeout(
-                fetch('/api/studyGroups/join', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ groupId }),
-                }),
-                15000
-            );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Join failed (${res.status})`);
-            }
+            await authedJsonPost<void>('/api/studyGroups/join', { groupId }, { timeoutMs: 15000 });
             return;
         }
         const docRef = doc(db, 'studyGroups', groupId);
@@ -1044,23 +928,7 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const usePhase1 = await getPhase1ServerlessOnly();
         if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
-            const res = await withTimeout(
-                fetch('/api/studyGroups/leave', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ groupId }),
-                }),
-                15000
-            );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Leave failed (${res.status})`);
-            }
+            await authedJsonPost<void>('/api/studyGroups/leave', { groupId }, { timeoutMs: 15000 });
             return;
         }
         const docRef = doc(db, 'studyGroups', groupId);
@@ -1173,36 +1041,23 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const usePhase1 = await getPhase1ServerlessOnly();
         if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
             const toMillis = (v: any): number => {
                 if (typeof v === 'number') return v;
                 return v?.toMillis?.() ?? (v instanceof Date ? v.getTime() : 0);
             };
-            const res = await withTimeout(
-                fetch('/api/studyGroups/createSession', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        groupId,
-                        title: (sessionData as any).title,
-                        description: (sessionData as any).description,
-                        scheduledAtMillis: toMillis((sessionData as any).scheduledAt),
-                        duration: (sessionData as any).duration,
-                        videoUrl: (sessionData as any).videoUrl,
-                        status: (sessionData as any).status,
-                    }),
-                }),
-                15000
+            const json = await authedJsonPost<{ sessionId: string }>(
+                '/api/studyGroups/createSession',
+                {
+                    groupId,
+                    title: (sessionData as any).title,
+                    description: (sessionData as any).description,
+                    scheduledAtMillis: toMillis((sessionData as any).scheduledAt),
+                    duration: (sessionData as any).duration,
+                    videoUrl: (sessionData as any).videoUrl,
+                    status: (sessionData as any).status,
+                },
+                { timeoutMs: 15000 }
             );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Create session failed (${res.status})`);
-            }
-            const json = (await res.json().catch(() => ({}))) as any;
             const sessionId = String(json?.sessionId || '').trim();
             if (!sessionId) throw new Error('Create session failed: missing sessionId');
             return sessionId;
@@ -1218,38 +1073,26 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const usePhase1 = await getPhase1ServerlessOnly();
         if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
             const toMillis = (v: any): number | undefined => {
                 if (v === undefined) return undefined;
                 if (typeof v === 'number') return v;
                 return v?.toMillis?.() ?? (v instanceof Date ? v.getTime() : undefined);
             };
             const scheduledAtMillis = toMillis((data as any).scheduledAt);
-            const res = await withTimeout(
-                fetch('/api/studyGroups/updateSession', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        groupId,
-                        sessionId,
-                        title: (data as any).title,
-                        description: (data as any).description,
-                        scheduledAtMillis,
-                        duration: (data as any).duration,
-                        videoUrl: (data as any).videoUrl,
-                        status: (data as any).status,
-                    }),
-                }),
-                15000
+            await authedJsonPost<void>(
+                '/api/studyGroups/updateSession',
+                {
+                    groupId,
+                    sessionId,
+                    title: (data as any).title,
+                    description: (data as any).description,
+                    scheduledAtMillis,
+                    duration: (data as any).duration,
+                    videoUrl: (data as any).videoUrl,
+                    status: (data as any).status,
+                },
+                { timeoutMs: 15000 }
             );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Update session failed (${res.status})`);
-            }
             return;
         }
         const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);
@@ -1260,23 +1103,7 @@ export const api = {
         if (!db) throw new Error("Database not configured");
         const usePhase1 = await getPhase1ServerlessOnly();
         if (usePhase1) {
-            const token = await getAuthToken();
-            if (!token) throw new Error('Not signed in');
-            const res = await withTimeout(
-                fetch('/api/studyGroups/deleteSession', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ groupId, sessionId }),
-                }),
-                15000
-            );
-            if (!res.ok) {
-                const text = await res.text().catch(() => '');
-                throw new Error(text || `Delete session failed (${res.status})`);
-            }
+            await authedJsonPost<void>('/api/studyGroups/deleteSession', { groupId, sessionId }, { timeoutMs: 15000 });
             return;
         }
         const docRef = doc(db, `studyGroups/${groupId}/sessions`, sessionId);

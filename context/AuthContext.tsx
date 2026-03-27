@@ -1,3 +1,4 @@
+import { isDevAllFeaturesEnabled } from '../lib/devAllFeatures';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { api, mapAuthToProfile } from '../services/firebase';
@@ -188,6 +189,11 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         setAuthError(null);
         // 1. Immediate: Map basic data from Google Token
         const basicProfile = mapAuthToProfile(firebaseUser);
+        // Dev-only: if all-features mode is enabled, treat the user as super_admin
+        // regardless of what's stored in Firestore (avoids needing admin bootstrap).
+        if (isDevAllFeaturesEnabled()) {
+          (basicProfile as any).role = 'super_admin';
+        }
 
         // Presence: start heartbeat immediately on auth.
         presenceUid = firebaseUser.uid;
@@ -236,7 +242,10 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
                 // Merge DB data with existing state (normalize legacy fields)
                 const normalized = normalizeProfileFromDb(data);
-                setUser(prev => prev ? ({ ...prev, ...normalized }) : null);
+                if (isDevAllFeaturesEnabled()) {
+                  (normalized as any).role = 'super_admin';
+                }
+                setUser(prev => (prev ? ({ ...prev, ...normalized }) : null));
 
                 // Admin recovery is intentionally manual (see Profile page) to avoid
                 // probing the bootstrap endpoint on every login.
@@ -245,7 +254,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
                 // Only run gamification logic once per session to prevent infinite loops
                 if (!gamificationInitializedRef.current) {
                   gamificationInitializedRef.current = true;
-                  
+
                   // Initialize gamification for new users
                   if (data.xp === undefined) {
                     await initializeGamification(firebaseUser.uid);
@@ -258,6 +267,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
                     }
                   }
                 }
+
             }
             // Mark profile as "Loaded" (success or empty)
             setProfileLoaded(true);

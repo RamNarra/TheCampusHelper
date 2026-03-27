@@ -1,6 +1,6 @@
 import type { UserRole } from '../../types';
 import { getAuthToken, forceRefreshAuthToken } from './auth';
-import { withTimeout } from '../platform/utils';
+import { addDevAllFeaturesHeader, withTimeout } from '../platform/utils';
 
 export const bootstrapAdminAccess = async (): Promise<boolean> => {
   try {
@@ -11,6 +11,7 @@ export const bootstrapAdminAccess = async (): Promise<boolean> => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...addDevAllFeaturesHeader(),
       },
       body: JSON.stringify({}),
     });
@@ -43,6 +44,7 @@ export const bootstrapAdminAccessDetailed = async (): Promise<{
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...addDevAllFeaturesHeader(),
       },
       body: JSON.stringify({}),
     });
@@ -62,6 +64,7 @@ export const updateUserRole = async (targetUid: string, role: UserRole) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...addDevAllFeaturesHeader(),
       },
       body: JSON.stringify({ targetUid, role }),
     }),
@@ -85,6 +88,7 @@ export const setUserDisabled = async (targetUid: string, disabled: boolean) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...addDevAllFeaturesHeader(),
       },
       body: JSON.stringify({ targetUid, disabled }),
     }),
@@ -105,6 +109,7 @@ export const approveStudyGroupRequest = async (requestId: string) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...addDevAllFeaturesHeader(),
       },
       body: JSON.stringify({ requestId }),
     }),
@@ -125,6 +130,7 @@ export const rejectStudyGroupRequest = async (requestId: string, reason?: string
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...addDevAllFeaturesHeader(),
       },
       body: JSON.stringify({ requestId, reason: reason || '' }),
     }),

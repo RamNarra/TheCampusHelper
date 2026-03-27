@@ -9,8 +9,7 @@ import {
 } from 'firebase/firestore';
 import type { Enrollment } from '../../types';
 import { getDb } from '../platform/firebaseClient';
-import { getAuthToken } from './auth';
-import { withTimeout } from '../platform/utils';
+import { authedJsonPost } from '../platform/apiClient';
 
 export const onMyEnrollmentsChanged = (
   userId: string,
@@ -47,31 +46,17 @@ export const setEnrollment = async (input: {
   role: 'student' | 'instructor';
   status: 'active' | 'removed';
 }): Promise<void> => {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not signed in');
-
   const userId = (input.userId ?? input.targetUid ?? '').trim();
   if (!userId) throw new Error('userId is required');
 
-  const res = await withTimeout(
-    fetch('/api/courses/setEnrollment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        courseId: input.courseId,
-        userId,
-        role: input.role,
-        status: input.status,
-      }),
-    }),
-    15000
+  await authedJsonPost<void>(
+    '/api/courses/setEnrollment',
+    {
+      courseId: input.courseId,
+      userId,
+      role: input.role,
+      status: input.status,
+    },
+    { timeoutMs: 15000 }
   );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `Set enrollment failed (${res.status})`);
-  }
 };

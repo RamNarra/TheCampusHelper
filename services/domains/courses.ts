@@ -1,6 +1,5 @@
 import type { Course } from '../../types';
-import { getAuthToken } from './auth';
-import { withTimeout } from '../platform/utils';
+import { authedJsonPost } from '../platform/apiClient';
 
 export type MyCourseSummary = {
   courseId: string;
@@ -15,52 +14,12 @@ export const createCourse = async (input: {
   term: string;
   description?: string;
 }): Promise<{ courseId: string }> => {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not signed in');
-
-  const res = await withTimeout(
-    fetch('/api/courses/createCourse', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(input),
-    }),
-    15000
-  );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `Create course failed (${res.status})`);
-  }
-
-  return (await res.json()) as { courseId: string };
+  return await authedJsonPost<{ courseId: string }>('/api/courses/createCourse', input, { timeoutMs: 15000 });
 };
 
 export const getMyCourses = async (input?: {
   includeArchived?: boolean;
   limit?: number;
 }): Promise<{ courses: MyCourseSummary[] }> => {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not signed in');
-
-  const res = await withTimeout(
-    fetch('/api/courses/myCourses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(input || {}),
-    }),
-    15000
-  );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `Get my courses failed (${res.status})`);
-  }
-
-  return (await res.json()) as { courses: MyCourseSummary[] };
+  return await authedJsonPost<{ courses: MyCourseSummary[] }>('/api/courses/myCourses', input || {}, { timeoutMs: 15000 });
 };
