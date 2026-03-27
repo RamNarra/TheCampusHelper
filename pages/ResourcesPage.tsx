@@ -443,31 +443,6 @@ const ResourcesPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-border bg-card/60 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-foreground">Official Drive Folders</div>
-              <div className="text-xs text-muted-foreground">From the embedded links in the First Year Guide</div>
-            </div>
-            <div className="text-xs text-muted-foreground">Opens in new tab</div>
-          </div>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {OFFICIAL_DRIVE_FOLDERS.map((f) => (
-              <a
-                key={f.url}
-                href={f.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3 py-2 text-sm text-foreground hover:bg-muted/50 transition-colors"
-                title={f.url}
-              >
-                <span className="truncate">{f.label}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
-              </a>
-            ))}
-          </div>
-        </div>
-
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 pb-2 border-b border-border/50 overflow-x-auto">
           <button onClick={resetToHome} aria-label="Home" title="Home"><Home className="w-4 h-4" /></button>
             {semester && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSemester}>Sem {semester}</button></>}
