@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Award, BookOpen, CheckCircle2, TrendingUp, Sparkles, User, AlertCircle, FileText } from 'lucide-react';
+import { Award, BookOpen, CheckCircle2, TrendingUp, Sparkles, User, AlertCircle, FileText, Bookmark, ArrowRight, Clock } from 'lucide-react';
 import { StudentProfileDoc } from '../../../core/firebase/students';
+import { Link } from 'react-router-dom';
+import { resources } from '../../../lib/data';
 
 interface AcademicProfileProps {
   student: StudentProfileDoc;
@@ -9,6 +11,7 @@ interface AcademicProfileProps {
 
 export const AcademicProfile: React.FC<AcademicProfileProps> = ({ student }) => {
   const sem1 = student.semesters?.sem1;
+  const recommendedMaterials = resources.slice(0, 3);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -92,6 +95,39 @@ export const AcademicProfile: React.FC<AcademicProfileProps> = ({ student }) => 
           </div>
           <p className="text-3xl font-extrabold text-foreground">Semester 2</p>
           <p className="text-xs text-muted-foreground font-medium mt-2">Next: Mid-1 Examinations</p>
+        </div>
+      </div>
+
+      {/* Continue Studying / Recommended Section */}
+      <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-secondary" />
+            <h2 className="text-xl font-bold text-foreground">Continue Studying & Recommended for Sem 2</h2>
+          </div>
+          <Link to="/courses" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+            Browse All <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {recommendedMaterials.map((mat) => (
+            <div key={mat.id} className="p-4 bg-muted/40 border border-border/80 rounded-2xl hover:border-primary/40 transition-all flex flex-col justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary px-2.5 py-0.5 rounded-md bg-primary/10 inline-block mb-2">
+                  {mat.unit || mat.type}
+                </span>
+                <h4 className="text-sm font-bold text-foreground line-clamp-1">{mat.title}</h4>
+                <p className="text-xs text-muted-foreground mt-1">{mat.subject}</p>
+              </div>
+              <Link
+                to="/courses"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80"
+              >
+                Resume Reading <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          ))}
         </div>
       </div>
 
