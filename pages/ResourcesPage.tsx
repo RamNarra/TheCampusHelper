@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { BranchKey, Resource, ResourceType } from '../types';
+import { ResourceViewerModal } from '../features/resources/components/ResourceViewerModal';
 import { useAuth } from '../context/AuthContext';
 import { isProfileComplete } from '../lib/profileCompleteness';
 import { api, extractDriveId } from '../services/firebase';
@@ -838,52 +839,7 @@ const ResourcesPage: React.FC = () => {
         <AccessGate isOpen={showAccessGate} onClose={() => setShowAccessGate(false)} resourceTitle={pendingResource?.title} />
 
         {selectedResource && (
-             <div className="fixed inset-0 z-[200] bg-background flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b border-border bg-card text-foreground">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedResource(null)} className="gap-2">
-                      <ArrowLeft className="w-4 h-4" /> Back
-                    </Button>
-                    <span className="font-semibold truncate max-w-md">{selectedResource.title}</span>
-                    <a 
-                      href={getDownloadUrl(selectedResource)} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                        onClick={() => {
-                            // Track interaction asynchronously without blocking the download
-                            trackInteraction(selectedResource.id, 'download', selectedResource);
-                        }}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                        Download
-                    </a>
-                </div>
-                <div className="flex-1 bg-background overflow-hidden">
-                  {(() => {
-                    const src = getPreviewIframeSrc(selectedResource);
-                    if (!src) {
-                      return (
-                        <div className="w-full h-full flex items-center justify-center p-8 text-center text-muted-foreground">
-                          <div className="max-w-lg">
-                            <div className="font-semibold">Preview unavailable</div>
-                            <div className="text-sm text-muted-foreground mt-2">
-                              This resource doesn’t have a preview link. Use Download to open it.
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <iframe
-                        src={src}
-                        className="w-full h-full border-0"
-                        allow="autoplay; fullscreen"
-                        title="Preview"
-                      />
-                    );
-                  })()}
-                </div>
-             </div>
+          <ResourceViewerModal resource={selectedResource} onClose={() => setSelectedResource(null)} />
         )}
     </div>
   );
