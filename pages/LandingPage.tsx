@@ -1,71 +1,157 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Library } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Search, ArrowRight, BookOpen, Calculator, Brain, Sparkles, FileText, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/courses?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/courses');
+    }
+  };
+
   return (
-    <div className="bg-background pt-6 transition-colors duration-300">
-      {/* Ambient BG */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent dark:from-primary/10"></div>
+    <div className="bg-background min-h-[calc(100vh-4rem)] transition-colors duration-300 relative overflow-hidden">
+      {/* Dynamic Background Glow */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-gradient-to-b from-primary/10 via-secondary/5 to-transparent blur-3xl opacity-70" />
       </div>
 
-      {/* Hero Section */}
-      <section className="relative z-10 px-4 pt-12 pb-16 mx-auto max-w-7xl sm:px-6 lg:px-8 lg:pt-24 text-center">
-        <div className="max-w-4xl mx-auto">
-          <div className="inline-flex items-center px-4 py-1.5 mb-8 rounded-full bg-muted border border-border shadow-sm">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-secondary mr-2 animate-pulse"></span>
-            <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Updated for R25 Regulations</span>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20">
+        {/* Main Hero Header */}
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>SNIST Academic Companion • R25 Regulation</span>
           </div>
-          
-          <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-7xl mb-6 leading-tight">
-            TheCampus <br className="hidden sm:block" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Helper</span>
-          </h1>
-          
-          <p className="max-w-2xl mx-auto text-xl text-muted-foreground mb-10 leading-relaxed">
-             One platform for all your academic needs. Lecture notes, previous year questions, and resources tailored for all branches.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link 
-              to="/courses"
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-primary-foreground bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50 group"
-            >
-              Explore Resources
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link 
-              to="/login"
-              className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-foreground bg-card border border-border rounded-xl hover:bg-muted/50 transition-all shadow-sm hover:shadow-md"
-            >
-              Student Login
-            </Link>
-          </div>
-        </div>
-      </section>
 
-      {/* Features Grid */}
-      <section className="pb-24 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            
-            {/* Feature 1 */}
-            <motion.div 
-              whileHover={{ y: -8 }}
-              className="relative p-8 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl transition-all group"
-            >
-              <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6">
-                <Library className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">Curated Resources</h3>
-              <p className="text-muted-foreground leading-relaxed">Access verified notes, lab manuals, and previous question papers sorted by branch and semester.</p>
-            </motion.div>
-          </div>
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground mb-4 leading-tight">
+            Survive & Excel at <br />
+            <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+              The Campus Helper
+            </span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed">
+            Find lecture notes, previous year question papers, and mid-exam materials in seconds.
+          </p>
         </div>
-      </section>
+
+        {/* 5-Second Search Bar */}
+        <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 w-5 h-5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search subject notes, MID papers, or PYQs (e.g. Data Structures, BEE)..."
+              className="w-full pl-12 pr-28 py-4 bg-card border border-border rounded-2xl text-foreground placeholder:text-muted-foreground/60 shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-base sm:text-lg transition-all"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-all text-sm shadow-md"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+
+        {/* Quick Semester Chips */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-16">
+          <span className="text-xs font-medium text-muted-foreground mr-1">Quick Select:</span>
+          {['Sem 1', 'Sem 2', 'CSE', 'ECE', 'AIML', 'DS', 'IT'].map((chip) => (
+            <Link
+              key={chip}
+              to={`/courses`}
+              className="px-3.5 py-1.5 rounded-full bg-muted/60 hover:bg-primary/10 border border-border text-xs font-medium text-foreground transition-all hover:text-primary"
+            >
+              {chip}
+            </Link>
+          ))}
+        </div>
+
+        {/* Core 4 Pillar Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.div whileHover={{ y: -4 }} className="h-full">
+            <Link
+              to="/courses"
+              className="flex flex-col h-full p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl hover:border-primary/40 transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2 flex items-center justify-between">
+                Study Resources
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                Verified lecture PPTs, MID question papers, PYQs, and lab manuals organized by branch & semester.
+              </p>
+            </Link>
+          </motion.div>
+
+          <motion.div whileHover={{ y: -4 }} className="h-full">
+            <Link
+              to="/calculator"
+              className="flex flex-col h-full p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl hover:border-secondary/40 transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Calculator className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2 flex items-center justify-between">
+                CGPA Calculator
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                Compute SGPA and overall CGPA using exact JNTUH credit weightage & grade point rules.
+              </p>
+            </Link>
+          </motion.div>
+
+          <motion.div whileHover={{ y: -4 }} className="h-full">
+            <Link
+              to="/study-assistant"
+              className="flex flex-col h-full p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl hover:border-primary/40 transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Brain className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2 flex items-center justify-between">
+                AI Study Assistant
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                Ask doubts on syllabus topics, get step-by-step math explanations, and exam preparation tips.
+              </p>
+            </Link>
+          </motion.div>
+
+          <motion.div whileHover={{ y: -4 }} className="h-full">
+            <Link
+              to="/quiz"
+              className="flex flex-col h-full p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-xl hover:border-secondary/40 transition-all group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-2 flex items-center justify-between">
+                AI Quiz Generator
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                Generate topic-wise MCQ practice tests with instant detailed explanations for wrong answers.
+              </p>
+            </Link>
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 };

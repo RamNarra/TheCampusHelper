@@ -355,54 +355,85 @@ export const getSubjects = (branch: string, semester: string): string[] => {
 };
 
 export const resources: Resource[] = [
-  // --- USER REQUESTED RESOURCE ---
-  // Path: Semester > Subject > PPTs
   {
-    id: 'res-ep-u2-ppt',
-    title: 'Unit 2: Fiber Optics',
-    subject: 'Advanced Engineering Physics',
-    branch: 'CYS', 
-    semester: '2',
+    id: 'res-bee-u1',
+    title: 'Unit 1: DC Circuits Notes',
+    subject: 'Basic Electrical Engineering',
+    branch: 'AIML',
+    semester: '1',
+    type: 'ImpQ',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/Unit-1%20DC%20circuits(BEE).pdf',
+    status: 'approved',
+  },
+  {
+    id: 'res-bee-u2',
+    title: 'Unit 2: AC Circuits Paper & Notes',
+    subject: 'Basic Electrical Engineering',
+    branch: 'AIML',
+    semester: '1',
+    type: 'ImpQ',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/unit-2%20AC%20CIRCUITS(BEE).pdf',
+    status: 'approved',
+  },
+  {
+    id: 'res-bee-u3',
+    title: 'Unit 3: Transformers Lecture Presentation',
+    subject: 'Basic Electrical Engineering',
+    branch: 'AIML',
+    semester: '1',
     type: 'PPT',
-    downloadUrl: 'https://docs.google.com/presentation/d/1--fcBt0glKsOPnxbhWMZ9BoXZ_4EAKKZ/edit?usp=sharing',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/Unit-3-TRANSFORMERS(BEE).pptx',
     status: 'approved',
-    driveFileId: '1--fcBt0glKsOPnxbhWMZ9BoXZ_4EAKKZ' 
   },
-  
-  // Previous Examples
   {
-    id: 'res-ma-u1-impq',
-    title: 'Unit 1 Important Questions',
+    id: 'res-bee-u4',
+    title: 'Unit 4: Electrical Machines PPT',
+    subject: 'Basic Electrical Engineering',
+    branch: 'AIML',
+    semester: '1',
+    type: 'PPT',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/Unit-4(BEE).pptx',
+    status: 'approved',
+  },
+  {
+    id: 'res-chem-u1',
+    title: 'Unit 1: Water & Treatment R25',
+    subject: 'Engineering Chemistry',
+    branch: 'CSE',
+    semester: '1',
+    type: 'PPT',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/Unit-I%20Water%20%26%20It\'s%20Treatment%20R25%20(1).pptx',
+    status: 'approved',
+  },
+  {
+    id: 'res-chem-u2',
+    title: 'Unit 2: Electrochemistry & Corrosion R25',
+    subject: 'Engineering Chemistry',
+    branch: 'CSE',
+    semester: '1',
+    type: 'PPT',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/Unit-II%20Electrochemistry%20%26%20Corrosion%20R25%20(1).pptx',
+    status: 'approved',
+  },
+  {
+    id: 'res-chem-u3',
+    title: 'Unit 3: Energy Sources R25',
+    subject: 'Engineering Chemistry',
+    branch: 'CSE',
+    semester: '1',
+    type: 'PPT',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/Materials/Unit-III%20Energy%20sources%20R25%20(1).pptx',
+    status: 'approved',
+  },
+  {
+    id: 'res-syl-r25',
+    title: 'R25 CSE Curriculum & Syllabus Guide',
     subject: 'Matrices and Calculus',
     branch: 'CSE',
     semester: '1',
     type: 'ImpQ',
-    downloadUrl: '#',
+    downloadUrl: 'https://docs.google.com/viewer?url=https://raw.githubusercontent.com/RamNarra/TheCampusHelper/main/A25-CSE-Syllabus.pdf',
     status: 'approved',
-    driveFileId: '19sC8_bC_kXp5r4v5X3j_h5y0sF_x1r1' 
-  },
-  {
-    id: 'res-ds-u1-note',
-    title: 'Introduction to Data Structures',
-    subject: 'Data Structures',
-    branch: 'CSE', 
-    semester: '2',
-    type: 'ImpQ',
-    legacyType: 'Note',
-    downloadUrl: '#',
-    status: 'approved',
-    driveFileId: '1BDq7G_y9XvXyk5zXXzXzXzXzXzXzXzX' 
-  },
-  {
-    id: 'res-ma-u1-note',
-    title: 'Rank of Matrix Notes',
-    subject: 'Matrices and Calculus',
-    branch: 'CSE',
-    semester: '1',
-    type: 'ImpQ',
-    legacyType: 'Note',
-    downloadUrl: '#',
-    status: 'approved'
   }
 ];
 
