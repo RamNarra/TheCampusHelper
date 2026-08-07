@@ -475,11 +475,16 @@ const ResourcesPage: React.FC = () => {
         const unitMatch = r.unit ? r.unit.toLowerCase().includes(q) : false;
         const typeMatch = r.type.toLowerCase().includes(q);
         const tagMatch = r.tags ? r.tags.some(t => t.toLowerCase().includes(q)) : false;
-        const beeAlias = (q === 'bee' || q === 'electrical') && r.subject.toLowerCase().includes('basic electrical');
-        const midAlias = (q === 'mid' || q === 'mids') && r.type === 'MidPaper';
-        const mathAlias = (q === '25bc61' || q === 'matrices') && r.subject.toLowerCase().includes('matrices');
 
-        return titleMatch || subjectMatch || unitMatch || typeMatch || tagMatch || beeAlias || midAlias || mathAlias;
+        // Concept & Keyword Aliases
+        const beeAlias = ['bee', 'electrical', 'dc', 'ac', 'kcl', 'kvl', 'thevenin', 'transformer', 'motors', 'phasors'].some(k => q.includes(k)) && r.subject.toLowerCase().includes('basic electrical');
+        const chemAlias = ['chem', 'chemistry', 'water', 'corrosion', 'solar', 'nernst', 'edta'].some(k => q.includes(k)) && r.subject.toLowerCase().includes('chemistry');
+        const mathAlias = ['25bc61', 'matrices', 'calculus', 'rank', 'matrix', 'eigen'].some(k => q.includes(k)) && r.subject.toLowerCase().includes('matrices');
+        const midAlias = ['mid', 'mids', 'internal', 'test'].some(k => q.includes(k)) && r.type === 'MidPaper';
+        const pyqAlias = ['pyq', 'pyqs', 'previous', 'question paper', 'past'].some(k => q.includes(k)) && r.type === 'PYQ';
+        const impqAlias = ['imp', 'impq', 'important', 'expected'].some(k => q.includes(k)) && r.type === 'ImpQ';
+
+        return titleMatch || subjectMatch || unitMatch || typeMatch || tagMatch || beeAlias || chemAlias || mathAlias || midAlias || pyqAlias || impqAlias;
       });
     }
 
