@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { resources as staticResources, getSubjects } from '../lib/data';
 import { BranchKey, Resource, ResourceType } from '../types';
 import { ResourceViewerModal } from '../features/resources/components/ResourceViewerModal';
+import { ResourceCard } from '../features/resources/components/ResourceCard';
 import { useAuth } from '../context/AuthContext';
 import { isProfileComplete } from '../lib/profileCompleteness';
 import { api, extractDriveId } from '../services/firebase';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { 
   FileText, ChevronRight, Book, Presentation, HelpCircle,
-  Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Plus
+  Home, ArrowLeft, FolderOpen, Sparkles, ExternalLink, Plus, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AccessGate from '../components/AccessGate';
@@ -461,15 +462,35 @@ const ResourcesPage: React.FC = () => {
 
   const currentView = getCurrentView();
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const filteredResources = useMemo(() => {
-    return [...dynamicResources, ...staticResources].filter(r => {
+    const all = [...dynamicResources, ...staticResources];
+    const q = searchQuery.trim().toLowerCase();
+
+    if (q) {
+      return all.filter(r => {
+        const titleMatch = r.title.toLowerCase().includes(q);
+        const subjectMatch = r.subject.toLowerCase().includes(q);
+        const unitMatch = r.unit ? r.unit.toLowerCase().includes(q) : false;
+        const typeMatch = r.type.toLowerCase().includes(q);
+        const tagMatch = r.tags ? r.tags.some(t => t.toLowerCase().includes(q)) : false;
+        const beeAlias = (q === 'bee' || q === 'electrical') && r.subject.toLowerCase().includes('basic electrical');
+        const midAlias = (q === 'mid' || q === 'mids') && r.type === 'MidPaper';
+        const mathAlias = (q === '25bc61' || q === 'matrices') && r.subject.toLowerCase().includes('matrices');
+
+        return titleMatch || subjectMatch || unitMatch || typeMatch || tagMatch || beeAlias || midAlias || mathAlias;
+      });
+    }
+
+    return all.filter(r => {
       if (!branchMatches(r.branch) || r.semester !== semester || r.subject !== subject) return false;
 
       if (!selectedCategory) return false;
       const normalized = toSystemResourceType((r as any).type);
       return normalized === selectedCategory;
     });
-  }, [dynamicResources, branchMatches, semester, subject, selectedCategory]);
+  }, [dynamicResources, branchMatches, semester, subject, selectedCategory, searchQuery]);
 
   // --- UI CONSTANTS ---
   const semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -485,131 +506,146 @@ const ResourcesPage: React.FC = () => {
   const resetToSubject = () => { setSelectedCategory(null); };
 
   return (
-    <div className="pt-6 pb-10 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between gap-6 mb-8">
+    <div className="pt-6 pb-10 w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Resources</h1>
-                <p className="text-muted-foreground">Select semester</p>
+                <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Study Resources & Materials</h1>
+                <p className="text-sm text-muted-foreground">SNIST Lecture PPTs, Mid Papers, PYQs, and Important Questions</p>
             </div>
+            {user && isProfileComplete(user) && (
+              <div className="flex items-center gap-2">
+                {isStaff && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setBulkError(null);
+                      setBulkResults([]);
+                      setBulkText('');
+                      setShowBulkAddModal(true);
+                    }}
+                    size="md"
+                  >
+                    Bulk Add
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    setUploadError('');
+                    setUploadSuccess(null);
+                    setLastSubmittedResource(null);
+                    setShowUploadModal(true);
+                  }}
+                  size="md"
+                >
+                  <Plus className="w-4 h-4" /> Add Resource
+                </Button>
+              </div>
+            )}
         </div>
 
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 pb-2 border-b border-border/50 overflow-x-auto">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search material by title, code (e.g. 25BC61), alias ('bee', 'mid'), or topic..."
+            className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-2xl text-foreground placeholder:text-muted-foreground/60 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground pb-2 border-b border-border/50 overflow-x-auto">
           <button onClick={resetToHome} aria-label="Home" title="Home"><Home className="w-4 h-4" /></button>
             {semester && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSemester}>Sem {semester}</button></>}
             {subject && <><ChevronRight className="w-4 h-4 opacity-50" /><button onClick={resetToSubject} className="truncate max-w-[150px]">{subject}</button></>}
             {selectedCategory && <><ChevronRight className="w-4 h-4 opacity-50" /><span>{CATEGORY_LABEL[selectedCategory]}</span></>}
         </nav>
 
-        <AnimatePresence mode="wait">
-            {currentView === 'SEMESTERS' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {semesters.map(sem => (
-                  <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
-                    <span className="text-xl font-bold block mb-1">Semester {sem}</span>
-                    <span className="text-sm text-muted-foreground">View Subjects</span>
-                  </button>
+        {searchQuery ? (
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+              Instant Search Results ({filteredResources.length})
+            </h2>
+            {filteredResources.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredResources.map(res => (
+                  <ResourceCard key={res.id} resource={res} onPreview={handleResourceClick} />
                 ))}
-              </motion.div>
+              </div>
+            ) : (
+              <EmptyState
+                icon={<Sparkles className="h-6 w-6 text-primary" />}
+                title={`No resources matching "${searchQuery}"`}
+              />
             )}
-
-            {currentView === 'SUBJECTS' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {getSubjects(branch, semester!).map(sub => (
-                        <button key={sub} onClick={() => setSubject(sub)} className="p-4 bg-card border border-border rounded-xl hover:border-primary transition-all text-left flex items-center justify-between group">
-                            <span className="font-medium">{sub}</span>
-                            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </button>
-                    ))}
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+              {currentView === 'SEMESTERS' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {semesters.map(sem => (
+                    <button key={sem} onClick={() => setSemester(sem)} className="p-6 bg-card border border-border rounded-xl hover:border-primary transition-all text-left">
+                      <span className="text-xl font-bold block mb-1">Semester {sem}</span>
+                      <span className="text-sm text-muted-foreground">View Subjects</span>
+                    </button>
+                  ))}
                 </motion.div>
-            )}
+              )}
 
-            {currentView === 'CATEGORIES' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {categoryFolders.map(cat => (
-                  <button key={cat.type} onClick={() => setSelectedCategory(cat.type)} className="p-6 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all flex items-center gap-4">
-                    <div className={`p-3 rounded-lg ${cat.color}`}><cat.icon className="w-6 h-6" /></div>
-                    <div className="text-left">
-                      <h3 className="font-bold">{cat.label}</h3>
-                      <p className="text-xs text-muted-foreground">Browse files</p>
-                    </div>
-                  </button>
-                ))}
-              </motion.div>
-            )}
+              {currentView === 'SUBJECTS' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {getSubjects(branch, semester!).map(sub => (
+                          <button key={sub} onClick={() => setSubject(sub)} className="p-4 bg-card border border-border rounded-xl hover:border-primary transition-all text-left flex items-center justify-between group">
+                              <span className="font-medium">{sub}</span>
+                              <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                      ))}
+                  </motion.div>
+              )}
 
-            {currentView === 'FILES' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-bold">Files</h2>
-                      {user && isProfileComplete(user) ? (
-                        <div className="flex items-center gap-2">
-                          {isStaff ? (
-                            <Button
-                              variant="secondary"
-                              onClick={() => {
-                                setBulkError(null);
-                                setBulkResults([]);
-                                setBulkText('');
-                                setShowBulkAddModal(true);
-                              }}
-                              size="md"
-                            >
-                              Bulk Add
-                            </Button>
-                          ) : null}
-                          <Button
-                            onClick={() => {
-                              setUploadError('');
-                              setUploadSuccess(null);
-                              setLastSubmittedResource(null);
-                              setShowUploadModal(true);
-                            }}
-                            size="md"
-                          >
-                            <Plus className="w-4 h-4" /> Add Resource
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
+              {currentView === 'CATEGORIES' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {categoryFolders.map(cat => (
+                    <button key={cat.type} onClick={() => setSelectedCategory(cat.type)} className="p-6 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all flex items-center gap-4">
+                      <div className={`p-3 rounded-lg ${cat.color}`}><cat.icon className="w-6 h-6" /></div>
+                      <div className="text-left">
+                        <h3 className="font-bold">{cat.label}</h3>
+                        <p className="text-xs text-muted-foreground">Browse files</p>
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
 
-                    {isResourcesLoading ? (
-                        <div className="flex justify-center py-10"><Spinner size="lg" /></div>
-                    ) : filteredResources.length > 0 ? (
-                        <div className="grid gap-3">
-                        {filteredResources.map(res => (
-                                <div
-                                  key={res.id}
-                                  onClick={() => handleResourceClick(res)}
-                                  onContextMenu={(e) => openContextMenu(e, res)}
-                                  className="p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer flex items-center justify-between group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-muted rounded-lg"><FileText className="w-5 h-5 text-foreground" /></div>
-                                        <div>
-                                            <h4 className="font-medium group-hover:text-primary transition-colors">{res.title}</h4>
-                                            <p className="text-xs text-muted-foreground">{res.subject}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      {user?.uid && res.ownerId === user.uid && (res.status || 'approved') === 'pending' ? (
-                                        <span className="text-xs px-2 py-1 rounded-full border border-yellow-500/20 bg-yellow-500/10 text-yellow-300">
-                                          Pending
-                                        </span>
-                                      ) : null}
-                                        <ExternalLink className="w-5 h-5 text-muted-foreground" />
-                                    </div>
-                                </div>
+              {currentView === 'FILES' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      {isResourcesLoading ? (
+                          <div className="flex justify-center py-10"><Spinner size="lg" /></div>
+                      ) : filteredResources.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredResources.map(res => (
+                              <ResourceCard key={res.id} resource={res} onPreview={handleResourceClick} />
                             ))}
-                        </div>
-                    ) : (
-                      <EmptyState
-                        icon={<Sparkles className="h-6 w-6 text-primary" />}
-                        title="No resources found here yet."
-                      />
-                    )}
-                </motion.div>
-            )}
-        </AnimatePresence>
+                          </div>
+                      ) : (
+                        <EmptyState
+                          icon={<Sparkles className="h-6 w-6 text-primary" />}
+                          title="No resources found here yet."
+                        />
+                      )}
+                  </motion.div>
+              )}
+          </AnimatePresence>
+        )}
 
         {/* UPLOAD MODAL */}
         <AnimatePresence>

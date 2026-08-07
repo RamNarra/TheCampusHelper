@@ -119,11 +119,17 @@ export interface Resource {
   // Optional back-compat marker for migrated resources.
   legacyType?: string;
   downloadUrl: string;
-  // Legacy (back-compat): historical Google Drive resources.
-  // The UI no longer embeds Drive previews.
   driveFileId?: string;
 
-  // Modern upload metadata (preferred)
+  // Analytical & Rich Metadata
+  unit?: string;       // e.g. "Unit 1", "Unit 2"
+  views?: number;      // e.g. 142
+  downloads?: number;  // e.g. 89
+  bookmarks?: number;  // e.g. 24
+  tags?: string[];     // e.g. ["DC Circuits", "BEE", "KCL", "KVL"]
+  verified?: boolean;  // true if verified by SNIST Faculty
+
+  // Modern upload metadata
   mimeType?: string;
   originalFileName?: string;
   fileSizeBytes?: number;
