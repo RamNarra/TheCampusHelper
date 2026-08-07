@@ -4,7 +4,6 @@ import { BranchKey, Resource, ResourceType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { isProfileComplete } from '../lib/profileCompleteness';
 import { api, extractDriveId } from '../services/firebase';
-import { awardXP, unlockAchievement, XP_REWARDS } from '../services/gamification';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { 
   FileText, ChevronRight, Book, Presentation, HelpCircle,
@@ -351,20 +350,6 @@ const ResourcesPage: React.FC = () => {
   const openResource = async (res: Resource) => {
     // Always use the in-app preview overlay.
     setSelectedResource(res);
-    
-    // Award XP for viewing resource
-    if (user) {
-      await awardXP(user.uid, XP_REWARDS.RESOURCE_VIEW, 'Viewed a resource');
-      
-      // Only try to unlock 'first_resource' if not already unlocked
-      if (!user.achievementIds?.includes('first_resource')) {
-        await unlockAchievement(user.uid, 'first_resource');
-      }
-      
-      // Track total resources viewed for resource_master achievement
-      // Note: This requires a resourcesViewed counter field in the user profile
-      // TODO: Implement resource view counter and unlock resource_master at 50 views
-    }
   };
 
   const getDrivePreviewId = (res: Resource): string | null => {
@@ -453,17 +438,7 @@ const ResourcesPage: React.FC = () => {
 
         setUploadSuccess('Your resource has been submitted for approval. Once approved, it will be visible on the website.');
 
-        // 5. Award XP for contribution
-        if (user) {
-          await awardXP(user.uid, XP_REWARDS.RESOURCE_UPLOAD, 'Uploaded a resource');
-          
-          // Only try to unlock 'contributor' if not already unlocked
-          if (!user.achievementIds?.includes('contributor')) {
-            await unlockAchievement(user.uid, 'contributor');
-          }
-        }
-
-        // 6. Success State
+        // 5. Success State
         setUploadName('');
         setUploadLink('');
 

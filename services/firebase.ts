@@ -28,7 +28,6 @@ import {
 import type { DocumentData } from 'firebase/firestore';
 import { UserProfile, Resource, Quiz, QuizAttempt, QuizQuestion, StudyGroup, Message, Session, CollaborativeNote, ResourceInteraction, UserRole, TodoItem, Habit, StudyGroupRequest } from '../types';
 import { normalizeRole } from '../lib/rbac';
-import { isDevAllFeaturesEnabled } from '../lib/devAllFeatures';
 import { env, getAuthClient, getDb, getGoogleProvider, isConfigured } from './platform/firebaseClient';
 import { stripUndefined, withTimeout } from './platform/utils';
 import { authedJsonPost } from './platform/apiClient';
@@ -175,10 +174,7 @@ export const mapAuthToProfile = (user: User): UserProfile => {
     displayName: user.displayName,
     email: user.email,
     photoURL: user.photoURL,
-                // Never trust client env allowlists for authorization.
-                // Real roles come from Firestore + custom claims.
-                // Dev-only override: allow local testing with full UI unlocked.
-                role: isDevAllFeaturesEnabled() ? ('super_admin' as any) : 'student',
+                role: 'student',
     branch: undefined,
         year: undefined,
         section: undefined,

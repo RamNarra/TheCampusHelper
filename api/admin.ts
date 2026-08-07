@@ -3,7 +3,6 @@ import { getAction, rejectUnknownAction } from '../server/routerUtils';
 
 import setUserRole from '../api_impl/admin/setUserRole';
 import setUserDisabled from '../api_impl/admin/setUserDisabled';
-import setPhase1Toggle from '../api_impl/admin/setPhase1Toggle';
 import health from '../api_impl/admin/health';
 
 export const config = { runtime: 'nodejs' };
@@ -11,7 +10,6 @@ export const config = { runtime: 'nodejs' };
 const actions = {
   setUserRole,
   setUserDisabled,
-  setPhase1Toggle,
   health,
 } as const satisfies Record<string, (req: VercelRequest, res: VercelResponse) => Promise<unknown>>;
 

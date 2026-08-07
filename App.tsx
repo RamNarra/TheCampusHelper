@@ -7,19 +7,9 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
-import ToDoPage from './pages/ToDoPage';
-import EventsPage from './pages/EventsPage';
-import StudyGroupsPage from './pages/StudyGroupsPage';
 import CalculatorPage from './pages/CalculatorPage';
-import CompilerPage from './pages/CompilerPage';
 import QuizPage from './pages/QuizPage';
-import ExamPrepPage from './pages/ExamPrepPage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import AnalyticsPage from './pages/AnalyticsPage';
 import StudyAssistantPage from './pages/StudyAssistantPage';
-import StudyPlusPage from './pages/StudyPlusPage';
-import InsightsPage from './pages/InsightsPage';
-import DeveloperPage from './pages/DeveloperPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompleteProfileModal from './components/CompleteProfileModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -145,28 +135,15 @@ const AppContent: React.FC = () => {
         <ErrorBoundary>
             <Routes>
               <Route path="/" element={<LandingPage />} />
-              {/* Phase-1 route aliases (no removals). Keep old paths working. */}
               <Route path="/home" element={<Navigate to="/" replace />} />
-              <Route path="/planner" element={<Navigate to="/" replace />} />
-              <Route path="/community" element={<Navigate to="/" replace />} />
               <Route path="/courses" element={<ResourcesPage />} />
               <Route path="/resources" element={<Navigate to="/courses" replace />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={isPublicBuild ? <NotFoundPage /> : <AdminDashboard />} />
-              <Route path="/study-groups" element={<StudyGroupsPage />} />
               <Route path="/calculator" element={<CalculatorPage />} />
-              <Route path="/compiler" element={<CompilerPage />} />
-              <Route path="/events" element={<EventsPage />} />
               <Route path="/quiz" element={<QuizPage />} />
-              <Route path="/exam-prep" element={<ExamPrepPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/study-assistant" element={<StudyAssistantPage />} />
-              <Route path="/study-plus" element={<StudyPlusPage />} />
-              <Route path="/todo" element={<ToDoPage />} />
-              <Route path="/insights" element={<InsightsPage />} />
-              <Route path="/developer" element={<DeveloperPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </ErrorBoundary>

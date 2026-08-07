@@ -18,11 +18,9 @@ const Navbar: React.FC = () => {
     return [
       { name: 'Home', path: '/', icon: null },
       { name: 'Courses', path: '/courses', icon: <BookOpen className="w-4 h-4 mr-2" /> },
-      { name: 'To-Do', path: '/todo', icon: <CalendarDays className="w-4 h-4 mr-2" /> },
-      { name: 'Study Groups', path: '/study-groups', icon: <Users className="w-4 h-4 mr-2" /> },
+      { name: 'Calculator', path: '/calculator', icon: <CalendarDays className="w-4 h-4 mr-2" /> },
       { name: 'Study Assistant', path: '/study-assistant', icon: <Brain className="w-4 h-4 mr-2" /> },
-      { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4 mr-2" /> },
-      { name: 'Analytics', path: '/analytics', icon: <BarChart3 className="w-4 h-4 mr-2" /> },
+      { name: 'Quiz', path: '/quiz', icon: <Sparkles className="w-4 h-4 mr-2" /> },
     ];
   }, []);
 

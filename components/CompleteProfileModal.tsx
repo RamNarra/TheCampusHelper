@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { User, Calendar, BookOpen, ArrowRight, Mail, Users } from 'lucide-react';
 import type { BranchKey } from '../types';
-import { awardXP, XP_REWARDS } from '../services/gamification';
 import { Alert } from './ui/Alert';
 import { Button } from './ui/Button';
 import { Spinner } from './ui/Spinner';
@@ -138,15 +137,6 @@ const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({ isOpen, onC
         section,
         profileCompleted: true
       });
-      
-      // Award XP for completing profile
-      if (user) {
-        try {
-          await awardXP(user.uid, XP_REWARDS.PROFILE_COMPLETE, 'Completed profile');
-        } catch {
-          // Non-critical: profile completion should not be blocked by XP awarding failures.
-        }
-      }
       
       if (onComplete) onComplete();
 

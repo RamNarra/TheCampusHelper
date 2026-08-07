@@ -1,8 +1,6 @@
-import { isDevAllFeaturesEnabled } from '../lib/devAllFeatures';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { api, mapAuthToProfile } from '../services/firebase';
-import { initializeGamification, updateStreak, awardXP, XP_REWARDS } from '../services/gamification';
 import { isAtLeastRole, normalizeRole } from '../lib/rbac';
 import { env } from '../services/platform/firebaseClient';
 import { missingProfileFields, type ProfileFieldKey } from '../lib/profileCompleteness';
@@ -189,11 +187,6 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         setAuthError(null);
         // 1. Immediate: Map basic data from Google Token
         const basicProfile = mapAuthToProfile(firebaseUser);
-        // Dev-only: if all-features mode is enabled, treat the user as super_admin
-        // regardless of what's stored in Firestore (avoids needing admin bootstrap).
-        if (isDevAllFeaturesEnabled()) {
-          (basicProfile as any).role = 'super_admin';
-        }
 
         // Presence: start heartbeat immediately on auth.
         presenceUid = firebaseUser.uid;
@@ -242,32 +235,11 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
 
                 // Merge DB data with existing state (normalize legacy fields)
                 const normalized = normalizeProfileFromDb(data);
-                if (isDevAllFeaturesEnabled()) {
-                  (normalized as any).role = 'super_admin';
-                }
                 setUser(prev => (prev ? ({ ...prev, ...normalized }) : null));
 
                 // Admin recovery is intentionally manual (see Profile page) to avoid
                 // probing the bootstrap endpoint on every login.
                 attemptedAdminRecoveryRef.current = true;
-                
-                // Only run gamification logic once per session to prevent infinite loops
-                if (!gamificationInitializedRef.current) {
-                  gamificationInitializedRef.current = true;
-
-                  // Initialize gamification for new users
-                  if (data.xp === undefined) {
-                    await initializeGamification(firebaseUser.uid);
-                  } else {
-                    // Update streak for existing users (this handles daily login XP internally)
-                    const today = new Date().toISOString().split('T')[0];
-                    if (data.lastLoginDate !== today) {
-                      await updateStreak(firebaseUser.uid);
-                      await awardXP(firebaseUser.uid, XP_REWARDS.LOGIN, 'Daily login');
-                    }
-                  }
-                }
-
             }
             // Mark profile as "Loaded" (success or empty)
             setProfileLoaded(true);
