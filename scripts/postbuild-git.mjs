@@ -38,8 +38,8 @@ if (!status.out) {
   process.exit(0);
 }
 
-// Stage, commit, push.
-tryRun('git add -A');
+// Stage tracked changes only (avoid auto-committing untracked scratch/test scripts).
+tryRun('git add -u');
 
 const branch = (tryRun('git branch --show-current').out || 'main').trim();
 const now = new Date();
